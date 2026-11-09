@@ -1,0 +1,273 @@
+import { Bot, InlineKeyboard } from 'grammy';
+import { env } from '../config/env';
+import { logger } from '../config/logger';
+import { queryArgus } from '../lib/db';
+import { ArgusReceiptProcessor, type ExtractedReceiptData } from '../services/ArgusReceiptProcessor';
+import { ArgusOptimizerService } from '../services/ArgusOptimizerService';
+import { ArgusReconciliationService } from '../services/ArgusReconciliationService';
+
+const pendingReceiptsCache = new Map<string, ExtractedReceiptData>();
+
+export function createArgusBot(): Bot {
+  const token = env.TELEGRAM_BOT_TOKEN || '0000000000:AAH_ARGUS_PLACEHOLDER_TOKEN_FOR_BUILD';
+  const bot = new Bot(token);
+
+  const processor = new ArgusReceiptProcessor();
+  const optimizer = new ArgusOptimizerService();
+  const reconciler = new ArgusReconciliationService();
+
+  // 1. /start — Apresentação oficial da persona Argus (@MonetaArgusBot - "O Olho Fiscal")
+  bot.command('start', async (ctx) => {
+    const welcome = [
+      '👁️ *Saudações. Eu sou o ARGUS (@MonetaArgusBot) — O Olho Fiscal do ecossistema Moneta.*',
+      '',
+      'Sou um auditor analítico, direto e afiado. Minha função é vigiar cada centavo do seu orçamento, caçar reduflação oculta nas embalagens, calcular o custo exato por grama de cada receita e decidir na ponta do lápis se compensa ir de carro ou de Uber.',
+      '',
+      '📋 *Comandos de Auditoria Disponíveis:*',
+      '• 📸 *Envie uma Foto ou PDF de Cupom Fiscal (NFC-e/SAT)* — Decodifico o QR Code localmente (`sharp` + `jsqr`), raspo a SEFAZ ou aciono o `gemini-2.5-flash`.',
+      '• `/preco <item>` — Consulta o preço estimado atual por grama/ml em cada mercado e alerta se é hora de estocar.',
+      '• `/receita` — Calcula o *Custo Proporcional por Marmita* vs. *Desembolso de Caixa (Embalagens Fechadas)* das suas receitas.',
+      '• `/otimizar` — Roda o Simulador Logístico (Rota Real OSRM: Mercado Único vs. Compra Dividida | Gasolina vs. Uber com trava de R$ 25,00).',
+      '• `/reconciliar` — Cruza cupons fiscais com transações do Pluggy Open Finance (`-2h` a `+48h`, `<= R$ 0,05`) e sincroniza a planilha *Argus Ledger*.',
+      '• `/dashboard` — Abre o painel interativo *Argus Vision BI*.'
+    ].join('\n');
+
+    const kb = new InlineKeyboard().url(
+      '📊 Abrir Argus Vision BI',
+      `http://localhost:${env.PORT || 3000}`
+    );
+
+    await ctx.reply(welcome, { parse_mode: 'Markdown', reply_markup: kb });
+  });
+
+  // 2. /preco <termo> — Histórico e arbitragem de preços por unidade base (g/ml/un)
+  bot.command('preco', async (ctx) => {
+    const query = (ctx.match || '').trim();
+    const rows = await queryArgus<{
+      product_name: string;
+      store_name: string;
+      base_unit: string;
+      standard_package_size: string;
+      estimated_base_price: string;
+      estimated_package_price: string;
+      min_historical_price: string;
+      max_historical_price: string;
+      days_since_last_seen: number;
+    }>(
+      query
+        ? `SELECT * FROM argus.v_current_product_prices WHERE product_name ILIKE $1 ORDER BY estimated_package_price ASC LIMIT 9`
+        : `SELECT * FROM argus.v_current_product_prices ORDER BY product_name ASC, estimated_package_price ASC LIMIT 9`,
+      query ? [`%${query}%`] : []
+    );
+
+    if (rows.length === 0) {
+      await ctx.reply(
+        `👁️ *Argus informa:* Nenhum item localizado para *"${query}"*. Tente \`/preco frango\`, \`/preco arroz\`, \`/preco leite\` ou \`/preco omo\`.`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    const lines = [
+      `👁️ *AUDITORIA DE PREÇOS ARGUS (${query || 'Destaques da Cesta'})*`,
+      '_Decaimento temporal: 70% último preço + 30% média dos 3 anteriores_',
+      ''
+    ];
+
+    for (const r of rows) {
+      const est = Number(r.estimated_package_price);
+      const minH = Number(r.min_historical_price);
+      const badge = est <= minH * 1.02 ? '🔥 *MÍNIMA HISTÓRICA (ESTOCAR)*' : '⚖️ Normal';
+      lines.push(
+        `• *${r.product_name}* — 🏪 ${r.store_name}\n  💰 *R$ ${est.toFixed(2)}* (R$ ${Number(
+          r.estimated_base_price
+        ).toFixed(4)}/${r.base_unit}) | Mín: R$ ${minH.toFixed(2)} | ${badge}`
+      );
+    }
+
+    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+  });
+
+  // 3. /receita — Duplo Custo de Receitas (Proporcional vs. Desembolso de Caixa)
+  bot.command('receita', async (ctx) => {
+    const evaluations = await optimizer.evaluateRecipeCosts();
+    const lines = [
+      '👁️ *LABORATÓRIO DE RECEITAS ARGUS — CUSTO POR GRAMA vs. CAIXA*',
+      ''
+    ];
+
+    for (const rec of evaluations) {
+      lines.push(`🍲 *${rec.recipeName}* (${rec.servings} porções/marmitas)`);
+      lines.push(
+        `  • 🎯 *Custo Proporcional por Marmita:* *R$ ${rec.proportionalCostPerPortion.toFixed(
+          2
+        )}* (Total usado: R$ ${rec.proportionalTotalCost.toFixed(2)})`
+      );
+      lines.push(
+        `  • 🛒 *Desembolso no Caixa (Embalagens Fechadas):* *R$ ${rec.cashOutlayTotalCost.toFixed(
+          2
+        )}*`
+      );
+      lines.push(`  • 🏆 *Melhor Mercado Único:* ${rec.bestSingleStoreName}`);
+      lines.push('');
+    }
+
+    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+  });
+
+  // 4. /otimizar — Simulador Logístico (Mercado Único vs. Compra Dividida | Gasolina vs. Uber)
+  bot.command('otimizar', async (ctx) => {
+    const verdict = await optimizer.optimizeShoppingTrip();
+    const s1 = verdict.singleStoreBest;
+    const s2 = verdict.splitStoreBest;
+
+    const text = [
+      '👁️ *SIMULADOR LOGÍSTICO ARGUS (ROTA OSRM: CARRO vs. UBER)*',
+      '',
+      `1️⃣ *${s1.title}*`,
+      `   • Produtos: R$ ${s1.productsCost.toFixed(2)} | Distância OSRM: ${s1.totalDistanceKm} km (${s1.totalDurationMin} min)`,
+      `   • ⛽ Com Gasolina: *R$ ${s1.totalWithGas.toFixed(2)}* (Combustível: R$ ${s1.gasCost.toFixed(2)})`,
+      `   • 🚗 Com Uber: *R$ ${s1.totalWithUber.toFixed(2)}* (Corridas: R$ ${s1.uberCost.toFixed(2)})`,
+      '',
+      `2️⃣ *${s2.title}*`,
+      `   • Produtos: R$ ${s2.productsCost.toFixed(2)} | Distância OSRM: ${s2.totalDistanceKm} km (${s2.totalDurationMin} min)`,
+      `   • ⛽ Com Gasolina: *R$ ${s2.totalWithGas.toFixed(2)}* (Combustível: R$ ${s2.gasCost.toFixed(2)})`,
+      `   • 🚗 Com Uber: *R$ ${s2.totalWithUber.toFixed(2)}* (Corridas: R$ ${s2.uberCost.toFixed(2)})`,
+      '',
+      `⚖️ *Economia Bruta nos Produtos:* R$ ${verdict.grossProductSavings.toFixed(2)}`,
+      `💵 *Economia Líquida (Carro):* R$ ${verdict.netSavingsWithGas.toFixed(2)} | *(Uber):* R$ ${verdict.netSavingsWithUber.toFixed(2)}`,
+      `🚧 *Trava Mínima Argus (Hurdle):* R$ ${verdict.minSavingsHurdle.toFixed(2)}`,
+      '',
+      `*${verdict.argusVerdictText}*`
+    ].join('\n');
+
+    await ctx.reply(text, { parse_mode: 'Markdown' });
+  });
+
+  // 5. /reconciliar — Conciliação Open Finance (Pluggy) + Google Sheets ("Argus Ledger")
+  bot.command('reconciliar', async (ctx) => {
+    const { summary } = await reconciler.reconcileAndSyncSheets();
+    const msg = [
+      '👁️ *AUDITORIA DE CONCILIAÇÃO OPEN FINANCE (PLUGGY) & SHEETS*',
+      '',
+      `• 📄 Cupons Fiscais Escaneados: *${summary.scannedReceipts}*`,
+      `• 🏦 Transações Pluggy Analisadas: *${summary.pluggyTransactions}*`,
+      `• 🔗 Taxa de Conciliação (-2h a +48h, <= R$ 0,05): *${summary.reconciliationRatePct}%* (${summary.totalReconciled} conciliados)`,
+      `• 💳 Cupons lançados na Carteira VR/VA: *${summary.vrVaSyncedCount}*`,
+      `• 📊 Linhas sincronizadas no Google Sheets (*Argus Ledger*): *${summary.sheetsSyncedRows}*`
+    ].join('\n');
+
+    await ctx.reply(msg, { parse_mode: 'Markdown' });
+  });
+
+  // 6. /dashboard — Link direto para o Argus Vision BI
+  bot.command('dashboard', async (ctx) => {
+    const url = `http://localhost:${env.PORT || 3000}`;
+    const kb = new InlineKeyboard().url('🚀 Abrir Argus Vision BI', url);
+    await ctx.reply(
+      `👁️ *Argus Vision BI — Market Arbitrage, Recipe Costing & Open Finance Intelligence*\n\nAcesse o painel executivo em: ${url}`,
+      { parse_mode: 'Markdown', reply_markup: kb }
+    );
+  });
+
+  // 7. Recebimento de Foto ou Documento PDF de Cupom Fiscal com Botões Inline de Confirmação
+  bot.on(['message:photo', 'message:document'], async (ctx) => {
+    try {
+      await ctx.reply(
+        '👁️ *Argus em ação:* Analisando imagem do cupom fiscal (buscando QR Code SEFAZ local via `sharp` + `jsqr` e preparando fallback `gemini-2.5-flash`)...',
+        { parse_mode: 'Markdown' }
+      );
+
+      const file = await ctx.getFile();
+      const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+      const res = await fetch(fileUrl);
+      const buffer = Buffer.from(await res.arrayBuffer());
+
+      let extracted: ExtractedReceiptData | null = null;
+      const qrData = await processor.decodeQrCodeFromImage(buffer);
+      if (qrData) {
+        extracted = await processor.scrapeSefazReceipt(qrData);
+      }
+      if (!extracted) {
+        extracted = await processor.extractReceiptViaGeminiVision(buffer);
+      }
+
+      const tokenKey = `rcpt_${Date.now()}`;
+      pendingReceiptsCache.set(tokenKey, extracted);
+
+      const kb = new InlineKeyboard()
+        .text('✅ Confirmar & Auditar Cupom', `confirm:${tokenKey}`)
+        .text('❌ Descartar', `cancel:${tokenKey}`);
+
+      const preview = [
+        `👁️ *CUPOM FISCAL EXTRAÍDO PELO ARGUS (${extracted.extractionMethod})*`,
+        `🏪 *Mercado:* ${extracted.storeTradingName} (${extracted.storeCnpj})`,
+        `💳 *Pagamento:* ${extracted.paymentMethod} | 💰 *Total:* R$ ${extracted.totalAmount.toFixed(2)}`,
+        `📦 *Itens Identificados:* ${extracted.items.length}`,
+        '',
+        'Deseja gravar este cupom no schema `argus` e conciliar com o Open Finance?'
+      ].join('\n');
+
+      await ctx.reply(preview, { parse_mode: 'Markdown', reply_markup: kb });
+    } catch (err) {
+      logger.error({ err }, '[ArgusBot] Erro ao processar foto/PDF');
+      await ctx.reply(
+        `⚠️ *Argus informa:* Não foi possível extrair o cupom: ${(err as Error).message}`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+  });
+
+  // Callback dos Botões Inline de confirmação
+  bot.on('callback_query:data', async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    const [action, key] = data.split(':');
+
+    if (action === 'cancel') {
+      pendingReceiptsCache.delete(key);
+      await ctx.answerCallbackQuery({ text: 'Cupom descartado pelo auditor.' });
+      await ctx.editMessageText('👁️ *Argus:* Operação descartada.');
+      return;
+    }
+
+    if (action === 'confirm') {
+      const receipt = pendingReceiptsCache.get(key);
+      if (!receipt) {
+        await ctx.answerCallbackQuery({ text: 'Sessão expirada.' });
+        return;
+      }
+      pendingReceiptsCache.delete(key);
+
+      const result = await processor.ingestReceipt(receipt);
+      await reconciler.reconcileAndSyncSheets();
+
+      const shrinkMsg =
+        result.shrinkflationAlerts.length > 0
+          ? `\n🚨 *ALERTA DE REDUFLAÇÃO:* ${result.shrinkflationAlerts.join('; ')}`
+          : '';
+
+      await ctx.answerCallbackQuery({ text: 'Cupom gravado e conciliado!' });
+      await ctx.editMessageText(
+        `✅ *Argus auditou e persistiu o cupom!* (${result.itemsProcessed} itens normalizados para g/ml/un).${shrinkMsg}`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+  });
+
+  return bot;
+}
+
+if (require.main === module) {
+  if (!env.TELEGRAM_BOT_TOKEN) {
+    console.log('======================================================================');
+    console.log('👁️  ARGUS BOT (@MonetaArgusBot - O Olho Fiscal)');
+    console.log('ℹ️  TELEGRAM_BOT_TOKEN ainda não configurado no `.env`.');
+    console.log('   Adicione seu token do @BotFather em TELEGRAM_BOT_TOKEN para iniciar o polling ao vivo.');
+    console.log('======================================================================');
+    process.exit(0);
+  }
+
+  const bot = createArgusBot();
+  console.log('👁️  Iniciando @MonetaArgusBot (O Olho Fiscal) em modo Long Polling...');
+  bot.start();
+}
