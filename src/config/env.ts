@@ -31,7 +31,7 @@ const envSchema = z.object({
     ),
   TELEGRAM_ALLOWED_USERNAMES: z
     .string()
-    .default('AsminnAeterna')
+    .default('AsminnAeterna,Reznozada')
     .transform((v) =>
       v
         .split(',')
