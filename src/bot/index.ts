@@ -18,6 +18,10 @@ interface PendingReceiptSession {
   extracted: ExtractedReceiptData;
   rawBuffer: Buffer;
   mimeType: string;
+  originalMessageId?: number;
+  telegramFileId?: string;
+  telegramFileUniqueId?: string;
+  caption?: string;
 }
 
 const pendingReceiptsCache = new Map<string, PendingReceiptSession>();
@@ -36,8 +40,21 @@ export function createArgusBot(): Bot {
   const priceScanner = new ArgusPriceScannerService();
   let lastPriceScanJobId: string | null = null;
 
-  bot.catch((err) => {
+  bot.catch(async (err) => {
     logger.error({ err: err.error }, '[ArgusBot] Erro capturado pelo handler global');
+    const chatId = err.ctx?.chat?.id;
+    const msgId = err.ctx?.msg?.message_id;
+    const errMsg =
+      err.error instanceof Error ? err.error.message : String(err.error || 'Erro desconhecido');
+    if (chatId) {
+      await bot.api
+        .sendMessage(
+          chatId,
+          `❌ FALHA NO PROCESSAMENTO\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 280)}`,
+          msgId ? { reply_parameters: { message_id: msgId } } : undefined
+        )
+        .catch(() => {});
+    }
   });
 
   // 0. Guardião de Acesso Exclusivo & Detector de Ataques (Allowlist + Persistência em argus.security_audit_logs)
@@ -473,12 +490,12 @@ export function createArgusBot(): Bot {
           })
         : 'Manual (/fila)';
       return [
-        '🗂️ MÍDIA SALVA NO BUCKET E ENFILEIRADA PARA REPROCESSAMENTO',
-        `• Status na Tabela de Controle (argus.media_processing_queue): ${outcome.status}`,
-        `• ID do Job: #${outcome.queueJobId.slice(0, 8)}`,
-        `• Arquivo Seguro no Bucket: ${outcome.storageBucket}/${outcome.storagePath}`,
-        `• Motivo da Falha Temporária: ${(outcome.errorMessage || 'Instabilidade momentânea').slice(0, 160)}`,
-        `• Próxima Tentativa Automática: ${retryStr} (ou clique em "🔄 Reprocessar Fila Agora" em /fila)`
+        '❌ FALHA NO PROCESSAMENTO DA IMAGEM/VÍDEO',
+        `• 🗄️ Foto/vídeo salvo no bucket: '${outcome.storageBucket}/${outcome.storagePath}'`,
+        outcome.status === 'QUEUED_RETRY'
+          ? `• ⏳ Reprocessamento Automático: A mídia foi salva no bucket e será reprocessada automaticamente daqui a 1 hora (às ${retryStr}) [Job #${outcome.queueJobId.slice(0, 8)}]!`
+          : `• 🛑 Limite de tentativas atingido (FAILED_PERMANENT) [Job #${outcome.queueJobId.slice(0, 8)}].`,
+        `• ⚠️ Mensagem de erro: ${(outcome.errorMessage || 'Instabilidade momentânea no processamento').slice(0, 260)}`
       ].join('\n');
     }
 
@@ -535,7 +552,7 @@ export function createArgusBot(): Bot {
       outcome.items.length > 10 ? `\n  ... e mais ${outcome.items.length - 10} produto(s)` : '';
 
     return [
-      `👁️ COLETA DE PREÇOS CONCLUÍDA${elapsedSec ? ` EM ${elapsedSec}s` : ''} (${kindLabel})`,
+      `✅ SUCESSO NO PROCESSAMENTO DA IMAGEM/VÍDEO${elapsedSec ? ` EM ${elapsedSec}s` : ''}! (${kindLabel})`,
       `🏪 Loja: ${outcome.storeNameDetected} | 📍 Local: ${outcome.storeLocationDetected || 'Não identificado'}`,
       `${confIcon} Confiabilidade Média do Registro: ${outcome.overallConfidencePct}%`,
       '📋 Diagnóstico de Confiabilidade (Informações Faltantes / Ressalvas):',
@@ -549,6 +566,67 @@ export function createArgusBot(): Bot {
         ? '💡 Dica: Envie `/loja Nome do Mercado - Bairro` para vincular a loja a esta coleta e elevar a confiabilidade!'
         : '✅ Sincronizado em argus.collected_prices e na aba Precos_Coletados!'
     ].join('\n');
+  }
+
+  // Envia notificação marcando (reply_parameters) a foto/vídeo original que sofreu falha quando a tentativa de reprocessamento ocorre
+  async function notifyRetryOutcomeMarkingOriginalMedia(outcome: PriceScanProcessOutcome) {
+    const targetChatId =
+      outcome.telegramChatId ||
+      Number(env.TELEGRAM_DEFAULT_CHAT_ID || env.TELEGRAM_ALLOWED_USER_IDS[0] || 0);
+    if (!targetChatId) return;
+
+    const replyParams = outcome.telegramMessageId
+      ? { message_id: outcome.telegramMessageId }
+      : undefined;
+
+    if (outcome.status === 'SUCCEEDED') {
+      const text = outcome.isFiscalReceipt
+        ? [
+            '✅ SUCESSO NA TENTATIVA DE REPROCESSAMENTO DA IMAGEM!',
+            `• 🏪 Mercado: ${outcome.storeNameDetected}`,
+            `• 💰 Total: R$ ${(outcome.receiptTotalAmount || 0).toFixed(2)} | 📦 Itens gravados: ${outcome.receiptItemsCount || 0}`,
+            `• 🗄️ Foto arquivada no bucket: '${outcome.storageBucket}/${outcome.storagePath}'`,
+            `• 🔄 Concluído na tentativa #${outcome.attemptsCount || 2} da fila argus.media_processing_queue.`
+          ].join('\n')
+        : [
+            `✅ SUCESSO NA TENTATIVA DE REPROCESSAMENTO (#${outcome.attemptsCount || 2})!`,
+            formatPriceScanOutcomeMessage(outcome)
+          ].join('\n\n');
+
+      await bot.api
+        .sendMessage(targetChatId, text, replyParams ? { reply_parameters: replyParams } : undefined)
+        .catch(async () => {
+          await bot.api.sendMessage(targetChatId, text).catch(() => {});
+        });
+      return;
+    }
+
+    const retryStr = outcome.nextRetryAt
+      ? new Date(outcome.nextRetryAt).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : 'Manual (/fila)';
+
+    const failText = [
+      `❌ FALHA NA TENTATIVA DE REPROCESSAMENTO DA IMAGEM (Tentativa #${outcome.attemptsCount || 2}/${outcome.maxAttempts || 5})`,
+      `• ⚠️ Mensagem de erro: ${(outcome.errorMessage || 'Erro desconhecido durante o reprocessamento').slice(0, 280)}`,
+      `• 🗄️ Foto permanece salva no bucket: '${outcome.storageBucket}/${outcome.storagePath}'`,
+      outcome.status === 'QUEUED_RETRY'
+        ? `• ⏳ Nova tentativa agendada: o Argus tentará reprocessar novamente daqui a 1 hora (às ${retryStr}).`
+        : '• 🛑 Limite máximo de tentativas atingido (FAILED_PERMANENT). Use /fila se desejar forçar nova tentativa.'
+    ].join('\n');
+
+    const kb = new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now');
+
+    await bot.api
+      .sendMessage(targetChatId, failText, {
+        ...(replyParams ? { reply_parameters: replyParams } : {}),
+        reply_markup: kb
+      })
+      .catch(async () => {
+        await bot.api.sendMessage(targetChatId, failText, { reply_markup: kb }).catch(() => {});
+      });
   }
 
   // 6.2. /fila — Tabela de Controle de Mídias Processadas, Fila de Reprocessamento e Preços Coletados
@@ -674,15 +752,29 @@ export function createArgusBot(): Bot {
   // 6.4. Recebimento de Vídeos de Corredor de Mercado (Gôndolas / Prateleiras / Encartes em Vídeo)
   bot.on(['message:video', 'message:video_note', 'message:animation'], async (ctx) => {
     const startMs = Date.now();
+    const originalMessageId = ctx.message?.message_id;
+    const replyOpts = originalMessageId
+      ? { reply_parameters: { message_id: originalMessageId } }
+      : undefined;
+
     const statusMsg = await ctx.reply(
-      '🎥 [1/3] Baixando vídeo do corredor e arquivando no bucket FotosArgus...'
+      '🎥 [1/3] Baixando vídeo do corredor e arquivando no bucket FotosArgus...',
+      replyOpts
     );
 
-    const updateStatus = async (text: string) => {
+    const updateStatus = async (text: string, kb?: InlineKeyboard) => {
       try {
-        await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, text);
+        await ctx.api.editMessageText(
+          ctx.chat.id,
+          statusMsg.message_id,
+          text,
+          kb ? { reply_markup: kb } : undefined
+        );
       } catch {
-        await ctx.reply(text);
+        await ctx.reply(text, {
+          ...(replyOpts || {}),
+          ...(kb ? { reply_markup: kb } : {})
+        });
       }
     };
 
@@ -695,7 +787,7 @@ export function createArgusBot(): Bot {
         // Limite da API padrão de bots do Telegram para getFile é 20 MB
         if (fileSize > 20 * 1024 * 1024) {
           await updateStatus(
-            '⚠️ O vídeo enviado tem mais de 20 MB (limite de download da API de Bots do Telegram). Envie um vídeo de até ~30-45 segundos (ou comprimido pelo Telegram) para leitura das gôndolas!'
+            '❌ FALHA NO PROCESSAMENTO DO VÍDEO\n• ⚠️ Mensagem de erro: O vídeo enviado tem mais de 20 MB (limite de download da API de Bots do Telegram). Envie um vídeo de até ~30-45 segundos (ou comprimido pelo Telegram) para leitura das gôndolas!'
           );
           await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
           return;
@@ -719,7 +811,7 @@ export function createArgusBot(): Bot {
           mimeType,
           initialMediaKind: 'AISLE_VIDEO',
           telegramChatId: ctx.chat.id,
-          telegramMessageId: ctx.message?.message_id,
+          telegramMessageId: originalMessageId,
           telegramFileId: file.file_id,
           telegramFileUniqueId: file.file_unique_id,
           userCaption: ctx.message?.caption
@@ -729,17 +821,23 @@ export function createArgusBot(): Bot {
           lastPriceScanJobId = outcome.queueJobId;
         }
 
+        const kb =
+          outcome.status === 'QUEUED_RETRY'
+            ? new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now')
+            : undefined;
+
         const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
-        await updateStatus(formatPriceScanOutcomeMessage(outcome, elapsedSec));
+        await updateStatus(formatPriceScanOutcomeMessage(outcome, elapsedSec), kb);
         await stickers.sendEmotionalSticker(
           ctx,
-          outcome.status === 'SUCCEEDED' ? 'FOOD_CHEF' : 'SKEPTICAL'
+          outcome.status === 'SUCCEEDED' ? 'FOOD_CHEF' : 'SHOCK_ALERT'
         );
       });
     } catch (err) {
       logger.error({ err }, '[ArgusBot] Erro ao processar vídeo de corredor');
+      const errMsg = (err as Error).message || 'Erro inesperado no processamento do vídeo';
       await updateStatus(
-        `⚠️ Aviso ao processar vídeo: ${(err as Error).message.slice(0, 200)}. Consulte /fila para verificar o status.`
+        `❌ FALHA NO PROCESSAMENTO DO VÍDEO\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}\n• Consulte /fila para verificar o status de reprocessamento.`
       );
       await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
     }
@@ -790,6 +888,11 @@ export function createArgusBot(): Bot {
   // 7. Recebimento de Foto ou Documento (Cupom Fiscal c/ 5 Camadas Anti-Duplicidade OU Foto de Gôndola/Panfleto/Vídeo em Arquivo)
   bot.on(['message:photo', 'message:document'], async (ctx) => {
     const startMs = Date.now();
+    const originalMessageId = ctx.message?.message_id;
+    const replyOpts = originalMessageId
+      ? { reply_parameters: { message_id: originalMessageId } }
+      : undefined;
+
     const caption = (ctx.message?.caption || '').trim();
     const docMime = ctx.message?.document?.mime_type || '';
     const isVideoDocument = docMime.startsWith('video/');
@@ -798,10 +901,12 @@ export function createArgusBot(): Bot {
         caption
       );
 
+    // Responde SEMPRE marcando (reply_parameters) a foto/documento enviado pelo usuário
     const statusMsg = await ctx.reply(
       isVideoDocument || isExplicitPriceScanCaption
         ? '⏳ [1/3] Baixando mídia de preços (Gôndola / Panfleto / Vídeo) e preparando arquivamento no bucket FotosArgus...'
-        : '⏳ [1/3] Baixando imagem e executando verificação anti-duplicidade (Camada 1)...'
+        : '⏳ [1/3] Baixando imagem e executando verificação anti-duplicidade (Camada 1)...',
+      replyOpts
     );
 
     const updateStatus = async (text: string, kb?: InlineKeyboard) => {
@@ -813,10 +918,18 @@ export function createArgusBot(): Bot {
           kb ? { reply_markup: kb } : undefined
         );
       } catch {
-        // Caso a mensagem não possa ser editada, envia nova
-        await ctx.reply(text, kb ? { reply_markup: kb } : undefined);
+        // Caso a mensagem não possa ser editada, envia nova marcando a foto original
+        await ctx.reply(text, {
+          ...(replyOpts || {}),
+          ...(kb ? { reply_markup: kb } : {})
+        });
       }
     };
+
+    let downloadedBuffer: Buffer | null = null;
+    let downloadedMimeType = 'image/jpeg';
+    let downloadedFileId: string | undefined;
+    let downloadedFileUniqueId: string | undefined;
 
     try {
       await withTypingIndicator(ctx, async () => {
@@ -852,6 +965,11 @@ export function createArgusBot(): Bot {
                 ctx.message?.document?.file_unique_id ||
                 ctx.message?.photo?.[ctx.message.photo.length - 1]?.file_unique_id;
 
+              downloadedBuffer = buffer;
+              downloadedMimeType = mimeType;
+              downloadedFileId = telegramFileId;
+              downloadedFileUniqueId = telegramFileUniqueId;
+
               // ROTA A: Documento de Vídeo OU Foto com legenda explícita de Gôndola/Panfleto/Corredor
               if (isVideoDocument || isExplicitPriceScanCaption) {
                 await updateStatus(
@@ -862,7 +980,7 @@ export function createArgusBot(): Bot {
                   mimeType,
                   initialMediaKind: isVideoDocument ? 'AISLE_VIDEO' : 'SHELF_PHOTO',
                   telegramChatId: ctx.chat.id,
-                  telegramMessageId: ctx.message?.message_id,
+                  telegramMessageId: originalMessageId,
                   telegramFileId,
                   telegramFileUniqueId,
                   userCaption: caption
@@ -877,7 +995,7 @@ export function createArgusBot(): Bot {
 
                 const kb =
                   outcome.status === 'QUEUED_RETRY'
-                    ? new InlineKeyboard().text('🔄 Tentar Fila Agora', 'retry_queue:now')
+                    ? new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now')
                     : undefined;
 
                 const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
@@ -893,7 +1011,7 @@ export function createArgusBot(): Bot {
                 return;
               }
 
-              // ROTA B: Cupom Fiscal (com Fallback inteligente para Foto de Gôndola/Panfleto e Fila de Retry!)
+              // ROTA B: Cupom Fiscal (com Fallback inteligente para Foto de Gôndola/Panfleto e Fila de Retry de 1 Hora!)
               // CAMADA 0 & 1 (PRÉ-OCR): Hash binário SHA-256 + Hash visual normalizado 16x16
               const { imageSha256, normalizedImageSha256 } =
                 await processor.computeImageHashes(buffer);
@@ -960,17 +1078,17 @@ export function createArgusBot(): Bot {
                 try {
                   extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
                 } catch (receiptErr) {
-                  // Se falhou por erro de rede/IA ou não é cupom, aciona o Scanner de Preços + Fila Resiliente!
+                  // Se falhou por erro de rede/IA ou não é cupom, salva no bucket FotosArgus e agenda reprocessamento em 1 hora!
                   logger.warn(
                     { err: receiptErr },
-                    '[ArgusBot] Leitura de cupom falhou; acionando PriceScanner + Fila Resiliente'
+                    '[ArgusBot] Leitura de cupom falhou; acionando PriceScanner + Fila Resiliente (1h)'
                   );
                   const scanOutcome = await priceScanner.ingestAndProcessPriceScanMedia({
                     mediaBuffer: buffer,
                     mimeType,
                     initialMediaKind: 'SHELF_PHOTO',
                     telegramChatId: ctx.chat.id,
-                    telegramMessageId: ctx.message?.message_id,
+                    telegramMessageId: originalMessageId,
                     telegramFileId,
                     telegramFileUniqueId,
                     userCaption: caption
@@ -985,7 +1103,7 @@ export function createArgusBot(): Bot {
 
                   const kbRetry =
                     scanOutcome.status === 'QUEUED_RETRY'
-                      ? new InlineKeyboard().text('🔄 Tentar Fila Agora', 'retry_queue:now')
+                      ? new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now')
                       : undefined;
 
                   const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
@@ -1015,7 +1133,7 @@ export function createArgusBot(): Bot {
                   mimeType,
                   initialMediaKind: 'SHELF_PHOTO',
                   telegramChatId: ctx.chat.id,
-                  telegramMessageId: ctx.message?.message_id,
+                  telegramMessageId: originalMessageId,
                   telegramFileId,
                   telegramFileUniqueId,
                   userCaption: caption
@@ -1030,14 +1148,14 @@ export function createArgusBot(): Bot {
 
                 const kbRetry =
                   scanOutcome.status === 'QUEUED_RETRY'
-                    ? new InlineKeyboard().text('🔄 Tentar Fila Agora', 'retry_queue:now')
+                    ? new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now')
                     : undefined;
 
                 const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
                 await updateStatus(formatPriceScanOutcomeMessage(scanOutcome, elapsedSec), kbRetry);
                 await stickers.sendEmotionalSticker(
                   ctx,
-                  scanOutcome.status === 'SUCCEEDED' ? 'DETECTIVE' : 'SKEPTICAL'
+                  scanOutcome.status === 'SUCCEEDED' ? 'DETECTIVE' : 'SHOCK_ALERT'
                 );
                 return;
               }
@@ -1081,7 +1199,11 @@ export function createArgusBot(): Bot {
               pendingReceiptsCache.set(tokenKey, {
                 extracted,
                 rawBuffer: buffer,
-                mimeType
+                mimeType,
+                originalMessageId,
+                telegramFileId,
+                telegramFileUniqueId,
+                caption
               });
 
               const kb = new InlineKeyboard()
@@ -1110,7 +1232,7 @@ export function createArgusBot(): Bot {
                   }Fingerprint #${(extracted.contentFingerprint || '').slice(0, 12)}`;
 
               const preview = [
-                `👁️ CUPOM FISCAL EXTRAÍDO EM ${elapsedSec}s (${extracted.extractionMethod})`,
+                `✅ SUCESSO NA LEITURA DA IMAGEM EM ${elapsedSec}s (${extracted.extractionMethod})!`,
                 `🏪 Mercado: ${extracted.storeTradingName} (${extracted.storeCnpj})`,
                 `💳 Pagamento: ${extracted.paymentMethod} | 💰 Total: R$ ${extracted.totalAmount.toFixed(2)}`,
                 idLayerBadge,
@@ -1134,8 +1256,34 @@ export function createArgusBot(): Bot {
       });
     } catch (err) {
       logger.error({ err }, '[ArgusBot] Erro ao processar foto/PDF');
+      const errMsg = (err as Error).message || 'Erro desconhecido ao processar imagem';
+
+      if (downloadedBuffer) {
+        try {
+          const queued = await priceScanner.enqueueFailedReceiptForRetry({
+            mediaBuffer: downloadedBuffer,
+            mimeType: downloadedMimeType,
+            telegramChatId: ctx.chat.id,
+            telegramMessageId: originalMessageId,
+            telegramFileId: downloadedFileId,
+            telegramFileUniqueId: downloadedFileUniqueId,
+            userCaption: caption,
+            errorMessage: errMsg
+          });
+          const kbRetry = new InlineKeyboard().text(
+            '🔄 Tentar Reprocessar Agora',
+            'retry_queue:now'
+          );
+          await updateStatus(formatPriceScanOutcomeMessage(queued), kbRetry);
+          await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
+          return;
+        } catch (queueErr) {
+          logger.error({ err: queueErr }, '[ArgusBot] Falha ao enfileirar imagem após erro');
+        }
+      }
+
       await updateStatus(
-        `⚠️ Argus informa: Não foi possível concluir a leitura (${(err as Error).message.slice(0, 220)}). Você pode reenviar ou usar /fila.`
+        `❌ FALHA NO PROCESSAMENTO DA IMAGEM\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}\n• Você pode reenviar a foto ou consultar /fila.`
       );
       await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
     }
@@ -1175,13 +1323,24 @@ export function createArgusBot(): Bot {
         if (succeeded > 0) {
           await reconciler.reconcileAndSyncSheets().catch(() => {});
         }
+
+        // Notifica individualmente cada mídia reprocessada MARCANDO a foto/vídeo original enviada pelo usuário!
+        for (const outcome of outcomes) {
+          await notifyRetryOutcomeMarkingOriginalMedia(outcome);
+        }
+
         const details = outcomes.map(
           (o) =>
-            `• [#${o.queueJobId.slice(0, 6)}] ${o.status}: ${o.storeNameDetected} (${o.items.length} itens | Conf: ${o.overallConfidencePct}%)`
+            `• [#${o.queueJobId.slice(0, 6)}] ${o.status}: ${o.storeNameDetected} (${
+              o.isFiscalReceipt ? `${o.receiptItemsCount || 0} itens` : `${o.items.length} itens`
+            })${o.errorMessage ? ` | Erro: ${o.errorMessage.slice(0, 80)}` : ''}`
         );
-        const detailsMsg = details.length > 0 ? `\n\n${details.join('\n')}` : '\n\nNenhuma mídia aguardando na fila no momento.';
+        const detailsMsg =
+          details.length > 0
+            ? `\n\n${details.join('\n')}`
+            : '\n\nNenhuma mídia aguardando na fila no momento.';
         await ctx.editMessageText(
-          `🔄 REPROCESSAMENTO DA FILA CONCLUÍDO\n• Processados: ${outcomes.length} | ✅ Sucesso: ${succeeded} | ⏳ Reagendados/Falha: ${failed}${detailsMsg}`
+          `🔄 REPROCESSAMENTO DA FILA CONCLUÍDO\n• Processados: ${outcomes.length} | ✅ Sucesso: ${succeeded} | ❌ Falha/Reagendados (1h): ${failed}${detailsMsg}`
         );
         await stickers.sendEmotionalSticker(
           ctx,
@@ -1214,6 +1373,9 @@ export function createArgusBot(): Bot {
           mimeType: session.mimeType,
           initialMediaKind: 'SHELF_PHOTO',
           telegramChatId: ctx.chat?.id || 0,
+          telegramMessageId: session.originalMessageId,
+          telegramFileId: session.telegramFileId,
+          telegramFileUniqueId: session.telegramFileUniqueId,
           userCaption: session.extracted.storeTradingName
             ? `Loja: ${session.extracted.storeTradingName}`
             : ''
@@ -1224,8 +1386,18 @@ export function createArgusBot(): Bot {
             await reconciler.reconcileAndSyncSheets().catch(() => {});
           }
         }
-        await ctx.editMessageText(formatPriceScanOutcomeMessage(scanOutcome));
-        await stickers.sendEmotionalSticker(ctx, 'DETECTIVE');
+        const kbRetry =
+          scanOutcome.status === 'QUEUED_RETRY'
+            ? new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now')
+            : undefined;
+        await ctx.editMessageText(
+          formatPriceScanOutcomeMessage(scanOutcome),
+          kbRetry ? { reply_markup: kbRetry } : undefined
+        );
+        await stickers.sendEmotionalSticker(
+          ctx,
+          scanOutcome.status === 'SUCCEEDED' ? 'DETECTIVE' : 'SHOCK_ALERT'
+        );
       });
       return;
     }
@@ -1241,7 +1413,16 @@ export function createArgusBot(): Bot {
     if (action === 'confirm') {
       const session = pendingReceiptsCache.get(key);
       if (!session) {
-        await ctx.answerCallbackQuery({ text: 'Sessão expirada.' }).catch(() => {});
+        await ctx
+          .answerCallbackQuery({
+            text: 'Sessão expirada (o bot foi reiniciado). Por favor, reenvie a foto.'
+          })
+          .catch(() => {});
+        await ctx
+          .editMessageText(
+            '⚠️ Esta sessão de confirmação expirou após reinício do bot. Reenvie a foto para processá-la!'
+          )
+          .catch(() => {});
         return;
       }
       pendingReceiptsCache.delete(key);
@@ -1255,98 +1436,159 @@ export function createArgusBot(): Bot {
         )
         .catch(() => {});
 
-      await withTypingIndicator(ctx, async () => {
-        // Verifica última trava transacional antes de subir para o bucket FotosArgus
-        const preCommitDup = await processor.checkPostOcrDuplicateLayers(session.extracted);
-        if (preCommitDup.isDuplicate) {
-          await ctx.editMessageText(
-            `🛡️ Duplicidade evitada na gravação final!\n• ${preCommitDup.reason}\n• Nenhuma imagem ou linha duplicada foi gerada.`
+      try {
+        await withTypingIndicator(ctx, async () => {
+          // Verifica última trava transacional antes de subir para o bucket FotosArgus
+          const preCommitDup = await processor.checkPostOcrDuplicateLayers(session.extracted);
+          if (preCommitDup.isDuplicate) {
+            await ctx.editMessageText(
+              `🛡️ Duplicidade evitada na gravação final!\n• ${preCommitDup.reason}\n• Nenhuma imagem ou linha duplicada foi gerada.`
+            );
+            await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+            return;
+          }
+
+          // 1. Comprime a foto para WebP e envia para o bucket FotosArgus no Supabase Storage
+          const uploadRes = await storage.compressAndUploadReceiptImage(
+            session.rawBuffer,
+            session.extracted.accessKey,
+            session.extracted.storeTradingName,
+            session.mimeType
           );
-          await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
-          return;
+
+          session.extracted.storageBucket = uploadRes.bucket;
+          session.extracted.storagePath = uploadRes.storagePath;
+          session.extracted.originalSizeBytes = uploadRes.originalBytes;
+          session.extracted.compressedSizeBytes = uploadRes.compressedBytes;
+
+          // 2. Grava cupom + itens normalizados no schema argus e concilia com Pluggy Open Finance
+          const result = await processor.ingestReceipt(session.extracted);
+          if (result.alreadyExisted) {
+            await ctx.editMessageText(
+              `🛡️ Duplicidade evitada no banco (${result.duplicateReason || 'Cupom já registrado'}).`
+            );
+            await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+            return;
+          }
+
+          await reconciler.reconcileAndSyncSheets().catch((err) => {
+            logger.warn({ err }, '[ArgusBot] Aviso na conciliação pós-ingestão');
+          });
+
+          const shrinkMsg =
+            result.shrinkflationAlerts.length > 0
+              ? `\n🚨 ALERTA DE REDUFLAÇÃO: ${result.shrinkflationAlerts.join('; ')}`
+              : '';
+
+          const origKb = (uploadRes.originalBytes / 1024).toFixed(1);
+          const compKb = (uploadRes.compressedBytes / 1024).toFixed(1);
+          const storageMsg = uploadRes.uploaded
+            ? `\n🗄️ Foto salva no bucket: '${uploadRes.bucket}/${uploadRes.storagePath}' (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}% de espaço!)`
+            : `\n🗄️ Foto comprimida (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}%).`;
+
+          const successText = [
+            '✅ SUCESSO NO PROCESSAMENTO E GRAVAÇÃO DA IMAGEM!',
+            `• 🏪 Mercado: ${session.extracted.storeTradingName} — Total: R$ ${session.extracted.totalAmount.toFixed(2)}`,
+            `• 📦 Itens gravados e normalizados (g/ml/un): ${result.itemsProcessed}`,
+            storageMsg.trim(),
+            ...(shrinkMsg ? [shrinkMsg.trim()] : [])
+          ].join('\n');
+
+          await ctx.editMessageText(successText).catch(async () => {
+            if (ctx.chat?.id) {
+              await ctx.api.sendMessage(
+                ctx.chat.id,
+                successText,
+                session.originalMessageId
+                  ? { reply_parameters: { message_id: session.originalMessageId } }
+                  : undefined
+              );
+            }
+          });
+
+          await stickers.sendEmotionalSticker(
+            ctx,
+            result.shrinkflationAlerts.length > 0 ? 'SHOCK_ALERT' : 'CELEBRATION'
+          );
+        });
+      } catch (err) {
+        logger.error({ err }, '[ArgusBot] Erro ao confirmar e gravar cupom fiscal');
+        const errMsg = (err as Error).message || 'Erro desconhecido ao salvar cupom fiscal';
+        const chatId =
+          ctx.chat?.id ||
+          Number(env.TELEGRAM_DEFAULT_CHAT_ID || env.TELEGRAM_ALLOWED_USER_IDS[0] || 0);
+
+        try {
+          const queued = await priceScanner.enqueueFailedReceiptForRetry({
+            mediaBuffer: session.rawBuffer,
+            mimeType: session.mimeType,
+            telegramChatId: chatId,
+            telegramMessageId: session.originalMessageId,
+            telegramFileId: session.telegramFileId,
+            telegramFileUniqueId: session.telegramFileUniqueId,
+            userCaption: session.caption,
+            extractedReceipt: session.extracted,
+            errorMessage: errMsg
+          });
+
+          const retryStr = queued.nextRetryAt
+            ? new Date(queued.nextRetryAt).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            : 'daqui a 1 hora';
+
+          const failMsg = [
+            '❌ FALHA NO PROCESSAMENTO DA IMAGEM',
+            `• 🗄️ Foto salva com segurança no bucket: '${queued.storageBucket}/${queued.storagePath}'`,
+            `• ⏳ Reprocessamento Automático: A foto foi guardada na fila (argus.media_processing_queue #${queued.queueJobId.slice(0, 8)}) e será reprocessada automaticamente daqui a 1 hora (às ${retryStr})!`,
+            `• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}`
+          ].join('\n');
+
+          const kbRetry = new InlineKeyboard().text(
+            '🔄 Tentar Reprocessar Agora',
+            'retry_queue:now'
+          );
+
+          await ctx.editMessageText(failMsg, { reply_markup: kbRetry }).catch(() => {});
+
+          if (chatId && session.originalMessageId) {
+            await ctx.api
+              .sendMessage(chatId, failMsg, {
+                reply_parameters: { message_id: session.originalMessageId },
+                reply_markup: kbRetry
+              })
+              .catch(() => {});
+          }
+        } catch (queueErr) {
+          logger.error({ err: queueErr }, '[ArgusBot] Erro ao enfileirar cupom após falha no confirm');
+          const fallbackFail = `❌ FALHA NO PROCESSAMENTO DA IMAGEM\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}`;
+          await ctx.editMessageText(fallbackFail).catch(() => {});
         }
 
-        // 1. Comprime a foto para WebP e envia para o bucket FotosArgus no Supabase Storage
-        const uploadRes = await storage.compressAndUploadReceiptImage(
-          session.rawBuffer,
-          session.extracted.accessKey,
-          session.extracted.storeTradingName,
-          session.mimeType
-        );
-
-        session.extracted.storageBucket = uploadRes.bucket;
-        session.extracted.storagePath = uploadRes.storagePath;
-        session.extracted.originalSizeBytes = uploadRes.originalBytes;
-        session.extracted.compressedSizeBytes = uploadRes.compressedBytes;
-
-        // 2. Grava cupom + itens normalizados no schema argus e concilia com Pluggy Open Finance
-        const result = await processor.ingestReceipt(session.extracted);
-        if (result.alreadyExisted) {
-          await ctx.editMessageText(
-            `🛡️ Duplicidade evitada no banco (${result.duplicateReason || 'Cupom já registrado'}).`
-          );
-          await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
-          return;
-        }
-
-        await reconciler.reconcileAndSyncSheets();
-
-        const shrinkMsg =
-          result.shrinkflationAlerts.length > 0
-            ? `\n🚨 ALERTA DE REDUFLAÇÃO: ${result.shrinkflationAlerts.join('; ')}`
-            : '';
-
-        const origKb = (uploadRes.originalBytes / 1024).toFixed(1);
-        const compKb = (uploadRes.compressedBytes / 1024).toFixed(1);
-        const storageMsg = uploadRes.uploaded
-          ? `\n🗄️ Foto arquivada em '${uploadRes.bucket}/${uploadRes.storagePath}' (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}% de espaço!)`
-          : `\n🗄️ Foto comprimida (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}%).`;
-
-        await ctx.editMessageText(
-          `✅ Argus auditou e persistiu o cupom! (${result.itemsProcessed} itens normalizados para g/ml/un).${storageMsg}${shrinkMsg}`
-        );
-        await stickers.sendEmotionalSticker(
-          ctx,
-          result.shrinkflationAlerts.length > 0 ? 'SHOCK_ALERT' : 'CELEBRATION'
-        );
-      });
+        await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
+      }
     }
   });
 
-  // Worker periódico em background (a cada 5 min) para reprocessar mídias em QUEUED_RETRY cujo next_retry_at já venceu
+  // Worker periódico em background (verifica a cada 2 min itens agendados para 1h cujo next_retry_at já venceu)
   const retryInterval = setInterval(async () => {
     try {
       const outcomes = await priceScanner.processDueQueueJobs(downloadTelegramFileById, false);
       if (outcomes.length > 0) {
         const succeeded = outcomes.filter((o) => o.status === 'SUCCEEDED').length;
-        const failed = outcomes.length - succeeded;
         if (succeeded > 0) {
           await reconciler.reconcileAndSyncSheets().catch(() => {});
         }
-        const targetChatId = Number(
-          env.TELEGRAM_DEFAULT_CHAT_ID || env.TELEGRAM_ALLOWED_USER_IDS[0] || 0
-        );
-        if (targetChatId) {
-          const details = outcomes.map(
-            (o) =>
-              `• [#${o.queueJobId.slice(0, 6)}] ${o.status}: ${o.storeNameDetected} (${o.items.length} itens | Conf: ${o.overallConfidencePct}%)`
-          );
-          await bot.api
-            .sendMessage(
-              targetChatId,
-              [
-                '🔄 WORKER DE REPROCESSAMENTO AUTOMÁTICO (argus.media_processing_queue)',
-                `• Jobs processados: ${outcomes.length} | ✅ Sucesso: ${succeeded} | ⏳ Reagendados/Falha: ${failed}`,
-                ...details
-              ].join('\n')
-            )
-            .catch(() => {});
+        // Para cada foto/vídeo reprocessado, avisa o usuário MARCANDO (reply_parameters) a foto original enviada!
+        for (const outcome of outcomes) {
+          await notifyRetryOutcomeMarkingOriginalMedia(outcome);
         }
       }
     } catch (err) {
       logger.warn({ err }, '[ArgusBot] Erro no worker periódico de retry da fila de mídia');
     }
-  }, 5 * 60 * 1000);
+  }, 2 * 60 * 1000);
   retryInterval.unref();
 
   return bot;

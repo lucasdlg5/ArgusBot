@@ -7,7 +7,7 @@ import { queryArgus, withArgusTransaction } from '../lib/db';
 import { ArgusStorageService } from './ArgusStorageService';
 import { ArgusReceiptProcessor } from './ArgusReceiptProcessor';
 import { ArgusReconciliationService } from './ArgusReconciliationService';
-import type { ReceiptUnitType } from '../types/argus';
+import type { ExtractedReceiptData, ReceiptUnitType } from '../types/argus';
 
 export type MediaScanKind = 'RECEIPT_PHOTO' | 'SHELF_PHOTO' | 'MARKET_FLYER' | 'AISLE_VIDEO';
 
@@ -74,6 +74,12 @@ export interface PriceScanProcessOutcome {
   items: ProcessedPriceScanItem[];
   errorMessage?: string;
   nextRetryAt?: string;
+  telegramChatId?: number;
+  telegramMessageId?: number;
+  attemptsCount?: number;
+  maxAttempts?: number;
+  receiptTotalAmount?: number;
+  receiptItemsCount?: number;
 }
 
 export class ArgusPriceScannerService {
@@ -691,12 +697,14 @@ export class ArgusPriceScannerService {
         storeLocationDetected: rawLocation,
         overallConfidencePct,
         confidenceWarnings: warningsList,
-        items: processedItems
+        items: processedItems,
+        telegramChatId: params.telegramChatId,
+        telegramMessageId: params.telegramMessageId
       };
     } catch (err) {
-      // WORKAROUND & FILA DE REPROCESSAMENTO:
+      // WORKAROUND & FILA DE REPROCESSAMENTO (1 HORA):
       // Caso ocorra erro na IA, timeout ou falha de leitura, mantém a imagem/vídeo salva no bucket FotosArgus
-      // e agenda nova tentativa automática na fila (`QUEUED_RETRY`)!
+      // e agenda nova tentativa automática na fila (`QUEUED_RETRY`) para daqui a 1 hora!
       const errMsg = (err as Error).message || 'Erro desconhecido no processamento multimodal';
       const jobState = await queryArgus<{ attempts_count: number; max_attempts: number }>(
         `SELECT attempts_count, max_attempts FROM argus.media_processing_queue WHERE id = $1`,
@@ -706,8 +714,8 @@ export class ArgusPriceScannerService {
       const maxAttempts = jobState[0]?.max_attempts ?? 5;
       const isPermanent = attempts >= maxAttempts;
 
-      // Backoff progressivo: 15 min na 1ª falha, 30 min na 2ª, 60 min nas seguintes
-      const retryMinutes = attempts === 1 ? 15 : attempts === 2 ? 30 : 60;
+      // Agenda nova tentativa para daqui a 1 hora (60 minutos)
+      const retryMinutes = 60;
       const nextRetryAt = new Date(Date.now() + retryMinutes * 60 * 1000).toISOString();
       const newStatus: QueueJobStatus = isPermanent ? 'FAILED_PERMANENT' : 'QUEUED_RETRY';
 
@@ -722,7 +730,7 @@ export class ArgusPriceScannerService {
 
       logger.warn(
         { queueJobId, newStatus, attempts, nextRetryAt, errMsg },
-        '[ArgusPriceScannerService] Mídia guardada na fila argus.media_processing_queue para nova tentativa'
+        '[ArgusPriceScannerService] Mídia guardada na fila argus.media_processing_queue para nova tentativa em 1h'
       );
 
       return {
@@ -738,9 +746,93 @@ export class ArgusPriceScannerService {
         confidenceWarnings: [],
         items: [],
         errorMessage: errMsg,
-        nextRetryAt: isPermanent ? undefined : nextRetryAt
+        nextRetryAt: isPermanent ? undefined : nextRetryAt,
+        telegramChatId: params.telegramChatId,
+        telegramMessageId: params.telegramMessageId,
+        attemptsCount: attempts,
+        maxAttempts
       };
     }
+  }
+
+  /**
+   * Quando o processamento ou a gravação de um Cupom Fiscal falha, salva imediatamente a foto
+   * no bucket `FotosArgus` e registra na fila `argus.media_processing_queue` para reprocessar em 1 hora!
+   */
+  async enqueueFailedReceiptForRetry(params: {
+    mediaBuffer: Buffer;
+    mimeType: string;
+    telegramChatId: number;
+    telegramMessageId?: number;
+    telegramFileId?: string;
+    telegramFileUniqueId?: string;
+    userCaption?: string;
+    extractedReceipt?: ExtractedReceiptData | null;
+    errorMessage: string;
+  }): Promise<PriceScanProcessOutcome> {
+    const mediaSha256 = crypto.createHash('sha256').update(params.mediaBuffer).digest('hex');
+    const accessKeyHint =
+      params.extractedReceipt?.accessKey || `queued_${mediaSha256.slice(0, 24)}`;
+    const storeHint = params.extractedReceipt?.storeTradingName || 'cupom-em-fila';
+
+    // 1. Garante que a imagem está salva e comprimida (WebP) no bucket FotosArgus
+    const uploadRes = await this.storage.compressAndUploadReceiptImage(
+      params.mediaBuffer,
+      accessKeyHint,
+      storeHint,
+      params.mimeType
+    );
+
+    // 2. Agenda para reprocessar daqui a 1 hora (60 minutos)
+    const nextRetryAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    const inserted = await queryArgus<{ id: string; attempts_count: number; max_attempts: number }>(
+      `INSERT INTO argus.media_processing_queue (
+         telegram_chat_id, telegram_message_id, telegram_file_id, telegram_file_unique_id,
+         media_kind, mime_type, user_caption, storage_bucket, storage_path,
+         original_size_bytes, compressed_size_bytes, media_sha256,
+         status, attempts_count, next_retry_at, last_error, store_name_detected, raw_ai_response
+       ) VALUES ($1, $2, $3, $4, 'RECEIPT_PHOTO', $5, $6, $7, $8, $9, $10, $11, 'QUEUED_RETRY', 1, $12, $13, $14, $15::jsonb)
+       RETURNING id, attempts_count, max_attempts`,
+      [
+        params.telegramChatId,
+        params.telegramMessageId ?? null,
+        params.telegramFileId ?? null,
+        params.telegramFileUniqueId ?? null,
+        params.mimeType,
+        params.userCaption ?? null,
+        uploadRes.bucket,
+        uploadRes.storagePath,
+        uploadRes.originalBytes,
+        uploadRes.compressedBytes,
+        mediaSha256,
+        nextRetryAt,
+        params.errorMessage.slice(0, 500),
+        params.extractedReceipt?.storeTradingName ?? 'Cupom Fiscal (Em Fila)',
+        params.extractedReceipt ? JSON.stringify(params.extractedReceipt) : null
+      ]
+    );
+
+    const row = inserted[0];
+    return {
+      queueJobId: row.id,
+      status: 'QUEUED_RETRY',
+      mediaKind: 'RECEIPT_PHOTO',
+      isFiscalReceipt: true,
+      storageBucket: uploadRes.bucket,
+      storagePath: uploadRes.storagePath,
+      storeNameDetected: params.extractedReceipt?.storeTradingName || 'Cupom Fiscal (Em Fila)',
+      storeLocationDetected: params.extractedReceipt?.storeAddress || null,
+      overallConfidencePct: 0,
+      confidenceWarnings: [],
+      items: [],
+      errorMessage: params.errorMessage,
+      nextRetryAt,
+      telegramChatId: params.telegramChatId,
+      telegramMessageId: params.telegramMessageId,
+      attemptsCount: row.attempts_count,
+      maxAttempts: row.max_attempts
+    };
   }
 
   /**
@@ -834,17 +926,23 @@ export class ArgusPriceScannerService {
       media_kind: MediaScanKind;
       mime_type: string | null;
       user_caption: string | null;
+      storage_bucket: string | null;
       storage_path: string | null;
+      attempts_count: number;
+      max_attempts: number;
+      raw_ai_response: ExtractedReceiptData | null;
     }>(
       forceNow
         ? `SELECT id, telegram_chat_id::text, telegram_message_id::text, telegram_file_id,
-                  telegram_file_unique_id, media_kind, mime_type, user_caption, storage_path
+                  telegram_file_unique_id, media_kind, mime_type, user_caption,
+                  storage_bucket, storage_path, attempts_count, max_attempts, raw_ai_response
            FROM argus.media_processing_queue
            WHERE status IN ('QUEUED_RETRY', 'PENDING')
            ORDER BY created_at ASC
            LIMIT 5`
         : `SELECT id, telegram_chat_id::text, telegram_message_id::text, telegram_file_id,
-                  telegram_file_unique_id, media_kind, mime_type, user_caption, storage_path
+                  telegram_file_unique_id, media_kind, mime_type, user_caption,
+                  storage_bucket, storage_path, attempts_count, max_attempts, raw_ai_response
            FROM argus.media_processing_queue
            WHERE status = 'QUEUED_RETRY'
              AND (next_retry_at IS NULL OR next_retry_at <= NOW())
@@ -855,6 +953,9 @@ export class ArgusPriceScannerService {
     const outcomes: PriceScanProcessOutcome[] = [];
 
     for (const job of dueJobs) {
+      const chatIdNum = Number(job.telegram_chat_id);
+      const msgIdNum = job.telegram_message_id ? Number(job.telegram_message_id) : undefined;
+
       // 1. Tenta baixar primeiro do bucket `FotosArgus` (onde salvamos na entrada)
       let buffer: Buffer | null = null;
       if (job.storage_path) {
@@ -865,23 +966,145 @@ export class ArgusPriceScannerService {
         buffer = await downloadViaTelegramFileId(job.telegram_file_id);
       }
 
-      if (!buffer) {
+      if (!buffer && !job.raw_ai_response) {
+        const errText =
+          'Arquivo não encontrado no bucket FotosArgus nem no Telegram para reprocessamento.';
         await queryArgus(
           `UPDATE argus.media_processing_queue
            SET status = 'FAILED_PERMANENT',
-               last_error = 'Arquivo não encontrado no bucket FotosArgus nem no Telegram para reprocessamento.'
+               last_error = $2
            WHERE id = $1`,
-          [job.id]
+          [job.id, errText]
         );
+        outcomes.push({
+          queueJobId: job.id,
+          status: 'FAILED_PERMANENT',
+          mediaKind: job.media_kind,
+          isFiscalReceipt: job.media_kind === 'RECEIPT_PHOTO',
+          storageBucket: job.storage_bucket || env.SUPABASE_STORAGE_BUCKET,
+          storagePath: job.storage_path || '',
+          storeNameDetected: 'Falha Permanente',
+          storeLocationDetected: null,
+          overallConfidencePct: 0,
+          confidenceWarnings: [],
+          items: [],
+          errorMessage: errText,
+          telegramChatId: chatIdNum,
+          telegramMessageId: msgIdNum,
+          attemptsCount: job.attempts_count + 1,
+          maxAttempts: job.max_attempts
+        });
         continue;
       }
 
+      // Caso A: Reprocessamento de Cupom Fiscal (`RECEIPT_PHOTO`)
+      if (job.media_kind === 'RECEIPT_PHOTO') {
+        const nextAttempt = (job.attempts_count || 1) + 1;
+        await queryArgus(
+          `UPDATE argus.media_processing_queue
+           SET status = 'PROCESSING', attempts_count = $2
+           WHERE id = $1`,
+          [job.id, nextAttempt]
+        );
+
+        try {
+          let extracted = job.raw_ai_response;
+          if (!extracted && buffer) {
+            extracted = await this.receiptProcessor.extractReceiptViaGeminiVision(
+              buffer,
+              job.mime_type || 'image/jpeg'
+            );
+          }
+          if (!extracted) {
+            throw new Error('Não foi possível extrair os dados do cupom fiscal.');
+          }
+
+          if (buffer) {
+            const hashes = await this.receiptProcessor.computeImageHashes(buffer);
+            extracted = this.receiptProcessor.finalizeReceiptIdentifiers(extracted, hashes);
+          }
+
+          extracted.storageBucket = job.storage_bucket || env.SUPABASE_STORAGE_BUCKET;
+          extracted.storagePath = job.storage_path || undefined;
+
+          const ingestRes = await this.receiptProcessor.ingestReceipt(extracted);
+          await this.reconciler.reconcileAndSyncSheets().catch(() => {});
+
+          await queryArgus(
+            `UPDATE argus.media_processing_queue
+             SET status = 'SUCCEEDED',
+                 store_name_detected = $2,
+                 overall_confidence_pct = 98,
+                 items_extracted_count = $3,
+                 processed_at = NOW(),
+                 next_retry_at = NULL,
+                 last_error = NULL
+             WHERE id = $1`,
+            [job.id, extracted.storeTradingName, ingestRes.itemsProcessed]
+          );
+
+          outcomes.push({
+            queueJobId: job.id,
+            status: 'SUCCEEDED',
+            mediaKind: 'RECEIPT_PHOTO',
+            isFiscalReceipt: true,
+            storageBucket: job.storage_bucket || env.SUPABASE_STORAGE_BUCKET,
+            storagePath: job.storage_path || '',
+            storeNameDetected: extracted.storeTradingName,
+            storeLocationDetected: extracted.storeAddress || null,
+            overallConfidencePct: 98,
+            confidenceWarnings: [],
+            items: [],
+            telegramChatId: chatIdNum,
+            telegramMessageId: msgIdNum,
+            attemptsCount: nextAttempt,
+            maxAttempts: job.max_attempts,
+            receiptTotalAmount: extracted.totalAmount,
+            receiptItemsCount: ingestRes.itemsProcessed
+          });
+        } catch (err) {
+          const errMsg = (err as Error).message || 'Erro ao reprocessar cupom fiscal';
+          const isPerm = nextAttempt >= (job.max_attempts || 5);
+          const nextRetryAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+          const newSt: QueueJobStatus = isPerm ? 'FAILED_PERMANENT' : 'QUEUED_RETRY';
+
+          await queryArgus(
+            `UPDATE argus.media_processing_queue
+             SET status = $2, last_error = $3, next_retry_at = $4
+             WHERE id = $1`,
+            [job.id, newSt, errMsg.slice(0, 500), isPerm ? null : nextRetryAt]
+          );
+
+          outcomes.push({
+            queueJobId: job.id,
+            status: newSt,
+            mediaKind: 'RECEIPT_PHOTO',
+            isFiscalReceipt: true,
+            storageBucket: job.storage_bucket || env.SUPABASE_STORAGE_BUCKET,
+            storagePath: job.storage_path || '',
+            storeNameDetected: 'Cupom Fiscal (Falha no Retry)',
+            storeLocationDetected: null,
+            overallConfidencePct: 0,
+            confidenceWarnings: [],
+            items: [],
+            errorMessage: errMsg,
+            nextRetryAt: isPerm ? undefined : nextRetryAt,
+            telegramChatId: chatIdNum,
+            telegramMessageId: msgIdNum,
+            attemptsCount: nextAttempt,
+            maxAttempts: job.max_attempts
+          });
+        }
+        continue;
+      }
+
+      // Caso B: Reprocessamento de Gôndola / Panfleto / Vídeo de Corredor
       const outcome = await this.ingestAndProcessPriceScanMedia({
-        mediaBuffer: buffer,
+        mediaBuffer: buffer!,
         mimeType: job.mime_type || 'image/jpeg',
         initialMediaKind: job.media_kind,
-        telegramChatId: Number(job.telegram_chat_id),
-        telegramMessageId: job.telegram_message_id ? Number(job.telegram_message_id) : undefined,
+        telegramChatId: chatIdNum,
+        telegramMessageId: msgIdNum,
         telegramFileId: job.telegram_file_id ?? undefined,
         telegramFileUniqueId: job.telegram_file_unique_id ?? undefined,
         userCaption: job.user_caption ?? undefined,
