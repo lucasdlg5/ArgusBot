@@ -8,6 +8,24 @@ const envSchema = z.object({
   // Telegram Bot (@MonetaArgusBot)
   TELEGRAM_BOT_TOKEN: z.string().default(''),
   TELEGRAM_DEFAULT_CHAT_ID: z.string().default(''),
+  TELEGRAM_ALLOWED_USER_IDS: z
+    .string()
+    .default('')
+    .transform((v) =>
+      v
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+    ),
+  TELEGRAM_ALLOWED_USERNAMES: z
+    .string()
+    .default('AsminnAeterna')
+    .transform((v) =>
+      v
+        .split(',')
+        .map((u) => u.replace(/^@/, '').trim().toLowerCase())
+        .filter(Boolean)
+    ),
 
   // Google Gemini 2.5 Flash (Zero-Cost Google AI Studio)
   GEMINI_API_KEY: z.string().default(''),

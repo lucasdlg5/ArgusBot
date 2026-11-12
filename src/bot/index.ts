@@ -21,6 +21,50 @@ export function createArgusBot(): Bot {
     logger.error({ err: err.error }, '[ArgusBot] Erro capturado pelo handler global');
   });
 
+  // 0. Guardião de Acesso Exclusivo (Allowlist por User ID e Username)
+  bot.use(async (ctx, next) => {
+    const allowedIds = new Set<string>([
+      ...env.TELEGRAM_ALLOWED_USER_IDS,
+      ...(env.TELEGRAM_DEFAULT_CHAT_ID ? [env.TELEGRAM_DEFAULT_CHAT_ID] : [])
+    ]);
+    const allowedUsernames = new Set<string>(env.TELEGRAM_ALLOWED_USERNAMES);
+
+    const senderId = ctx.from?.id ? String(ctx.from.id) : '';
+    const senderUsername = (ctx.from?.username || '').toLowerCase();
+
+    const isAuthorizedById = allowedIds.size > 0 && allowedIds.has(senderId);
+    const isAuthorizedByUsername =
+      allowedUsernames.size > 0 && Boolean(senderUsername) && allowedUsernames.has(senderUsername);
+
+    // Se houver regras configuradas, exige match estrito (ID imutável ou @AsminnAeterna)
+    if (allowedIds.size > 0 || allowedUsernames.size > 0) {
+      if (!isAuthorizedById && !isAuthorizedByUsername) {
+        logger.warn(
+          {
+            unauthorizedUserId: senderId,
+            unauthorizedUsername: senderUsername
+          },
+          '[ArgusBot] Tentativa de acesso bloqueada pelo Guardião de Segurança'
+        );
+
+        if (ctx.callbackQuery) {
+          await ctx.answerCallbackQuery({
+            text: '⛔ Acesso negado. Instância privada do Argus.',
+            show_alert: true
+          });
+        } else {
+          await ctx.reply(
+            '⛔ *ACESSO BLOQUEADO PELO ARGUS*\n\nEsta instância do `@MonetaArgusBot` é de uso exclusivo do proprietário autorizado (`@AsminnAeterna`). Sua tentativa foi registrada pela auditoria.',
+            { parse_mode: 'Markdown' }
+          );
+        }
+        return;
+      }
+    }
+
+    await next();
+  });
+
   // 1. /start — Apresentação oficial da persona Argus (@MonetaArgusBot - "O Olho Fiscal")
   bot.command('start', async (ctx) => {
     const dashboardUrl = `http://localhost:${env.PORT || 3000}`;
