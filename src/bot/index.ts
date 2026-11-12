@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { Bot, InlineKeyboard } from 'grammy';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
@@ -16,8 +17,13 @@ export function createArgusBot(): Bot {
   const optimizer = new ArgusOptimizerService();
   const reconciler = new ArgusReconciliationService();
 
+  bot.catch((err) => {
+    logger.error({ err: err.error }, '[ArgusBot] Erro capturado pelo handler global');
+  });
+
   // 1. /start — Apresentação oficial da persona Argus (@MonetaArgusBot - "O Olho Fiscal")
   bot.command('start', async (ctx) => {
+    const dashboardUrl = `http://localhost:${env.PORT || 3000}`;
     const welcome = [
       '👁️ *Saudações. Eu sou o ARGUS (@MonetaArgusBot) — O Olho Fiscal do ecossistema Moneta.*',
       '',
@@ -29,20 +35,22 @@ export function createArgusBot(): Bot {
       '• `/receita` — Calcula o *Custo Proporcional por Marmita* vs. *Desembolso de Caixa (Embalagens Fechadas)* das suas receitas.',
       '• `/otimizar` — Roda o Simulador Logístico (Rota Real OSRM: Mercado Único vs. Compra Dividida | Gasolina vs. Uber com trava de R$ 25,00).',
       '• `/reconciliar` — Cruza cupons fiscais com transações do Pluggy Open Finance (`-2h` a `+48h`, `<= R$ 0,05`) e sincroniza a planilha *Argus Ledger*.',
-      '• `/dashboard` — Abre o painel interativo *Argus Vision BI*.'
+      `• \`/dashboard\` — Painel interativo *Argus Vision BI*: ${dashboardUrl}`
     ].join('\n');
 
-    const kb = new InlineKeyboard().url(
-      '📊 Abrir Argus Vision BI',
-      `http://localhost:${env.PORT || 3000}`
-    );
+    const kb = new InlineKeyboard()
+      .text('💰 Preços da Cesta', 'quick:preco')
+      .text('🍲 Custos de Receitas', 'quick:receita')
+      .row()
+      .text('🚗 Simular Rota (Carro vs Uber)', 'quick:otimizar')
+      .text('🏦 Conciliar Open Finance', 'quick:reconciliar');
 
     await ctx.reply(welcome, { parse_mode: 'Markdown', reply_markup: kb });
   });
 
   // 2. /preco <termo> — Histórico e arbitragem de preços por unidade base (g/ml/un)
-  bot.command('preco', async (ctx) => {
-    const query = (ctx.match || '').trim();
+  async function handlePreco(ctx: { reply: Bot['api']['sendMessage'] extends (...args: any[]) => any ? any : any; match?: unknown }) {
+    const query = typeof ctx.match === 'string' ? ctx.match.trim() : '';
     const rows = await queryArgus<{
       product_name: string;
       store_name: string;
@@ -86,10 +94,12 @@ export function createArgusBot(): Bot {
     }
 
     await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
-  });
+  }
+
+  bot.command('preco', async (ctx) => handlePreco(ctx));
 
   // 3. /receita — Duplo Custo de Receitas (Proporcional vs. Desembolso de Caixa)
-  bot.command('receita', async (ctx) => {
+  async function handleReceita(ctx: { reply: any }) {
     const evaluations = await optimizer.evaluateRecipeCosts();
     const lines = [
       '👁️ *LABORATÓRIO DE RECEITAS ARGUS — CUSTO POR GRAMA vs. CAIXA*',
@@ -113,10 +123,12 @@ export function createArgusBot(): Bot {
     }
 
     await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
-  });
+  }
+
+  bot.command('receita', async (ctx) => handleReceita(ctx));
 
   // 4. /otimizar — Simulador Logístico (Mercado Único vs. Compra Dividida | Gasolina vs. Uber)
-  bot.command('otimizar', async (ctx) => {
+  async function handleOtimizar(ctx: { reply: any }) {
     const verdict = await optimizer.optimizeShoppingTrip();
     const s1 = verdict.singleStoreBest;
     const s2 = verdict.splitStoreBest;
@@ -142,10 +154,12 @@ export function createArgusBot(): Bot {
     ].join('\n');
 
     await ctx.reply(text, { parse_mode: 'Markdown' });
-  });
+  }
+
+  bot.command('otimizar', async (ctx) => handleOtimizar(ctx));
 
   // 5. /reconciliar — Conciliação Open Finance (Pluggy) + Google Sheets ("Argus Ledger")
-  bot.command('reconciliar', async (ctx) => {
+  async function handleReconciliar(ctx: { reply: any }) {
     const { summary } = await reconciler.reconcileAndSyncSheets();
     const msg = [
       '👁️ *AUDITORIA DE CONCILIAÇÃO OPEN FINANCE (PLUGGY) & SHEETS*',
@@ -158,15 +172,16 @@ export function createArgusBot(): Bot {
     ].join('\n');
 
     await ctx.reply(msg, { parse_mode: 'Markdown' });
-  });
+  }
+
+  bot.command('reconciliar', async (ctx) => handleReconciliar(ctx));
 
   // 6. /dashboard — Link direto para o Argus Vision BI
   bot.command('dashboard', async (ctx) => {
     const url = `http://localhost:${env.PORT || 3000}`;
-    const kb = new InlineKeyboard().url('🚀 Abrir Argus Vision BI', url);
     await ctx.reply(
-      `👁️ *Argus Vision BI — Market Arbitrage, Recipe Costing & Open Finance Intelligence*\n\nAcesse o painel executivo em: ${url}`,
-      { parse_mode: 'Markdown', reply_markup: kb }
+      `👁️ *Argus Vision BI — Market Arbitrage, Recipe Costing & Open Finance Intelligence*\n\n🚀 Acesse o painel executivo no navegador:\n${url}`,
+      { parse_mode: 'Markdown' }
     );
   });
 
@@ -218,10 +233,19 @@ export function createArgusBot(): Bot {
     }
   });
 
-  // Callback dos Botões Inline de confirmação
+  // Callback dos Botões Inline
   bot.on('callback_query:data', async (ctx) => {
     const data = ctx.callbackQuery.data;
     const [action, key] = data.split(':');
+
+    if (action === 'quick') {
+      await ctx.answerCallbackQuery();
+      if (key === 'preco') await handlePreco({ reply: ctx.reply.bind(ctx), match: '' });
+      if (key === 'receita') await handleReceita({ reply: ctx.reply.bind(ctx) });
+      if (key === 'otimizar') await handleOtimizar({ reply: ctx.reply.bind(ctx) });
+      if (key === 'reconciliar') await handleReconciliar({ reply: ctx.reply.bind(ctx) });
+      return;
+    }
 
     if (action === 'cancel') {
       pendingReceiptsCache.delete(key);
@@ -257,7 +281,12 @@ export function createArgusBot(): Bot {
   return bot;
 }
 
-if (require.main === module) {
+const isMainModule =
+  typeof process !== 'undefined' &&
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isMainModule) {
   if (!env.TELEGRAM_BOT_TOKEN) {
     console.log('======================================================================');
     console.log('👁️  ARGUS BOT (@MonetaArgusBot - O Olho Fiscal)');
@@ -269,5 +298,9 @@ if (require.main === module) {
 
   const bot = createArgusBot();
   console.log('👁️  Iniciando @MonetaArgusBot (O Olho Fiscal) em modo Long Polling...');
-  bot.start();
+  bot.start({
+    onStart: (botInfo) => {
+      console.log(`✅ @${botInfo.username} está ONLINE e escutando comandos no Telegram!`);
+    }
+  });
 }
