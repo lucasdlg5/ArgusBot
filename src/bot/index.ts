@@ -74,10 +74,12 @@ export function createArgusBot(): Bot {
         }
 
         if (ctx.callbackQuery) {
-          await ctx.answerCallbackQuery({
-            text: '⛔ Acesso negado. Instância privada do Argus.',
-            show_alert: true
-          });
+          await ctx
+            .answerCallbackQuery({
+              text: '⛔ Acesso negado. Instância privada do Argus.',
+              show_alert: true
+            })
+            .catch(() => {});
         } else {
           await ctx.reply(
             `⛔ *ACESSO BLOQUEADO PELO ARGUS*\n\nEsta instância do \`@MonetaArgusBot\` é de uso exclusivo do proprietário autorizado (\`@AsminnAeterna\`).\n\n🛡️ *Auditoria:* Tentativa #${incident.attemptCountInWindow} classificada como \`${incident.threatCategory}\` (\`${incident.threatLevel}\`) e gravada em \`argus.security_audit_logs\`.`,
@@ -318,20 +320,19 @@ export function createArgusBot(): Bot {
         .text('❌ Descartar', `cancel:${tokenKey}`);
 
       const preview = [
-        `👁️ *CUPOM FISCAL EXTRAÍDO PELO ARGUS (${extracted.extractionMethod})*`,
-        `🏪 *Mercado:* ${extracted.storeTradingName} (${extracted.storeCnpj})`,
-        `💳 *Pagamento:* ${extracted.paymentMethod} | 💰 *Total:* R$ ${extracted.totalAmount.toFixed(2)}`,
-        `📦 *Itens Identificados:* ${extracted.items.length}`,
+        `👁️ CUPOM FISCAL EXTRAÍDO PELO ARGUS (${extracted.extractionMethod})`,
+        `🏪 Mercado: ${extracted.storeTradingName} (${extracted.storeCnpj})`,
+        `💳 Pagamento: ${extracted.paymentMethod} | 💰 Total: R$ ${extracted.totalAmount.toFixed(2)}`,
+        `📦 Itens Identificados: ${extracted.items.length}`,
         '',
-        'Deseja gravar este cupom no schema `argus` e conciliar com o Open Finance?'
+        'Deseja gravar este cupom no schema argus e conciliar com o Open Finance?'
       ].join('\n');
 
-      await ctx.reply(preview, { parse_mode: 'Markdown', reply_markup: kb });
+      await ctx.reply(preview, { reply_markup: kb });
     } catch (err) {
       logger.error({ err }, '[ArgusBot] Erro ao processar foto/PDF');
       await ctx.reply(
-        `⚠️ *Argus informa:* Não foi possível extrair o cupom: ${(err as Error).message}`,
-        { parse_mode: 'Markdown' }
+        `⚠️ Argus informa: Não foi possível extrair o cupom: ${(err as Error).message.slice(0, 280)}`
       );
     }
   });
@@ -342,7 +343,7 @@ export function createArgusBot(): Bot {
     const [action, key] = data.split(':');
 
     if (action === 'quick') {
-      await ctx.answerCallbackQuery();
+      await ctx.answerCallbackQuery().catch(() => {});
       if (key === 'preco') await handlePreco({ reply: ctx.reply.bind(ctx), match: '' });
       if (key === 'receita') await handleReceita({ reply: ctx.reply.bind(ctx) });
       if (key === 'otimizar') await handleOtimizar({ reply: ctx.reply.bind(ctx) });
@@ -353,15 +354,15 @@ export function createArgusBot(): Bot {
 
     if (action === 'cancel') {
       pendingReceiptsCache.delete(key);
-      await ctx.answerCallbackQuery({ text: 'Cupom descartado pelo auditor.' });
-      await ctx.editMessageText('👁️ *Argus:* Operação descartada.');
+      await ctx.answerCallbackQuery({ text: 'Cupom descartado pelo auditor.' }).catch(() => {});
+      await ctx.editMessageText('👁️ Argus: Operação descartada.');
       return;
     }
 
     if (action === 'confirm') {
       const receipt = pendingReceiptsCache.get(key);
       if (!receipt) {
-        await ctx.answerCallbackQuery({ text: 'Sessão expirada.' });
+        await ctx.answerCallbackQuery({ text: 'Sessão expirada.' }).catch(() => {});
         return;
       }
       pendingReceiptsCache.delete(key);
@@ -371,13 +372,12 @@ export function createArgusBot(): Bot {
 
       const shrinkMsg =
         result.shrinkflationAlerts.length > 0
-          ? `\n🚨 *ALERTA DE REDUFLAÇÃO:* ${result.shrinkflationAlerts.join('; ')}`
+          ? `\n🚨 ALERTA DE REDUFLAÇÃO: ${result.shrinkflationAlerts.join('; ')}`
           : '';
 
-      await ctx.answerCallbackQuery({ text: 'Cupom gravado e conciliado!' });
+      await ctx.answerCallbackQuery({ text: 'Cupom gravado e conciliado!' }).catch(() => {});
       await ctx.editMessageText(
-        `✅ *Argus auditou e persistiu o cupom!* (${result.itemsProcessed} itens normalizados para g/ml/un).${shrinkMsg}`,
-        { parse_mode: 'Markdown' }
+        `✅ Argus auditou e persistiu o cupom! (${result.itemsProcessed} itens normalizados para g/ml/un).${shrinkMsg}`
       );
     }
   });

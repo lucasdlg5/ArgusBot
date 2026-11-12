@@ -170,8 +170,32 @@ export class ArgusReceiptProcessor {
     }
   }
 
+  private async generateWithModelFallback(
+    params: Parameters<GoogleGenAI['models']['generateContent']>[0]
+  ) {
+    if (!this.ai) {
+      throw new Error('GEMINI_API_KEY não configurada.');
+    }
+    const candidateModels = Array.from(
+      new Set([env.GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash'])
+    );
+    let lastError: unknown;
+    for (const modelName of candidateModels) {
+      try {
+        return await this.ai.models.generateContent({
+          ...params,
+          model: modelName
+        });
+      } catch (err) {
+        lastError = err;
+        logger.warn({ modelName, err: (err as Error).message }, '[ArgusReceiptProcessor] Tentando próximo modelo Gemini');
+      }
+    }
+    throw lastError;
+  }
+
   /**
-   * 3. Fallback Inteligente com `gemini-2.5-flash` (Structured Outputs) para extrair foto/PDF
+   * 3. Fallback Inteligente com Gemini Vision (Structured Outputs) para extrair foto/PDF
    */
   async extractReceiptViaGeminiVision(
     imageBuffer: Buffer,
@@ -183,8 +207,8 @@ export class ArgusReceiptProcessor {
       );
     }
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+    const response = await this.generateWithModelFallback({
+      model: env.GEMINI_MODEL,
       contents: [
         {
           inlineData: {
@@ -354,8 +378,8 @@ export class ArgusReceiptProcessor {
   ): Promise<NormalizedItemInfo> {
     if (this.ai) {
       try {
-        const res = await this.ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+        const res = await this.generateWithModelFallback({
+          model: env.GEMINI_MODEL,
           contents: `Normalize o item de nota fiscal brasileira "${rawDescription}" (unidade na nota: ${unitType}). Classifique a categoria, defina a unidade base ('g', 'ml' ou 'un'), o tamanho padrão da embalagem na unidade base (ex: 1000 para 1kg/1L, 500 para 500g), o tamanho real visto na descrição (para detectar reduflação, ex: 80g se disser 80G) e se é essencial (false para chocolates, refrigerantes, salgadinhos, doces, cerveja).`,
           config: {
             responseMimeType: 'application/json',

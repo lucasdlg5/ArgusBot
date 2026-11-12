@@ -90,14 +90,14 @@ async function testGeminiConnection(): Promise<{ ok: boolean; detail: string }> 
   if (!key) return { ok: false, detail: 'GEMINI_API_KEY não preenchida (usando heurística local + cache)' };
   try {
     const res = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash',
       {
         headers: {
           'X-goog-api-key': key
         }
       }
     );
-    if (res.ok) return { ok: true, detail: 'Modelo gemini-2.5-flash acessível via Google AI Studio' };
+    if (res.ok) return { ok: true, detail: 'Modelo gemini-3.8-flash / gemini-flash-latest acessível via Google AI Studio' };
     return { ok: false, detail: `HTTP ${res.status}` };
   } catch (err) {
     return { ok: false, detail: (err as Error).message };

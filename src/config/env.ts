@@ -27,8 +27,9 @@ const envSchema = z.object({
         .filter(Boolean)
     ),
 
-  // Google Gemini 2.5 Flash (Zero-Cost Google AI Studio)
+  // Google Gemini (Zero-Cost Google AI Studio)
   GEMINI_API_KEY: z.string().default(''),
+  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
 
   // Supabase / PostgreSQL (Schema isolado: argus)
   SUPABASE_URL: z.string().default(''),
