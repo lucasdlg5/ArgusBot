@@ -5,7 +5,7 @@ import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { queryArgus, withArgusTransaction } from '../lib/db';
 import { ArgusStorageService } from './ArgusStorageService';
-import { ArgusReceiptProcessor } from './ArgusReceiptProcessor';
+import { ArgusReceiptProcessor, type ExtractedReceiptData } from './ArgusReceiptProcessor';
 import { ArgusReconciliationService } from './ArgusReconciliationService';
 import type { ExtractedReceiptData, ReceiptUnitType } from '../types/argus';
 
