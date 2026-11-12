@@ -13,6 +13,7 @@ import {
   ArgusPriceScannerService,
   type PriceScanProcessOutcome
 } from '../services/ArgusPriceScannerService';
+import { ArgusDashboardBuilderService } from '../services/ArgusDashboardBuilderService';
 
 interface PendingReceiptSession {
   extracted: ExtractedReceiptData;
@@ -38,6 +39,7 @@ export function createArgusBot(): Bot {
   const storage = new ArgusStorageService();
   const stickers = new ArgusStickerService();
   const priceScanner = new ArgusPriceScannerService();
+  const dashboardBuilder = new ArgusDashboardBuilderService();
   let lastPriceScanJobId: string | null = null;
 
   bot.catch(async (err) => {
@@ -325,6 +327,7 @@ export function createArgusBot(): Bot {
     replyWithSticker?: (sticker: string) => Promise<unknown>;
   }) {
     const { summary } = await reconciler.reconcileAndSyncSheets();
+    await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
     const msg = [
       '👁️ *AUDITORIA DE CONCILIAÇÃO OPEN FINANCE (PLUGGY) & SHEETS*',
       '',
@@ -1836,6 +1839,7 @@ export function createArgusBot(): Bot {
           await reconciler.reconcileAndSyncSheets().catch((err) => {
             logger.warn({ err }, '[ArgusBot] Aviso na conciliação pós-ingestão');
           });
+          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
 
           const shrinkMsg =
             result.shrinkflationAlerts.length > 0

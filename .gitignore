@@ -1,9 +1,11 @@
 node_modules/
 .next/
+/out/
+/.stash-next-api/
 dist/
 .env
 .env.local
-data/*.json
-!data/.gitkeep
+/data/*.json
+!/data/.gitkeep
 *.log
 tsconfig.tsbuildinfo

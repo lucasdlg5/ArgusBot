@@ -50,8 +50,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default(''),
   DIRECT_URL: z.string().default(''),
 
-  // URL pública do Dashboard Web (quando hospedado em produção; vazio se ainda não hospedado)
-  PUBLIC_DASHBOARD_URL: z.string().default(''),
+  // URL pública do Dashboard Web no GitHub Pages
+  PUBLIC_DASHBOARD_URL: z.string().default('https://lucasdlg5.github.io/ArgusBot/'),
 
   // Open Finance (Pluggy API - Herdado de MonetaSync)
   PLUGGY_CLIENT_ID: z.string().default(''),

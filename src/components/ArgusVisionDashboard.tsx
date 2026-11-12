@@ -57,7 +57,22 @@ const ArgusLogisticsMap = dynamic(() => import('./ArgusLogisticsMap'), {
   )
 });
 
+interface CollectedPriceRecord {
+  id: string;
+  source_kind: string;
+  store_name: string;
+  store_neighborhood?: string | null;
+  raw_product_description: string;
+  price: number;
+  promo_or_club_price?: number | null;
+  unit_type: string;
+  confidence_score: number;
+  missing_info_flags: string[];
+  collected_at: string;
+}
+
 interface DashboardPayload {
+  generatedAt?: string;
   homeLocation: { lat: number; lng: number; address: string };
   kpis: {
     totalMonthSpent: number;
@@ -68,6 +83,7 @@ interface DashboardPayload {
     reconciliationRatePct: number;
     scannedReceiptsCount: number;
     pluggyTransactionsCount: number;
+    collectedPricesCount?: number;
   };
   currentPrices: CurrentProductPriceView[];
   heatmap: StoreCategoryHeatmapView[];
@@ -78,6 +94,8 @@ interface DashboardPayload {
   logisticsVerdict: OptimizationVerdict;
   reconciliation: ReconciliationSummary;
   openFinanceTransactions: OpenFinanceTransaction[];
+  collectedPrices?: CollectedPriceRecord[];
+  queueSummary?: Array<{ status: string; total: number }>;
 }
 
 const PILLAR_COLORS: Record<string, string> = {
@@ -90,6 +108,7 @@ const PILLAR_COLORS: Record<string, string> = {
 export default function ArgusVisionDashboard() {
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [dataSourceLabel, setDataSourceLabel] = useState<string>('API Local');
   const [activeTab, setActiveTab] = useState<'ALL' | 'M1' | 'M2' | 'M3' | 'M4'>('ALL');
   const [selectedRecipeIdx, setSelectedRecipeIdx] = useState<number>(0);
   const [portionMultiplier, setPortionMultiplier] = useState<number>(1);
@@ -102,9 +121,51 @@ export default function ArgusVisionDashboard() {
   async function loadDashboard() {
     setLoading(true);
     try {
-      const res = await fetch('/api/dashboard');
-      const json = (await res.json()) as DashboardPayload;
-      setData(json);
+      const isGitHubPages =
+        typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
+      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'FotosArgus';
+
+      // Camada 1: Servidor Node.js / Next.js Local (quando não hospedado no github.io)
+      if (!isGitHubPages) {
+        try {
+          const res = await fetch(`${basePath}/api/dashboard`, { cache: 'no-store' });
+          if (res.ok) {
+            const json = (await res.json()) as DashboardPayload;
+            setData(json);
+            setDataSourceLabel('🟢 Live Node API (/api/dashboard)');
+            return;
+          }
+        } catch {
+          // Segue para Camada 2 (Supabase Cloud) ou Camada 3 (Snapshot Estático)
+        }
+      }
+
+      // Camada 2: Supabase Storage Live Feed (atualizado em tempo real pelo @MonetaArgusBot e GitHub Actions)
+      if (supabaseUrl) {
+        try {
+          const liveUrl = `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(
+            bucket
+          )}/public-bi/dashboard-live.json?t=${Date.now()}`;
+          const resLive = await fetch(liveUrl, { cache: 'no-store' });
+          if (resLive.ok) {
+            const json = (await resLive.json()) as DashboardPayload;
+            setData(json);
+            setDataSourceLabel('☁️ Supabase Cloud Live (GitHub Pages)');
+            return;
+          }
+        } catch {
+          // Segue para Camada 3
+        }
+      }
+
+      // Camada 3: Snapshot Estático empacotado no deploy do GitHub Pages (public/data/dashboard-snapshot.json)
+      const fallbackUrl = `${basePath}/data/dashboard-snapshot.json?t=${Date.now()}`;
+      const resStatic = await fetch(fallbackUrl, { cache: 'no-store' });
+      const jsonStatic = (await resStatic.json()) as DashboardPayload;
+      setData(jsonStatic);
+      setDataSourceLabel('📦 GitHub Pages Snapshot (Actions CI)');
     } finally {
       setLoading(false);
     }
@@ -117,7 +178,16 @@ export default function ArgusVisionDashboard() {
   async function handleRunReconciliation() {
     setSyncingReconcile(true);
     try {
-      await fetch('/api/reconcile', { method: 'POST' });
+      const isGitHubPages =
+        typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
+      if (!isGitHubPages) {
+        await fetch('/api/reconcile', { method: 'POST' }).catch(() => {});
+      } else {
+        setTelegramFeedback(
+          '☁️ Atualizando dados ao vivo do Supabase Storage (use /reconciliar no @MonetaArgusBot para disparar conciliação completa).'
+        );
+        setTimeout(() => setTelegramFeedback(null), 6000);
+      }
       await loadDashboard();
     } finally {
       setSyncingReconcile(false);
@@ -148,13 +218,27 @@ export default function ArgusVisionDashboard() {
     }
     lines.push(data.logisticsVerdict.argusVerdictText);
 
-    const res = await fetch('/api/telegram', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messageText: lines.join('\n') })
-    });
-    const json = (await res.json()) as { note?: string };
-    setTelegramFeedback(json.note || 'Enviado ao @MonetaArgusBot!');
+    try {
+      const res = await fetch('/api/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageText: lines.join('\n') })
+      });
+      if (res.ok) {
+        const json = (await res.json()) as { note?: string };
+        setTelegramFeedback(json.note || 'Enviado ao @MonetaArgusBot!');
+      } else {
+        await navigator.clipboard?.writeText(lines.join('\n')).catch(() => {});
+        setTelegramFeedback(
+          '📋 Lista copiada! No GitHub Pages estático, você também pode pedir /otimizar direto ao @MonetaArgusBot.'
+        );
+      }
+    } catch {
+      await navigator.clipboard?.writeText(lines.join('\n')).catch(() => {});
+      setTelegramFeedback(
+        '📋 Lista copiada para a área de transferência! Envie /otimizar no @MonetaArgusBot.'
+      );
+    }
     setTimeout(() => setTelegramFeedback(null), 7000);
   }
 
@@ -361,6 +445,9 @@ export default function ArgusVisionDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-3 py-1.5 text-xs text-emerald-300">
+              <span>{dataSourceLabel}</span>
+            </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-300">
               <Receipt className="h-3.5 w-3.5 text-emerald-400" />
               {data.kpis.scannedReceiptsCount} NFC-e Auditadas
