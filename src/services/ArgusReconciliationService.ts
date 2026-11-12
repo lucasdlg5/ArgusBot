@@ -214,11 +214,61 @@ export class ArgusReconciliationService {
         : 'Normal'
     ]);
 
+    const collectedPriceItems = await queryArgus<{
+      collected_at: string;
+      source_type: string;
+      store_name_detected: string;
+      store_location_detected: string | null;
+      raw_product_description: string;
+      canonical_product_name: string;
+      category: string;
+      collected_price: string;
+      promo_club_price: string | null;
+      normalized_price_per_base_unit: string;
+      base_unit: string;
+      confidence_score_pct: string;
+      confidence_explanation: string;
+    }>(
+      `SELECT
+         collected_at::text,
+         source_type,
+         store_name_detected,
+         store_location_detected,
+         raw_product_description,
+         canonical_product_name,
+         category,
+         collected_price::text,
+         promo_club_price::text,
+         normalized_price_per_base_unit::text,
+         base_unit,
+         confidence_score_pct::text,
+         confidence_explanation
+       FROM argus.collected_prices
+       ORDER BY collected_at DESC
+       LIMIT 300`
+    );
+
+    const collectedPricesRows = collectedPriceItems.map((c) => [
+      new Date(c.collected_at).toISOString(),
+      c.source_type,
+      c.store_name_detected,
+      c.store_location_detected || 'Local/Filial não identificado',
+      c.raw_product_description,
+      c.canonical_product_name,
+      c.category,
+      Number(c.collected_price),
+      c.promo_club_price ? Number(c.promo_club_price) : '-',
+      `${Number(c.normalized_price_per_base_unit).toFixed(4)}/${c.base_unit}`,
+      `${Number(c.confidence_score_pct).toFixed(0)}%`,
+      c.confidence_explanation
+    ]);
+
     const sheetSyncRes = await this.sheets.syncAllTabsBatch({
       openFinanceRows,
       receiptItemsRows,
       storeComparisonRows,
-      recipeCostsRows: []
+      recipeCostsRows: [],
+      collectedPricesRows
     });
 
     return {

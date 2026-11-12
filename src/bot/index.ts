@@ -9,6 +9,10 @@ import { ArgusReconciliationService } from '../services/ArgusReconciliationServi
 import { ArgusSecurityService } from '../services/ArgusSecurityService';
 import { ArgusStorageService } from '../services/ArgusStorageService';
 import { ArgusStickerService } from '../services/ArgusStickerService';
+import {
+  ArgusPriceScannerService,
+  type PriceScanProcessOutcome
+} from '../services/ArgusPriceScannerService';
 
 interface PendingReceiptSession {
   extracted: ExtractedReceiptData;
@@ -29,6 +33,8 @@ export function createArgusBot(): Bot {
   const security = new ArgusSecurityService();
   const storage = new ArgusStorageService();
   const stickers = new ArgusStickerService();
+  const priceScanner = new ArgusPriceScannerService();
+  let lastPriceScanJobId: string | null = null;
 
   bot.catch((err) => {
     logger.error({ err: err.error }, '[ArgusBot] Erro capturado pelo handler global');
@@ -116,7 +122,10 @@ export function createArgusBot(): Bot {
       'Sou um auditor analítico, direto e afiado. Minha função é vigiar cada centavo do seu orçamento, caçar reduflação oculta nas embalagens, calcular o custo exato por grama de cada receita e decidir na ponta do lápis se compensa ir de carro ou de Uber.',
       '',
       '📋 *Comandos de Auditoria Disponíveis:*',
-      '• 📸 *Envie uma Foto ou PDF de Cupom Fiscal (NFC-e/SAT)* — Decodifico o QR Code localmente (`sharp` + `jsqr`), raspo a SEFAZ ou aciono o `gemini-3.8-flash` e salvo a foto comprimida em WebP no bucket `FotosArgus`.',
+      '• 📸 *Envie uma Foto ou PDF de Cupom Fiscal (NFC-e/SAT)* — Decodifico o QR Code localmente (`sharp` + `jsqr`), raspo a SEFAZ ou aciono o Gemini Vision e salvo a foto comprimida em WebP no bucket `FotosArgus`.',
+      '• 🎥 *Envie um Vídeo do Corredor ou Foto de Gôndola/Panfleto (Flyer)* — Extraio todos os produtos e preços visíveis, calculo a *% de Confiabilidade* (apontando se faltou loja, filial ou nitidez), gravo na planilha `Precos_Coletados` e mantenho fila automática em `argus.media_processing_queue` caso precise reprocessar!',
+      '• `/fila` — Consulta a Tabela de Controle de mídias processadas com sucesso, fila de reprocessamento e últimos preços coletados de gôndolas/flyers.',
+      '• `/loja <Nome do Mercado | Bairro>` — Define ou corrige a loja da última coleta de vídeo/gôndola para elevar o score de confiabilidade.',
       '• `/preco <item>` — Consulta o preço estimado atual por grama/ml em cada mercado e alerta se é hora de estocar.',
       '• `/receita` — Calcula o *Custo Proporcional por Marmita* vs. *Desembolso de Caixa (Embalagens Fechadas)* das suas receitas.',
       '• `/otimizar` — Roda o Simulador Logístico (Rota Real OSRM: Mercado Único vs. Compra Dividida | Gasolina vs. Uber com trava de R$ 25,00).',
@@ -130,9 +139,11 @@ export function createArgusBot(): Bot {
       .text('🍲 Custos de Receitas', 'quick:receita')
       .row()
       .text('🚗 Simular Rota (Carro vs Uber)', 'quick:otimizar')
-      .text('🏦 Conciliar Open Finance', 'quick:reconciliar')
+      .text('🗂️ Fila & Coletas', 'quick:fila')
       .row()
+      .text('🏦 Conciliar Open Finance', 'quick:reconciliar')
       .text('📊 Resumo BI', 'quick:dashboard')
+      .row()
       .text('🛡️ Segurança', 'quick:seguranca');
 
     if (publicUrl && /^https?:\/\//i.test(publicUrl) && !publicUrl.includes('localhost')) {
@@ -441,6 +452,209 @@ export function createArgusBot(): Bot {
 
   bot.command('seguranca', async (ctx) => handleSeguranca(ctx));
 
+  // Formata o relatório completo de Coleta de Preços (Vídeo de Corredor, Foto de Gôndola ou Panfleto/Flyer)
+  function formatPriceScanOutcomeMessage(
+    outcome: PriceScanProcessOutcome,
+    elapsedSec?: string
+  ): string {
+    if (outcome.alreadyProcessedDuplicate) {
+      return [
+        '🛡️ MÍDIA DE COLETA DUPLICADA BLOQUEADA',
+        ...outcome.confidenceWarnings.map((w) => `• ${w}`),
+        `• Arquivo no Bucket: ${outcome.storageBucket}/${outcome.storagePath}`
+      ].join('\n');
+    }
+
+    if (outcome.status === 'QUEUED_RETRY' || outcome.status === 'FAILED_PERMANENT') {
+      const retryStr = outcome.nextRetryAt
+        ? new Date(outcome.nextRetryAt).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        : 'Manual (/fila)';
+      return [
+        '🗂️ MÍDIA SALVA NO BUCKET E ENFILEIRADA PARA REPROCESSAMENTO',
+        `• Status na Tabela de Controle (argus.media_processing_queue): ${outcome.status}`,
+        `• ID do Job: #${outcome.queueJobId.slice(0, 8)}`,
+        `• Arquivo Seguro no Bucket: ${outcome.storageBucket}/${outcome.storagePath}`,
+        `• Motivo da Falha Temporária: ${(outcome.errorMessage || 'Instabilidade momentânea').slice(0, 160)}`,
+        `• Próxima Tentativa Automática: ${retryStr} (ou clique em "🔄 Reprocessar Fila Agora" em /fila)`
+      ].join('\n');
+    }
+
+    const kindLabel =
+      outcome.mediaKind === 'AISLE_VIDEO'
+        ? '🎥 VÍDEO DE CORREDOR / GÔNDOLA'
+        : outcome.mediaKind === 'MARKET_FLYER'
+          ? '📰 PANFLETO / FLYER DE MERCADO'
+          : '🏷️ FOTO DE GÔNDOLA / ETIQUETA';
+
+    const confIcon =
+      outcome.overallConfidencePct >= 80
+        ? '🟢'
+        : outcome.overallConfidencePct >= 65
+          ? '🟡'
+          : '🟠';
+
+    const warnTranslations: Record<string, string> = {
+      LOJA_NAO_IDENTIFICADA:
+        'Loja não identificada na imagem/vídeo (use /loja <Nome do Mercado> para vincular e subir a confiabilidade)',
+      AMBIGUIDADE_NOME_LOJA: 'Possível ambiguidade no nome da loja detectada',
+      LOCAL_FILIAL_AUSENTE:
+        'Localização/filial exata da loja ausente (preços podem variar entre unidades da mesma rede)',
+      PRODUTO_IDENTIFICACAO_INCERTA:
+        'Marca ou gramatura de alguns produtos parcialmente ilegível/estimada',
+      GRAMATURA_NAO_EXPLICITA: 'Peso/volume da embalagem não explícito em todas as etiquetas',
+      BAIXA_NITIDEZ_OU_MOVIMENTO: 'Nitidez reduzida por movimento da câmera ou distância da gôndola',
+      PRECO_DUPLO_CLUBE_VAREJO: 'Etiqueta exibe preço duplo (Varejo vs. Clube/Atacado)',
+      VALIDADE_ENCARTE_AUSENTE: 'Data de validade das ofertas do panfleto não identificada'
+    };
+
+    const humanWarnings =
+      outcome.confidenceWarnings.length > 0
+        ? outcome.confidenceWarnings.map((w) => `  ⚠️ ${warnTranslations[w] || w}`).join('\n')
+        : '  ✅ Loja, filial e produtos nítidos.';
+
+    const itemsPreview = outcome.items
+      .slice(0, 10)
+      .map((it) => {
+        const promoTag = it.promoClubPrice
+          ? ` (Clube/Atacado: R$ ${it.promoClubPrice.toFixed(2)})`
+          : '';
+        const tsTag =
+          it.videoTimestampSec !== null && it.videoTimestampSec !== undefined
+            ? ` [@${it.videoTimestampSec}s]`
+            : '';
+        return `  • ${it.rawProductDescription}${tsTag} ➡️ R$ ${it.collectedPrice.toFixed(
+          2
+        )}${promoTag} | Conf: ${it.confidenceScorePct}%`;
+      })
+      .join('\n');
+
+    const moreCount =
+      outcome.items.length > 10 ? `\n  ... e mais ${outcome.items.length - 10} produto(s)` : '';
+
+    return [
+      `👁️ COLETA DE PREÇOS CONCLUÍDA${elapsedSec ? ` EM ${elapsedSec}s` : ''} (${kindLabel})`,
+      `🏪 Loja: ${outcome.storeNameDetected} | 📍 Local: ${outcome.storeLocationDetected || 'Não identificado'}`,
+      `${confIcon} Confiabilidade Média do Registro: ${outcome.overallConfidencePct}%`,
+      '📋 Diagnóstico de Confiabilidade (Informações Faltantes / Ressalvas):',
+      humanWarnings,
+      '',
+      `📦 Produtos Registrados na Planilha Precos_Coletados (${outcome.items.length}):`,
+      itemsPreview + moreCount,
+      '',
+      `🗄️ Mídia Arquivada: ${outcome.storageBucket}/${outcome.storagePath}`,
+      outcome.storeNameDetected === 'Loja Não Identificada'
+        ? '💡 Dica: Envie `/loja Nome do Mercado - Bairro` para vincular a loja a esta coleta e elevar a confiabilidade!'
+        : '✅ Sincronizado em argus.collected_prices e na aba Precos_Coletados!'
+    ].join('\n');
+  }
+
+  // 6.2. /fila — Tabela de Controle de Mídias Processadas, Fila de Reprocessamento e Preços Coletados
+  async function handleFila(ctx: {
+    api: Bot['api'];
+    chat?: { id: number };
+    reply: any;
+    replyWithSticker?: (sticker: string) => Promise<unknown>;
+  }) {
+    const summary = await priceScanner.getQueueAndCollectedSummary();
+    const lines = [
+      '🗂️ *TABELA DE CONTROLE DE MÍDIAS & PREÇOS COLETADOS (`argus.media_processing_queue`)*',
+      '',
+      `• ✅ Processados com Sucesso (\`SUCCEEDED\`): *${summary.stats.succeeded_count}*`,
+      `• ⏳ Na Fila para Nova Tentativa (\`QUEUED_RETRY\`): *${summary.stats.queued_retry_count}*`,
+      `• ❌ Falhas Permanentes (\`FAILED_PERMANENT\`): *${summary.stats.failed_count}*`,
+      `• 🏷️ Total de Preços de Gôndola/Flyer/Vídeo Coletados: *${summary.stats.total_collected_items}*`,
+      ''
+    ];
+
+    if (summary.recentJobs.length > 0) {
+      lines.push('📋 *Últimas Mídias na Tabela de Controle:*');
+      for (const j of summary.recentJobs.slice(0, 5)) {
+        const dt = new Date(j.created_at).toLocaleString('pt-BR');
+        const conf = j.overall_confidence_pct ? ` | Conf: ${j.overall_confidence_pct}%` : '';
+        lines.push(
+          `• [${j.status}] *${j.media_kind}* (#${j.id.slice(0, 6)}) — ${j.store_name_detected || '-'} | ${j.items_extracted_count} itens${conf} (${dt})`
+        );
+      }
+      lines.push('');
+    }
+
+    if (summary.recentPrices.length > 0) {
+      lines.push('🏷️ *Últimos Preços Coletados (Gôndola / Vídeo / Flyer):*');
+      for (const p of summary.recentPrices.slice(0, 6)) {
+        lines.push(
+          `• *${p.canonical_product_name}* (${p.store_name_detected}): *R$ ${Number(p.collected_price).toFixed(2)}* — Conf: *${Number(p.confidence_score_pct).toFixed(0)}%*`
+        );
+      }
+    }
+
+    const kb = new InlineKeyboard().text('🔄 Forçar Reprocessamento da Fila Agora', 'retry_queue:now');
+    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', reply_markup: kb });
+    await stickers.sendEmotionalSticker(
+      ctx,
+      summary.stats.queued_retry_count > 0 ? 'SKEPTICAL' : 'DETECTIVE'
+    );
+  }
+
+  bot.command('fila', async (ctx) => handleFila(ctx));
+
+  // 6.3. /loja <Nome do Mercado | Local> — Atualiza a loja da última coleta de vídeo/gôndola e eleva a confiabilidade
+  bot.command('loja', async (ctx) => {
+    const rawArg = typeof ctx.match === 'string' ? ctx.match.trim() : '';
+    if (!rawArg) {
+      await ctx.reply(
+        'ℹ️ Uso: `/loja Nome do Mercado | Bairro/Filial`\nExemplo: `/loja Atacadão | Paulista`\nIsso vincula a loja à última coleta de gôndola/vídeo e recalcula a porcentagem de confiabilidade!',
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    const targetJobRows = lastPriceScanJobId
+      ? [{ id: lastPriceScanJobId }]
+      : await queryArgus<{ id: string }>(
+          `SELECT id FROM argus.media_processing_queue
+           WHERE status = 'SUCCEEDED' AND media_kind <> 'RECEIPT_PHOTO'
+           ORDER BY created_at DESC LIMIT 1`
+        );
+
+    if (targetJobRows.length === 0) {
+      await ctx.reply('⚠️ Nenhuma coleta de gôndola/vídeo/panfleto encontrada para atualizar.');
+      return;
+    }
+
+    const [storePart, locPart] = rawArg.split('|').map((s) => s.trim());
+    const updated = await priceScanner.assignStoreToQueueJob(
+      targetJobRows[0].id,
+      storePart,
+      locPart
+    );
+    await reconciler.reconcileAndSyncSheets().catch(() => {});
+
+    await ctx.reply(
+      `✅ Loja atualizada para *${storePart}*${locPart ? ` (${locPart})` : ''}!\n` +
+        `• Itens atualizados: *${updated.updatedItemsCount}*\n` +
+        `• 🟢 Nova Confiabilidade Média do Lote: *${updated.newConfidencePct}%*`,
+      { parse_mode: 'Markdown' }
+    );
+    await stickers.sendEmotionalSticker(ctx, 'CELEBRATION');
+  });
+
+  // Helper que baixa um arquivo do Telegram dado seu file_id (usado pelo bot e pelo worker de fila)
+  async function downloadTelegramFileById(fileId: string): Promise<Buffer | null> {
+    try {
+      const f = await bot.api.getFile(fileId);
+      if (!f.file_path) return null;
+      const url = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${f.file_path}`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return Buffer.from(await res.arrayBuffer());
+    } catch {
+      return null;
+    }
+  }
+
   // Helper que exibe o balãozinho "MonetaArgusBot está digitando..." continuamente até a tarefa concluir
   async function withTypingIndicator<T>(
     ctx: { replyWithChatAction: (action: 'typing') => Promise<unknown> },
@@ -456,6 +670,80 @@ export function createArgusBot(): Bot {
       clearInterval(interval);
     }
   }
+
+  // 6.4. Recebimento de Vídeos de Corredor de Mercado (Gôndolas / Prateleiras / Encartes em Vídeo)
+  bot.on(['message:video', 'message:video_note', 'message:animation'], async (ctx) => {
+    const startMs = Date.now();
+    const statusMsg = await ctx.reply(
+      '🎥 [1/3] Baixando vídeo do corredor e arquivando no bucket FotosArgus...'
+    );
+
+    const updateStatus = async (text: string) => {
+      try {
+        await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, text);
+      } catch {
+        await ctx.reply(text);
+      }
+    };
+
+    try {
+      await withTypingIndicator(ctx, async () => {
+        const mediaObj =
+          ctx.message?.video || ctx.message?.video_note || ctx.message?.animation;
+        const fileSize = mediaObj?.file_size ?? 0;
+
+        // Limite da API padrão de bots do Telegram para getFile é 20 MB
+        if (fileSize > 20 * 1024 * 1024) {
+          await updateStatus(
+            '⚠️ O vídeo enviado tem mais de 20 MB (limite de download da API de Bots do Telegram). Envie um vídeo de até ~30-45 segundos (ou comprimido pelo Telegram) para leitura das gôndolas!'
+          );
+          await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+          return;
+        }
+
+        const file = await ctx.getFile();
+        const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+        const res = await fetch(fileUrl);
+        const buffer = Buffer.from(await res.arrayBuffer());
+        const mimeType =
+          (ctx.message?.video && 'mime_type' in ctx.message.video
+            ? ctx.message.video.mime_type
+            : undefined) || 'video/mp4';
+
+        await updateStatus(
+          '🧠 [2/3] Vídeo salvo no bucket FotosArgus! Analisando quadros das gôndolas e preços via Gemini Multimodal (aguarde ~8 a 25s)...'
+        );
+
+        const outcome = await priceScanner.ingestAndProcessPriceScanMedia({
+          mediaBuffer: buffer,
+          mimeType,
+          initialMediaKind: 'AISLE_VIDEO',
+          telegramChatId: ctx.chat.id,
+          telegramMessageId: ctx.message?.message_id,
+          telegramFileId: file.file_id,
+          telegramFileUniqueId: file.file_unique_id,
+          userCaption: ctx.message?.caption
+        });
+
+        if (outcome.status === 'SUCCEEDED') {
+          lastPriceScanJobId = outcome.queueJobId;
+        }
+
+        const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
+        await updateStatus(formatPriceScanOutcomeMessage(outcome, elapsedSec));
+        await stickers.sendEmotionalSticker(
+          ctx,
+          outcome.status === 'SUCCEEDED' ? 'FOOD_CHEF' : 'SKEPTICAL'
+        );
+      });
+    } catch (err) {
+      logger.error({ err }, '[ArgusBot] Erro ao processar vídeo de corredor');
+      await updateStatus(
+        `⚠️ Aviso ao processar vídeo: ${(err as Error).message.slice(0, 200)}. Consulte /fila para verificar o status.`
+      );
+      await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
+    }
+  });
 
   // Verifica se já existe uma sessão pendente de confirmação com os mesmos hashes ou dados
   function checkPendingQueueDuplicate(
@@ -499,11 +787,21 @@ export function createArgusBot(): Bot {
     return { isDuplicate: false, reason: '' };
   }
 
-  // 7. Recebimento de Foto ou Documento PDF de Cupom Fiscal com 5 Camadas Anti-Duplicidade & Compressão no Bucket FotosArgus
+  // 7. Recebimento de Foto ou Documento (Cupom Fiscal c/ 5 Camadas Anti-Duplicidade OU Foto de Gôndola/Panfleto/Vídeo em Arquivo)
   bot.on(['message:photo', 'message:document'], async (ctx) => {
     const startMs = Date.now();
+    const caption = (ctx.message?.caption || '').trim();
+    const docMime = ctx.message?.document?.mime_type || '';
+    const isVideoDocument = docMime.startsWith('video/');
+    const isExplicitPriceScanCaption =
+      /\b(g[oô]ndola|prateleira|panfleto|flyer|encarte|corredor|etiqueta|oferta|coleta|mercado\s*:|loja\s*:)/i.test(
+        caption
+      );
+
     const statusMsg = await ctx.reply(
-      '⏳ [1/3] Baixando imagem e executando verificação anti-duplicidade (Camada 1)...'
+      isVideoDocument || isExplicitPriceScanCaption
+        ? '⏳ [1/3] Baixando mídia de preços (Gôndola / Panfleto / Vídeo) e preparando arquivamento no bucket FotosArgus...'
+        : '⏳ [1/3] Baixando imagem e executando verificação anti-duplicidade (Camada 1)...'
     );
 
     const updateStatus = async (text: string, kb?: InlineKeyboard) => {
@@ -531,10 +829,10 @@ export function createArgusBot(): Bot {
             () =>
               reject(
                 new Error(
-                  'Tempo limite de processamento (45s) excedido. Por favor, envie a imagem novamente.'
+                  'Tempo limite de processamento (60s) excedido.'
                 )
               ),
-            45000
+            60000
           );
         });
 
@@ -546,7 +844,56 @@ export function createArgusBot(): Bot {
               const res = await fetch(fileUrl);
               const buffer = Buffer.from(await res.arrayBuffer());
               const mimeType = ctx.message?.document?.mime_type || 'image/jpeg';
+              const telegramFileId =
+                ctx.message?.document?.file_id ||
+                ctx.message?.photo?.[ctx.message.photo.length - 1]?.file_id ||
+                file.file_id;
+              const telegramFileUniqueId =
+                ctx.message?.document?.file_unique_id ||
+                ctx.message?.photo?.[ctx.message.photo.length - 1]?.file_unique_id;
 
+              // ROTA A: Documento de Vídeo OU Foto com legenda explícita de Gôndola/Panfleto/Corredor
+              if (isVideoDocument || isExplicitPriceScanCaption) {
+                await updateStatus(
+                  '🧠 [2/3] Arquivando mídia no bucket FotosArgus e extraindo preços + score de confiabilidade via Gemini Vision...'
+                );
+                const outcome = await priceScanner.ingestAndProcessPriceScanMedia({
+                  mediaBuffer: buffer,
+                  mimeType,
+                  initialMediaKind: isVideoDocument ? 'AISLE_VIDEO' : 'SHELF_PHOTO',
+                  telegramChatId: ctx.chat.id,
+                  telegramMessageId: ctx.message?.message_id,
+                  telegramFileId,
+                  telegramFileUniqueId,
+                  userCaption: caption
+                });
+
+                if (outcome.status === 'SUCCEEDED') {
+                  lastPriceScanJobId = outcome.queueJobId;
+                  if (outcome.items.length > 0) {
+                    await reconciler.reconcileAndSyncSheets().catch(() => {});
+                  }
+                }
+
+                const kb =
+                  outcome.status === 'QUEUED_RETRY'
+                    ? new InlineKeyboard().text('🔄 Tentar Fila Agora', 'retry_queue:now')
+                    : undefined;
+
+                const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
+                await updateStatus(formatPriceScanOutcomeMessage(outcome, elapsedSec), kb);
+                await stickers.sendEmotionalSticker(
+                  ctx,
+                  outcome.status === 'SUCCEEDED'
+                    ? 'DETECTIVE'
+                    : outcome.status === 'SKIPPED_DUPLICATE'
+                      ? 'SKEPTICAL'
+                      : 'SHOCK_ALERT'
+                );
+                return;
+              }
+
+              // ROTA B: Cupom Fiscal (com Fallback inteligente para Foto de Gôndola/Panfleto e Fila de Retry!)
               // CAMADA 0 & 1 (PRÉ-OCR): Hash binário SHA-256 + Hash visual normalizado 16x16
               const { imageSha256, normalizedImageSha256 } =
                 await processor.computeImageHashes(buffer);
@@ -608,9 +955,91 @@ export function createArgusBot(): Bot {
               }
               if (!extracted) {
                 await updateStatus(
-                  '🧠 [2/3] Extraindo cabeçalho e itens via Gemini Vision IA (aguarde ~3 a 10s)...'
+                  '🧠 [2/3] Analisando imagem via Gemini Vision IA (Cupom Fiscal ou Gôndola/Panfleto)...'
                 );
-                extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
+                try {
+                  extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
+                } catch (receiptErr) {
+                  // Se falhou por erro de rede/IA ou não é cupom, aciona o Scanner de Preços + Fila Resiliente!
+                  logger.warn(
+                    { err: receiptErr },
+                    '[ArgusBot] Leitura de cupom falhou; acionando PriceScanner + Fila Resiliente'
+                  );
+                  const scanOutcome = await priceScanner.ingestAndProcessPriceScanMedia({
+                    mediaBuffer: buffer,
+                    mimeType,
+                    initialMediaKind: 'SHELF_PHOTO',
+                    telegramChatId: ctx.chat.id,
+                    telegramMessageId: ctx.message?.message_id,
+                    telegramFileId,
+                    telegramFileUniqueId,
+                    userCaption: caption
+                  });
+
+                  if (scanOutcome.status === 'SUCCEEDED') {
+                    lastPriceScanJobId = scanOutcome.queueJobId;
+                    if (scanOutcome.items.length > 0) {
+                      await reconciler.reconcileAndSyncSheets().catch(() => {});
+                    }
+                  }
+
+                  const kbRetry =
+                    scanOutcome.status === 'QUEUED_RETRY'
+                      ? new InlineKeyboard().text('🔄 Tentar Fila Agora', 'retry_queue:now')
+                      : undefined;
+
+                  const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
+                  await updateStatus(formatPriceScanOutcomeMessage(scanOutcome, elapsedSec), kbRetry);
+                  await stickers.sendEmotionalSticker(
+                    ctx,
+                    scanOutcome.status === 'SUCCEEDED' ? 'DETECTIVE' : 'SHOCK_ALERT'
+                  );
+                  return;
+                }
+              }
+
+              // Se a imagem não parece ser um cupom fiscal (ex.: totalAmount = 0 ou sem CNPJ e sem chave SEFAZ),
+              // verifica no Scanner de Gôndola/Panfleto!
+              const looksLikeNonReceiptShelfOrFlyer =
+                !qrData &&
+                (!extracted.items ||
+                  extracted.items.length === 0 ||
+                  (extracted.totalAmount <= 0 && !extracted.storeCnpj));
+
+              if (looksLikeNonReceiptShelfOrFlyer) {
+                await updateStatus(
+                  '🏷️ [2/3] Imagem identificada como Gôndola / Etiqueta / Panfleto! Calculando preços coletados e % de confiabilidade...'
+                );
+                const scanOutcome = await priceScanner.ingestAndProcessPriceScanMedia({
+                  mediaBuffer: buffer,
+                  mimeType,
+                  initialMediaKind: 'SHELF_PHOTO',
+                  telegramChatId: ctx.chat.id,
+                  telegramMessageId: ctx.message?.message_id,
+                  telegramFileId,
+                  telegramFileUniqueId,
+                  userCaption: caption
+                });
+
+                if (scanOutcome.status === 'SUCCEEDED') {
+                  lastPriceScanJobId = scanOutcome.queueJobId;
+                  if (scanOutcome.items.length > 0) {
+                    await reconciler.reconcileAndSyncSheets().catch(() => {});
+                  }
+                }
+
+                const kbRetry =
+                  scanOutcome.status === 'QUEUED_RETRY'
+                    ? new InlineKeyboard().text('🔄 Tentar Fila Agora', 'retry_queue:now')
+                    : undefined;
+
+                const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
+                await updateStatus(formatPriceScanOutcomeMessage(scanOutcome, elapsedSec), kbRetry);
+                await stickers.sendEmotionalSticker(
+                  ctx,
+                  scanOutcome.status === 'SUCCEEDED' ? 'DETECTIVE' : 'SKEPTICAL'
+                );
+                return;
               }
 
               // Consolida identificadores multicamada (Chave SEFAZ 44d OU Fallback COO + Content Fingerprint)
@@ -657,6 +1086,8 @@ export function createArgusBot(): Bot {
 
               const kb = new InlineKeyboard()
                 .text('✅ Confirmar, Comprimir & Salvar', `confirm:${tokenKey}`)
+                .text('🏷️ Ler como Gôndola/Flyer', `as_scan:${tokenKey}`)
+                .row()
                 .text('❌ Descartar', `cancel:${tokenKey}`);
 
               const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
@@ -687,7 +1118,7 @@ export function createArgusBot(): Bot {
                 topItemsPreview + moreItems,
                 '',
                 `🗄️ Destino da Imagem: Bucket '${env.SUPABASE_STORAGE_BUCKET}' (WebP comprimido)`,
-                'Deseja gravar este cupom no schema argus, comprimir a foto no bucket FotosArgus e conciliar com o Open Finance?'
+                'Deseja gravar este cupom no schema argus ou reclassificar como foto de Gôndola/Panfleto?'
               ].join('\n');
 
               await updateStatus(preview, kb);
@@ -704,7 +1135,7 @@ export function createArgusBot(): Bot {
     } catch (err) {
       logger.error({ err }, '[ArgusBot] Erro ao processar foto/PDF');
       await updateStatus(
-        `⚠️ Argus informa: Não foi possível concluir a leitura do cupom (${(err as Error).message.slice(0, 220)}). Você pode reenviar a foto agora.`
+        `⚠️ Argus informa: Não foi possível concluir a leitura (${(err as Error).message.slice(0, 220)}). Você pode reenviar ou usar /fila.`
       );
       await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
     }
@@ -724,6 +1155,77 @@ export function createArgusBot(): Bot {
         if (key === 'reconciliar') await handleReconciliar(ctx);
         if (key === 'dashboard') await handleDashboard(ctx);
         if (key === 'seguranca') await handleSeguranca(ctx);
+        if (key === 'fila') await handleFila(ctx);
+      });
+      return;
+    }
+
+    if (action === 'retry_queue') {
+      await ctx
+        .answerCallbackQuery({ text: 'Reprocessando mídias na fila...' })
+        .catch(() => {});
+      await ctx
+        .editMessageText('⏳ Reprocessando mídias pendentes em argus.media_processing_queue...')
+        .catch(() => {});
+
+      await withTypingIndicator(ctx, async () => {
+        const outcomes = await priceScanner.processDueQueueJobs(downloadTelegramFileById, true);
+        const succeeded = outcomes.filter((o) => o.status === 'SUCCEEDED').length;
+        const failed = outcomes.length - succeeded;
+        if (succeeded > 0) {
+          await reconciler.reconcileAndSyncSheets().catch(() => {});
+        }
+        const details = outcomes.map(
+          (o) =>
+            `• [#${o.queueJobId.slice(0, 6)}] ${o.status}: ${o.storeNameDetected} (${o.items.length} itens | Conf: ${o.overallConfidencePct}%)`
+        );
+        const detailsMsg = details.length > 0 ? `\n\n${details.join('\n')}` : '\n\nNenhuma mídia aguardando na fila no momento.';
+        await ctx.editMessageText(
+          `🔄 REPROCESSAMENTO DA FILA CONCLUÍDO\n• Processados: ${outcomes.length} | ✅ Sucesso: ${succeeded} | ⏳ Reagendados/Falha: ${failed}${detailsMsg}`
+        );
+        await stickers.sendEmotionalSticker(
+          ctx,
+          succeeded > 0 ? 'CELEBRATION' : 'SKEPTICAL'
+        );
+      });
+      return;
+    }
+
+    if (action === 'as_scan') {
+      const session = pendingReceiptsCache.get(key);
+      if (!session) {
+        await ctx.answerCallbackQuery({ text: 'Sessão expirada.' }).catch(() => {});
+        return;
+      }
+      pendingReceiptsCache.delete(key);
+
+      await ctx
+        .answerCallbackQuery({ text: 'Analisando como Gôndola/Panfleto...' })
+        .catch(() => {});
+      await ctx
+        .editMessageText(
+          '⏳ [3/3] Reclassificando imagem como Coleta de Preços (Gôndola/Panfleto) com cálculo de % de confiabilidade...'
+        )
+        .catch(() => {});
+
+      await withTypingIndicator(ctx, async () => {
+        const scanOutcome = await priceScanner.ingestAndProcessPriceScanMedia({
+          mediaBuffer: session.rawBuffer,
+          mimeType: session.mimeType,
+          initialMediaKind: 'SHELF_PHOTO',
+          telegramChatId: ctx.chat?.id || 0,
+          userCaption: session.extracted.storeTradingName
+            ? `Loja: ${session.extracted.storeTradingName}`
+            : ''
+        });
+        if (scanOutcome.status === 'SUCCEEDED') {
+          lastPriceScanJobId = scanOutcome.queueJobId;
+          if (scanOutcome.items.length > 0) {
+            await reconciler.reconcileAndSyncSheets().catch(() => {});
+          }
+        }
+        await ctx.editMessageText(formatPriceScanOutcomeMessage(scanOutcome));
+        await stickers.sendEmotionalSticker(ctx, 'DETECTIVE');
       });
       return;
     }
@@ -810,6 +1312,42 @@ export function createArgusBot(): Bot {
       });
     }
   });
+
+  // Worker periódico em background (a cada 5 min) para reprocessar mídias em QUEUED_RETRY cujo next_retry_at já venceu
+  const retryInterval = setInterval(async () => {
+    try {
+      const outcomes = await priceScanner.processDueQueueJobs(downloadTelegramFileById, false);
+      if (outcomes.length > 0) {
+        const succeeded = outcomes.filter((o) => o.status === 'SUCCEEDED').length;
+        const failed = outcomes.length - succeeded;
+        if (succeeded > 0) {
+          await reconciler.reconcileAndSyncSheets().catch(() => {});
+        }
+        const targetChatId = Number(
+          env.TELEGRAM_DEFAULT_CHAT_ID || env.TELEGRAM_ALLOWED_USER_IDS[0] || 0
+        );
+        if (targetChatId) {
+          const details = outcomes.map(
+            (o) =>
+              `• [#${o.queueJobId.slice(0, 6)}] ${o.status}: ${o.storeNameDetected} (${o.items.length} itens | Conf: ${o.overallConfidencePct}%)`
+          );
+          await bot.api
+            .sendMessage(
+              targetChatId,
+              [
+                '🔄 WORKER DE REPROCESSAMENTO AUTOMÁTICO (argus.media_processing_queue)',
+                `• Jobs processados: ${outcomes.length} | ✅ Sucesso: ${succeeded} | ⏳ Reagendados/Falha: ${failed}`,
+                ...details
+              ].join('\n')
+            )
+            .catch(() => {});
+        }
+      }
+    } catch (err) {
+      logger.warn({ err }, '[ArgusBot] Erro no worker periódico de retry da fila de mídia');
+    }
+  }, 5 * 60 * 1000);
+  retryInterval.unref();
 
   return bot;
 }

@@ -9,6 +9,7 @@ export interface ArgusLedgerSheetsPayload {
   receiptItemsRows: (string | number)[][];
   storeComparisonRows: (string | number)[][];
   recipeCostsRows: (string | number)[][];
+  collectedPricesRows?: (string | number)[][];
 }
 
 /**
@@ -37,11 +38,13 @@ export class ArgusGoogleSheetsClient {
     spreadsheetId: string;
     mirrorFile: string;
   }> {
+    const collectedRows = payload.collectedPricesRows ?? [];
     const totalRows =
       payload.openFinanceRows.length +
       payload.receiptItemsRows.length +
       payload.storeComparisonRows.length +
-      payload.recipeCostsRows.length;
+      payload.recipeCostsRows.length +
+      collectedRows.length;
 
     // Salva espelho local auditável sempre
     try {
@@ -56,7 +59,8 @@ export class ArgusGoogleSheetsClient {
               Transacoes_OpenFinance: payload.openFinanceRows,
               Historico_Itens: payload.receiptItemsRows,
               Comparativo_Mercados: payload.storeComparisonRows,
-              Receitas_Custos: payload.recipeCostsRows
+              Receitas_Custos: payload.recipeCostsRows,
+              Precos_Coletados_Gondola_Flyer: collectedRows
             }
           },
           null,
@@ -101,7 +105,15 @@ export class ArgusGoogleSheetsClient {
             {
               range: 'Receitas_Custos!A2',
               values: payload.recipeCostsRows
-            }
+            },
+            ...(collectedRows.length > 0
+              ? [
+                  {
+                    range: 'Precos_Coletados!A2',
+                    values: collectedRows
+                  }
+                ]
+              : [])
           ]
         }
       });
