@@ -1196,7 +1196,7 @@ export function createArgusBot(): Bot {
               }
 
               const tokenKey = `rcpt_${Date.now()}`;
-              pendingReceiptsCache.set(tokenKey, {
+              const newSession: PendingReceiptSession = {
                 extracted,
                 rawBuffer: buffer,
                 mimeType,
@@ -1204,6 +1204,13 @@ export function createArgusBot(): Bot {
                 telegramFileId,
                 telegramFileUniqueId,
                 caption
+              };
+              pendingReceiptsCache.set(tokenKey, newSession);
+
+              // Persiste a sessão pendente em argus.media_processing_queue + FotosArgus para que
+              // deploys ou reinícios do bot NUNCA causem "Sessão expirada"!
+              await persistPendingReceiptSession(tokenKey, ctx.chat.id, newSession).catch((err) => {
+                logger.warn({ err }, '[ArgusBot] Aviso ao persistir sessão pendente no banco');
               });
 
               const kb = new InlineKeyboard()
@@ -1289,6 +1296,254 @@ export function createArgusBot(): Bot {
     }
   });
 
+  // Persiste sessões pendentes de confirmação no PostgreSQL (argus.media_processing_queue) + bucket FotosArgus
+  // para que nenhum deploy ou reinício do servidor perca o estado dos botões no Telegram!
+  async function persistPendingReceiptSession(
+    tokenKey: string,
+    chatId: number,
+    session: PendingReceiptSession
+  ): Promise<void> {
+    const uploadRes = await storage.compressAndUploadReceiptImage(
+      session.rawBuffer,
+      session.extracted.accessKey,
+      session.extracted.storeTradingName,
+      session.mimeType
+    );
+
+    session.extracted.storageBucket = uploadRes.bucket;
+    session.extracted.storagePath = uploadRes.storagePath;
+    session.extracted.originalSizeBytes = uploadRes.originalBytes;
+    session.extracted.compressedSizeBytes = uploadRes.compressedBytes;
+
+    await queryArgus(
+      `INSERT INTO argus.media_processing_queue (
+         telegram_chat_id, telegram_message_id, telegram_file_id, telegram_file_unique_id,
+         media_kind, mime_type, user_caption, storage_bucket, storage_path,
+         original_size_bytes, compressed_size_bytes, media_sha256,
+         status, attempts_count, store_name_detected, overall_confidence_pct,
+         items_extracted_count, raw_ai_response, result_summary
+       ) VALUES ($1, $2, $3, $4, 'RECEIPT_PHOTO', $5, $6, $7, $8, $9, $10, $11, 'PENDING', 1, $12, 98, $13, $14::jsonb, $15::jsonb)`,
+      [
+        chatId,
+        session.originalMessageId ?? null,
+        session.telegramFileId ?? null,
+        session.telegramFileUniqueId ?? null,
+        session.mimeType,
+        session.caption ?? null,
+        uploadRes.bucket,
+        uploadRes.storagePath,
+        uploadRes.originalBytes,
+        uploadRes.compressedBytes,
+        session.extracted.imageSha256 || tokenKey,
+        session.extracted.storeTradingName,
+        session.extracted.items.length,
+        JSON.stringify(session.extracted),
+        JSON.stringify({ tokenKey })
+      ]
+    );
+  }
+
+  // Workaround Multicamada anti-"Sessão Expirada" pós-deploy:
+  // Camada 1: Memória RAM (pendingReceiptsCache)
+  // Camada 2: Banco PostgreSQL (argus.media_processing_queue pelo tokenKey)
+  // Camada 3: Recuperação ao vivo a partir da foto marcada em reply_to_message (ou texto da mensagem atual)
+  //           para mensagens enviadas ANTES deste deploy sem perder a mensagem atual!
+  async function resolveOrRecoverPendingSession(
+    ctx: any,
+    tokenKey: string,
+    mode: 'confirm' | 'as_scan'
+  ): Promise<PendingReceiptSession | null> {
+    // 1. Camada 1: Memória RAM
+    const inRam = pendingReceiptsCache.get(tokenKey);
+    if (inRam) {
+      pendingReceiptsCache.delete(tokenKey);
+      return inRam;
+    }
+
+    // 2. Camada 2: Sessão persistida em argus.media_processing_queue
+    try {
+      const dbRows = await queryArgus<{
+        id: string;
+        telegram_message_id: string | null;
+        telegram_file_id: string | null;
+        telegram_file_unique_id: string | null;
+        mime_type: string | null;
+        user_caption: string | null;
+        storage_bucket: string | null;
+        storage_path: string | null;
+        raw_ai_response: ExtractedReceiptData | null;
+      }>(
+        `SELECT id, telegram_message_id::text, telegram_file_id, telegram_file_unique_id,
+                mime_type, user_caption, storage_bucket, storage_path, raw_ai_response
+         FROM argus.media_processing_queue
+         WHERE result_summary->>'tokenKey' = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [tokenKey]
+      );
+
+      if (dbRows.length > 0 && dbRows[0].raw_ai_response) {
+        const row = dbRows[0];
+        let buf: Buffer | null = null;
+        if (row.storage_path) {
+          buf = await storage.downloadFromStorage(row.storage_path);
+        }
+        if (!buf && row.telegram_file_id) {
+          buf = await downloadTelegramFileById(row.telegram_file_id);
+        }
+        await queryArgus(
+          `UPDATE argus.media_processing_queue SET status = 'SUCCEEDED', processed_at = NOW() WHERE id = $1`,
+          [row.id]
+        ).catch(() => {});
+
+        return {
+          extracted: row.raw_ai_response,
+          rawBuffer: buf || Buffer.alloc(0),
+          mimeType: row.mime_type || 'image/jpeg',
+          originalMessageId: row.telegram_message_id ? Number(row.telegram_message_id) : undefined,
+          telegramFileId: row.telegram_file_id ?? undefined,
+          telegramFileUniqueId: row.telegram_file_unique_id ?? undefined,
+          caption: row.user_caption ?? undefined
+        };
+      }
+    } catch (err) {
+      logger.warn({ err }, '[ArgusBot] Aviso ao consultar sessão no banco');
+    }
+
+    // 3. Camada 3: Recuperação ao vivo da mensagem anterior presa antes do deploy!
+    // Verifica se a mensagem do botão possui reply_to_message apontando para a foto/documento original
+    const cbMsg = ctx.callbackQuery?.message as any;
+    const replyMsg = cbMsg?.reply_to_message;
+    const replyFileId: string | undefined =
+      replyMsg?.document?.file_id ||
+      (Array.isArray(replyMsg?.photo) && replyMsg.photo.length > 0
+        ? replyMsg.photo[replyMsg.photo.length - 1].file_id
+        : undefined);
+    const replyFileUniqueId: string | undefined =
+      replyMsg?.document?.file_unique_id ||
+      (Array.isArray(replyMsg?.photo) && replyMsg.photo.length > 0
+        ? replyMsg.photo[replyMsg.photo.length - 1].file_unique_id
+        : undefined);
+    const replyMime: string = replyMsg?.document?.mime_type || 'image/jpeg';
+    const replyMsgId: number | undefined = replyMsg?.message_id;
+    const replyCaption: string | undefined = replyMsg?.caption;
+
+    if (replyFileId) {
+      await ctx
+        .answerCallbackQuery({
+          text: '🔄 Recuperando sessão pós-deploy a partir da foto marcada...'
+        })
+        .catch(() => {});
+      await ctx
+        .editMessageText(
+          '🔄 [Recuperação Pós-Deploy] Restaurando automaticamente os dados da foto marcada nesta mensagem sem perder seu envio...'
+        )
+        .catch(() => {});
+
+      const recoveredBuffer = await downloadTelegramFileById(replyFileId);
+      if (recoveredBuffer) {
+        if (mode === 'as_scan') {
+          // Para Gôndola/Flyer basta o buffer recuperado e o nome da loja visível na mensagem!
+          const msgText: string = cbMsg?.text || '';
+          const storeMatch = msgText.match(/🏪\s*Mercado:\s*([^\n(]+)/);
+          return {
+            extracted: {
+              storeCnpj: '',
+              storeRawName: storeMatch ? storeMatch[1].trim() : '',
+              storeTradingName: storeMatch ? storeMatch[1].trim() : '',
+              storeAddress: '',
+              purchaseDate: new Date().toISOString(),
+              totalAmount: 0,
+              discountAmount: 0,
+              paymentMethod: 'PIX',
+              accessKey: tokenKey,
+              items: [],
+              extractionMethod: 'GEMINI_VISION_2_5_FLASH'
+            },
+            rawBuffer: recoveredBuffer,
+            mimeType: replyMime,
+            originalMessageId: replyMsgId,
+            telegramFileId: replyFileId,
+            telegramFileUniqueId: replyFileUniqueId,
+            caption: replyCaption
+          };
+        }
+
+        // Para Confirmar Cupom Fiscal: re-extrai a partir do buffer da foto marcada
+        const hashes = await processor.computeImageHashes(recoveredBuffer);
+        let recoveredExtracted = await processor.decodeQrCodeFromImage(recoveredBuffer)
+          .then((qr) => (qr ? processor.scrapeSefazReceipt(qr) : null))
+          .catch(() => null);
+
+        if (!recoveredExtracted) {
+          recoveredExtracted = await processor.extractReceiptViaGeminiVision(
+            recoveredBuffer,
+            replyMime
+          );
+        }
+        recoveredExtracted = processor.finalizeReceiptIdentifiers(recoveredExtracted, hashes);
+
+        return {
+          extracted: recoveredExtracted,
+          rawBuffer: recoveredBuffer,
+          mimeType: replyMime,
+          originalMessageId: replyMsgId,
+          telegramFileId: replyFileId,
+          telegramFileUniqueId: replyFileUniqueId,
+          caption: replyCaption
+        };
+      }
+    }
+
+    // 4. Camada 4 (Fallback final): Reconstrói a partir do próprio texto de preview da mensagem atual!
+    const previewText: string = cbMsg?.text || '';
+    if (previewText && previewText.includes('🏪 Mercado:') && mode === 'confirm') {
+      const storeMatch = previewText.match(/🏪\s*Mercado:\s*([^\n(]+?)(?:\s*\(([^)]+)\))?\n/);
+      const payMatch = previewText.match(/💳\s*Pagamento:\s*(\S+)\s*\|\s*💰\s*Total:\s*R\$\s*([\d.,]+)/);
+      const itemLines = [...previewText.matchAll(/•\s*(.+?)\s*\(([\d.,]+)\s*(KG|UN|LT)\)\s*—\s*R\$\s*([\d.,]+)/g)];
+
+      if (storeMatch && payMatch && itemLines.length > 0) {
+        const storeName = storeMatch[1].trim();
+        const storeCnpj = (storeMatch[2] || '').trim();
+        const totalAmount = Number(payMatch[2].replace(',', '.')) || 0;
+        const items = itemLines.map((m) => {
+          const qty = Number(m[2].replace(',', '.')) || 1;
+          const tot = Number(m[4].replace(',', '.')) || 0;
+          return {
+            rawDescription: m[1].trim(),
+            quantity: qty,
+            unitType: m[3] as 'KG' | 'UN' | 'LT',
+            unitPrice: Number((tot / qty).toFixed(2)),
+            totalPrice: tot
+          };
+        });
+
+        const reconstructed = processor.finalizeReceiptIdentifiers({
+          storeCnpj: processor.normalizeStoreCnpj(storeCnpj, storeName),
+          storeRawName: storeName,
+          storeTradingName: storeName,
+          storeAddress: 'Recuperado da mensagem pós-deploy',
+          purchaseDate: new Date().toISOString(),
+          totalAmount,
+          discountAmount: 0,
+          paymentMethod: (payMatch[1] as any) || 'CASH',
+          accessKey: '',
+          items,
+          extractionMethod: 'GEMINI_VISION_2_5_FLASH'
+        });
+
+        return {
+          extracted: reconstructed,
+          rawBuffer: Buffer.alloc(0),
+          mimeType: 'image/jpeg',
+          originalMessageId: replyMsgId
+        };
+      }
+    }
+
+    return null;
+  }
+
   // Callback dos Botões Inline
   bot.on('callback_query:data', async (ctx) => {
     const data = ctx.callbackQuery.data;
@@ -1351,12 +1606,17 @@ export function createArgusBot(): Bot {
     }
 
     if (action === 'as_scan') {
-      const session = pendingReceiptsCache.get(key);
+      const session = await withTypingIndicator(ctx, () =>
+        resolveOrRecoverPendingSession(ctx, key, 'as_scan')
+      );
       if (!session) {
-        await ctx.answerCallbackQuery({ text: 'Sessão expirada.' }).catch(() => {});
+        await ctx
+          .answerCallbackQuery({
+            text: 'Não foi possível localizar a foto original desta mensagem.'
+          })
+          .catch(() => {});
         return;
       }
-      pendingReceiptsCache.delete(key);
 
       await ctx
         .answerCallbackQuery({ text: 'Analisando como Gôndola/Panfleto...' })
@@ -1404,6 +1664,10 @@ export function createArgusBot(): Bot {
 
     if (action === 'cancel') {
       pendingReceiptsCache.delete(key);
+      await queryArgus(
+        `DELETE FROM argus.media_processing_queue WHERE result_summary->>'tokenKey' = $1 AND status = 'PENDING'`,
+        [key]
+      ).catch(() => {});
       await ctx.answerCallbackQuery({ text: 'Cupom descartado pelo auditor.' }).catch(() => {});
       await ctx.editMessageText('👁️ Argus: Operação descartada.');
       await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
@@ -1411,24 +1675,8 @@ export function createArgusBot(): Bot {
     }
 
     if (action === 'confirm') {
-      const session = pendingReceiptsCache.get(key);
-      if (!session) {
-        await ctx
-          .answerCallbackQuery({
-            text: 'Sessão expirada (o bot foi reiniciado). Por favor, reenvie a foto.'
-          })
-          .catch(() => {});
-        await ctx
-          .editMessageText(
-            '⚠️ Esta sessão de confirmação expirou após reinício do bot. Reenvie a foto para processá-la!'
-          )
-          .catch(() => {});
-        return;
-      }
-      pendingReceiptsCache.delete(key);
-
       await ctx
-        .answerCallbackQuery({ text: 'Comprimindo foto e gravando no banco...' })
+        .answerCallbackQuery({ text: 'Processando confirmação e salvando no banco...' })
         .catch(() => {});
       await ctx
         .editMessageText(
@@ -1436,8 +1684,20 @@ export function createArgusBot(): Bot {
         )
         .catch(() => {});
 
+      let activeSession: PendingReceiptSession | null = null;
       try {
         await withTypingIndicator(ctx, async () => {
+          const session = await resolveOrRecoverPendingSession(ctx, key, 'confirm');
+          if (!session) {
+            await ctx
+              .editMessageText(
+                '⚠️ Não foi possível recuperar a foto original desta mensagem antiga. Reenvie a foto para processá-la!'
+              )
+              .catch(() => {});
+            return;
+          }
+          activeSession = session;
+
           // Verifica última trava transacional antes de subir para o bucket FotosArgus
           const preCommitDup = await processor.checkPostOcrDuplicateLayers(session.extracted);
           if (preCommitDup.isDuplicate) {
@@ -1448,13 +1708,23 @@ export function createArgusBot(): Bot {
             return;
           }
 
-          // 1. Comprime a foto para WebP e envia para o bucket FotosArgus no Supabase Storage
-          const uploadRes = await storage.compressAndUploadReceiptImage(
-            session.rawBuffer,
-            session.extracted.accessKey,
-            session.extracted.storeTradingName,
-            session.mimeType
-          );
+          // 1. Comprime a foto para WebP e envia para o bucket FotosArgus no Supabase Storage (se houver buffer)
+          const uploadRes =
+            session.rawBuffer && session.rawBuffer.length > 0
+              ? await storage.compressAndUploadReceiptImage(
+                  session.rawBuffer,
+                  session.extracted.accessKey,
+                  session.extracted.storeTradingName,
+                  session.mimeType
+                )
+              : {
+                  uploaded: Boolean(session.extracted.storagePath),
+                  bucket: session.extracted.storageBucket || env.SUPABASE_STORAGE_BUCKET,
+                  storagePath: session.extracted.storagePath || 'recuperado-pos-deploy',
+                  originalBytes: session.extracted.originalSizeBytes || 0,
+                  compressedBytes: session.extracted.compressedSizeBytes || 0,
+                  compressionSavingsPct: 0
+                };
 
           session.extracted.storageBucket = uploadRes.bucket;
           session.extracted.storagePath = uploadRes.storagePath;
@@ -1518,54 +1788,59 @@ export function createArgusBot(): Bot {
           ctx.chat?.id ||
           Number(env.TELEGRAM_DEFAULT_CHAT_ID || env.TELEGRAM_ALLOWED_USER_IDS[0] || 0);
 
-        try {
-          const queued = await priceScanner.enqueueFailedReceiptForRetry({
-            mediaBuffer: session.rawBuffer,
-            mimeType: session.mimeType,
-            telegramChatId: chatId,
-            telegramMessageId: session.originalMessageId,
-            telegramFileId: session.telegramFileId,
-            telegramFileUniqueId: session.telegramFileUniqueId,
-            userCaption: session.caption,
-            extractedReceipt: session.extracted,
-            errorMessage: errMsg
-          });
+        if (activeSession) {
+          const s: PendingReceiptSession = activeSession;
+          try {
+            const queued = await priceScanner.enqueueFailedReceiptForRetry({
+              mediaBuffer: s.rawBuffer,
+              mimeType: s.mimeType,
+              telegramChatId: chatId,
+              telegramMessageId: s.originalMessageId,
+              telegramFileId: s.telegramFileId,
+              telegramFileUniqueId: s.telegramFileUniqueId,
+              userCaption: s.caption,
+              extractedReceipt: s.extracted,
+              errorMessage: errMsg
+            });
 
-          const retryStr = queued.nextRetryAt
-            ? new Date(queued.nextRetryAt).toLocaleTimeString('pt-BR', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-            : 'daqui a 1 hora';
+            const retryStr = queued.nextRetryAt
+              ? new Date(queued.nextRetryAt).toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              : 'daqui a 1 hora';
 
-          const failMsg = [
-            '❌ FALHA NO PROCESSAMENTO DA IMAGEM',
-            `• 🗄️ Foto salva com segurança no bucket: '${queued.storageBucket}/${queued.storagePath}'`,
-            `• ⏳ Reprocessamento Automático: A foto foi guardada na fila (argus.media_processing_queue #${queued.queueJobId.slice(0, 8)}) e será reprocessada automaticamente daqui a 1 hora (às ${retryStr})!`,
-            `• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}`
-          ].join('\n');
+            const failMsg = [
+              '❌ FALHA NO PROCESSAMENTO DA IMAGEM',
+              `• 🗄️ Foto salva com segurança no bucket: '${queued.storageBucket}/${queued.storagePath}'`,
+              `• ⏳ Reprocessamento Automático: A foto foi guardada na fila (argus.media_processing_queue #${queued.queueJobId.slice(0, 8)}) e será reprocessada automaticamente daqui a 1 hora (às ${retryStr})!`,
+              `• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}`
+            ].join('\n');
 
-          const kbRetry = new InlineKeyboard().text(
-            '🔄 Tentar Reprocessar Agora',
-            'retry_queue:now'
-          );
+            const kbRetry = new InlineKeyboard().text(
+              '🔄 Tentar Reprocessar Agora',
+              'retry_queue:now'
+            );
 
-          await ctx.editMessageText(failMsg, { reply_markup: kbRetry }).catch(() => {});
+            await ctx.editMessageText(failMsg, { reply_markup: kbRetry }).catch(() => {});
 
-          if (chatId && session.originalMessageId) {
-            await ctx.api
-              .sendMessage(chatId, failMsg, {
-                reply_parameters: { message_id: session.originalMessageId },
-                reply_markup: kbRetry
-              })
-              .catch(() => {});
+            if (chatId && s.originalMessageId) {
+              await ctx.api
+                .sendMessage(chatId, failMsg, {
+                  reply_parameters: { message_id: s.originalMessageId },
+                  reply_markup: kbRetry
+                })
+                .catch(() => {});
+            }
+            await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
+            return;
+          } catch (queueErr) {
+            logger.error({ err: queueErr }, '[ArgusBot] Erro ao enfileirar cupom após falha no confirm');
           }
-        } catch (queueErr) {
-          logger.error({ err: queueErr }, '[ArgusBot] Erro ao enfileirar cupom após falha no confirm');
-          const fallbackFail = `❌ FALHA NO PROCESSAMENTO DA IMAGEM\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}`;
-          await ctx.editMessageText(fallbackFail).catch(() => {});
         }
 
+        const fallbackFail = `❌ FALHA NO PROCESSAMENTO DA IMAGEM\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}`;
+        await ctx.editMessageText(fallbackFail).catch(() => {});
         await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
       }
     }
