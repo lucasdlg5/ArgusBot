@@ -1397,7 +1397,7 @@ export function createArgusBot(): Bot {
         ).catch(() => {});
 
         return {
-          extracted: row.raw_ai_response,
+          extracted: row.raw_ai_response!,
           rawBuffer: buf || Buffer.alloc(0),
           mimeType: row.mime_type || 'image/jpeg',
           originalMessageId: row.telegram_message_id ? Number(row.telegram_message_id) : undefined,

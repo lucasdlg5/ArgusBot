@@ -7,7 +7,7 @@ import { queryArgus, withArgusTransaction } from '../lib/db';
 import { ArgusStorageService } from './ArgusStorageService';
 import { ArgusReceiptProcessor, type ExtractedReceiptData } from './ArgusReceiptProcessor';
 import { ArgusReconciliationService } from './ArgusReconciliationService';
-import type { ExtractedReceiptData, ReceiptUnitType } from '../types/argus';
+import type { ReceiptUnitType } from '../types/argus';
 
 export type MediaScanKind = 'RECEIPT_PHOTO' | 'SHELF_PHOTO' | 'MARKET_FLYER' | 'AISLE_VIDEO';
 
