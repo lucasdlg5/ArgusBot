@@ -8,6 +8,7 @@ import { ArgusOptimizerService } from '../services/ArgusOptimizerService';
 import { ArgusReconciliationService } from '../services/ArgusReconciliationService';
 import { ArgusSecurityService } from '../services/ArgusSecurityService';
 import { ArgusStorageService } from '../services/ArgusStorageService';
+import { ArgusStickerService } from '../services/ArgusStickerService';
 
 interface PendingReceiptSession {
   extracted: ExtractedReceiptData;
@@ -26,6 +27,7 @@ export function createArgusBot(): Bot {
   const reconciler = new ArgusReconciliationService();
   const security = new ArgusSecurityService();
   const storage = new ArgusStorageService();
+  const stickers = new ArgusStickerService();
 
   bot.catch((err) => {
     logger.error({ err: err.error }, '[ArgusBot] Erro capturado pelo handler global');
@@ -79,6 +81,11 @@ export function createArgusBot(): Bot {
               { parse_mode: 'Markdown' }
             )
             .catch(() => {});
+          await stickers.sendEmotionalStickerToChat(
+            bot.api,
+            env.TELEGRAM_DEFAULT_CHAT_ID,
+            'SHOCK_ALERT'
+          );
         }
 
         if (ctx.callbackQuery) {
@@ -132,10 +139,17 @@ export function createArgusBot(): Bot {
     }
 
     await ctx.reply(welcome, { parse_mode: 'Markdown', reply_markup: kb });
+    await stickers.sendEmotionalSticker(ctx, 'DETECTIVE');
   });
 
   // 2. /preco <termo> — Histórico e arbitragem de preços por unidade base (g/ml/un)
-  async function handlePreco(ctx: { reply: Bot['api']['sendMessage'] extends (...args: any[]) => any ? any : any; match?: unknown }) {
+  async function handlePreco(ctx: {
+    api: Bot['api'];
+    chat?: { id: number };
+    reply: any;
+    replyWithSticker?: (sticker: string) => Promise<unknown>;
+    match?: unknown;
+  }) {
     const query = typeof ctx.match === 'string' ? ctx.match.trim() : '';
     const rows = await queryArgus<{
       product_name: string;
@@ -159,6 +173,7 @@ export function createArgusBot(): Bot {
         `👁️ *Argus informa:* Nenhum item localizado para *"${query}"*. Tente \`/preco frango\`, \`/preco arroz\`, \`/preco leite\` ou \`/preco omo\`.`,
         { parse_mode: 'Markdown' }
       );
+      await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
       return;
     }
 
@@ -168,10 +183,13 @@ export function createArgusBot(): Bot {
       ''
     ];
 
+    let foundHistoricalLow = false;
     for (const r of rows) {
       const est = Number(r.estimated_package_price);
       const minH = Number(r.min_historical_price);
-      const badge = est <= minH * 1.02 ? '🔥 *MÍNIMA HISTÓRICA (ESTOCAR)*' : '⚖️ Normal';
+      const isLow = est <= minH * 1.02;
+      if (isLow) foundHistoricalLow = true;
+      const badge = isLow ? '🔥 *MÍNIMA HISTÓRICA (ESTOCAR)*' : '⚖️ Normal';
       lines.push(
         `• *${r.product_name}* — 🏪 ${r.store_name}\n  💰 *R$ ${est.toFixed(2)}* (R$ ${Number(
           r.estimated_base_price
@@ -180,12 +198,18 @@ export function createArgusBot(): Bot {
     }
 
     await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+    await stickers.sendEmotionalSticker(ctx, foundHistoricalLow ? 'CELEBRATION' : 'DETECTIVE');
   }
 
   bot.command('preco', async (ctx) => handlePreco(ctx));
 
   // 3. /receita — Duplo Custo de Receitas (Proporcional vs. Desembolso de Caixa)
-  async function handleReceita(ctx: { reply: any }) {
+  async function handleReceita(ctx: {
+    api: Bot['api'];
+    chat?: { id: number };
+    reply: any;
+    replyWithSticker?: (sticker: string) => Promise<unknown>;
+  }) {
     const evaluations = await optimizer.evaluateRecipeCosts();
     const lines = [
       '👁️ *LABORATÓRIO DE RECEITAS ARGUS — CUSTO POR GRAMA vs. CAIXA*',
@@ -209,12 +233,18 @@ export function createArgusBot(): Bot {
     }
 
     await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+    await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
   }
 
   bot.command('receita', async (ctx) => handleReceita(ctx));
 
   // 4. /otimizar — Simulador Logístico (Mercado Único vs. Compra Dividida | Gasolina vs. Uber)
-  async function handleOtimizar(ctx: { reply: any }) {
+  async function handleOtimizar(ctx: {
+    api: Bot['api'];
+    chat?: { id: number };
+    reply: any;
+    replyWithSticker?: (sticker: string) => Promise<unknown>;
+  }) {
     const verdict = await optimizer.optimizeShoppingTrip();
     const s1 = verdict.singleStoreBest;
     const s2 = verdict.splitStoreBest;
@@ -240,12 +270,23 @@ export function createArgusBot(): Bot {
     ].join('\n');
 
     await ctx.reply(text, { parse_mode: 'Markdown' });
+    await stickers.sendEmotionalSticker(
+      ctx,
+      verdict.recommendSplitWithGas || verdict.recommendSplitWithUber
+        ? 'CELEBRATION'
+        : 'SKEPTICAL'
+    );
   }
 
   bot.command('otimizar', async (ctx) => handleOtimizar(ctx));
 
   // 5. /reconciliar — Conciliação Open Finance (Pluggy) + Google Sheets ("Argus Ledger")
-  async function handleReconciliar(ctx: { reply: any }) {
+  async function handleReconciliar(ctx: {
+    api: Bot['api'];
+    chat?: { id: number };
+    reply: any;
+    replyWithSticker?: (sticker: string) => Promise<unknown>;
+  }) {
     const { summary } = await reconciler.reconcileAndSyncSheets();
     const msg = [
       '👁️ *AUDITORIA DE CONCILIAÇÃO OPEN FINANCE (PLUGGY) & SHEETS*',
@@ -258,12 +299,18 @@ export function createArgusBot(): Bot {
     ].join('\n');
 
     await ctx.reply(msg, { parse_mode: 'Markdown' });
+    await stickers.sendEmotionalSticker(ctx, 'CELEBRATION');
   }
 
   bot.command('reconciliar', async (ctx) => handleReconciliar(ctx));
 
   // 6. /dashboard — Resumo Executivo de BI no Telegram + Link Cloud (Sem exibir localhost!)
-  async function handleDashboard(ctx: { reply: any }) {
+  async function handleDashboard(ctx: {
+    api: Bot['api'];
+    chat?: { id: number };
+    reply: any;
+    replyWithSticker?: (sticker: string) => Promise<unknown>;
+  }) {
     const publicUrl = env.PUBLIC_DASHBOARD_URL.trim();
     const [spendingRows, shrinkRows, lowRows] = await Promise.all([
       queryArgus<{ spending_pillar: string; total_spent: string }>(
@@ -326,12 +373,22 @@ export function createArgusBot(): Bot {
       );
       await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
     }
+
+    await stickers.sendEmotionalSticker(
+      ctx,
+      shrinkRows.length > 0 ? 'SHOCK_ALERT' : 'CELEBRATION'
+    );
   }
 
   bot.command('dashboard', async (ctx) => handleDashboard(ctx));
 
   // 6.1. /seguranca — Relatório de Auditoria de Interações Bloqueadas & Tentativas de Ataque
-  async function handleSeguranca(ctx: { reply: any }) {
+  async function handleSeguranca(ctx: {
+    api: Bot['api'];
+    chat?: { id: number };
+    reply: any;
+    replyWithSticker?: (sticker: string) => Promise<unknown>;
+  }) {
     const report = await security.getRecentSecurityReport(8);
     const lines = [
       '🛡️ *AUDITORIA DE SEGURANÇA ARGUS (`argus.security_audit_logs`)*',
@@ -360,6 +417,10 @@ export function createArgusBot(): Bot {
     }
 
     await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+    await stickers.sendEmotionalSticker(
+      ctx,
+      report.criticalOrHighCount > 0 ? 'SHOCK_ALERT' : 'DETECTIVE'
+    );
   }
 
   bot.command('seguranca', async (ctx) => handleSeguranca(ctx));
@@ -474,6 +535,7 @@ export function createArgusBot(): Bot {
               ].join('\n');
 
               await updateStatus(preview, kb);
+              await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
             })(),
             globalTimeout
           ]);
@@ -486,6 +548,7 @@ export function createArgusBot(): Bot {
       await updateStatus(
         `⚠️ Argus informa: Não foi possível concluir a leitura do cupom (${(err as Error).message.slice(0, 220)}). Você pode reenviar a foto agora.`
       );
+      await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
     }
   });
 
@@ -497,12 +560,12 @@ export function createArgusBot(): Bot {
     if (action === 'quick') {
       await ctx.answerCallbackQuery().catch(() => {});
       await withTypingIndicator(ctx, async () => {
-        if (key === 'preco') await handlePreco({ reply: ctx.reply.bind(ctx), match: '' });
-        if (key === 'receita') await handleReceita({ reply: ctx.reply.bind(ctx) });
-        if (key === 'otimizar') await handleOtimizar({ reply: ctx.reply.bind(ctx) });
-        if (key === 'reconciliar') await handleReconciliar({ reply: ctx.reply.bind(ctx) });
-        if (key === 'dashboard') await handleDashboard({ reply: ctx.reply.bind(ctx) });
-        if (key === 'seguranca') await handleSeguranca({ reply: ctx.reply.bind(ctx) });
+        if (key === 'preco') await handlePreco(ctx);
+        if (key === 'receita') await handleReceita(ctx);
+        if (key === 'otimizar') await handleOtimizar(ctx);
+        if (key === 'reconciliar') await handleReconciliar(ctx);
+        if (key === 'dashboard') await handleDashboard(ctx);
+        if (key === 'seguranca') await handleSeguranca(ctx);
       });
       return;
     }
@@ -511,6 +574,7 @@ export function createArgusBot(): Bot {
       pendingReceiptsCache.delete(key);
       await ctx.answerCallbackQuery({ text: 'Cupom descartado pelo auditor.' }).catch(() => {});
       await ctx.editMessageText('👁️ Argus: Operação descartada.');
+      await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
       return;
     }
 
@@ -562,6 +626,10 @@ export function createArgusBot(): Bot {
 
         await ctx.editMessageText(
           `✅ Argus auditou e persistiu o cupom! (${result.itemsProcessed} itens normalizados para g/ml/un).${storageMsg}${shrinkMsg}`
+        );
+        await stickers.sendEmotionalSticker(
+          ctx,
+          result.shrinkflationAlerts.length > 0 ? 'SHOCK_ALERT' : 'CELEBRATION'
         );
       });
     }
