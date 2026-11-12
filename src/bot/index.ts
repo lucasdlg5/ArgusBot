@@ -84,15 +84,13 @@ export function createArgusBot(): Bot {
         if (ctx.callbackQuery) {
           await ctx
             .answerCallbackQuery({
-              text: '⛔ Acesso negado. Instância privada do Argus.',
+              text: '⛔ Acesso não autorizado.',
               show_alert: true
             })
             .catch(() => {});
         } else {
-          await ctx.reply(
-            `⛔ *ACESSO BLOQUEADO PELO ARGUS*\n\nEsta instância do \`@MonetaArgusBot\` é de uso exclusivo do proprietário autorizado (\`@AsminnAeterna\`).\n\n🛡️ *Auditoria:* Tentativa #${incident.attemptCountInWindow} classificada como \`${incident.threatCategory}\` (\`${incident.threatLevel}\`) e gravada em \`argus.security_audit_logs\`.`,
-            { parse_mode: 'Markdown' }
-          );
+          // Resposta mínima OpSec (Zero Information Disclosure: não revela dono, schema, tabelas ou regras)
+          await ctx.reply('⛔ Acesso não autorizado. Esta tentativa foi registrada.');
         }
         return;
       }
@@ -350,7 +348,11 @@ export function createArgusBot(): Bot {
       lines.push('📋 *Últimos Eventos Bloqueados:*');
       for (const log of report.recentLogs) {
         const dt = new Date(log.created_at).toLocaleString('pt-BR');
-        const userLabel = log.telegram_username ? `@${log.telegram_username}` : `ID ${log.telegram_user_id}`;
+        const fullName = [log.first_name, log.last_name].filter(Boolean).join(' ') || 'Sem Nome';
+        const userLabel =
+          log.telegram_username && !log.telegram_username.startsWith('[')
+            ? `@${log.telegram_username} (${fullName} | ID \`${log.telegram_user_id}\`)`
+            : `${fullName} (Sem @username público | ID \`${log.telegram_user_id}\`)`;
         lines.push(
           `• [${log.threat_level}] *${log.threat_category}* — ${userLabel} (${dt})\n  ↳ Tipo: \`${log.interaction_type}\` | Ação: \`${log.command_or_action || '-'}\``
         );

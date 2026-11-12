@@ -140,9 +140,37 @@ export class ArgusSecurityService {
   async recordBlockedInteraction(ctx: Context) {
     const classification = this.classifyThreat(ctx);
     const userId = ctx.from?.id ?? 0;
-    const username = ctx.from?.username ?? null;
+
+    // Extrai username de todas as fontes disponíveis e tenta enriquecer via getChat
+    let rawUsername =
+      ctx.from?.username ||
+      (ctx.chat && 'username' in ctx.chat ? ctx.chat.username : undefined) ||
+      null;
+
+    let activeUsernames: string[] = [];
+    if (!rawUsername && userId) {
+      try {
+        const chatInfo = await ctx.api.getChat(userId);
+        if ('username' in chatInfo && chatInfo.username) {
+          rawUsername = chatInfo.username;
+        }
+        if ('active_usernames' in chatInfo && Array.isArray(chatInfo.active_usernames)) {
+          activeUsernames = chatInfo.active_usernames;
+          if (!rawUsername && activeUsernames.length > 0) {
+            rawUsername = activeUsernames[0];
+          }
+        }
+      } catch {
+        // Ignora se a API do Telegram não retornar detalhes extras do perfil privado
+      }
+    }
+
     const firstName = ctx.from?.first_name ?? null;
     const lastName = ctx.from?.last_name ?? null;
+    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+    const username =
+      rawUsername || `[sem_handle_publico:${fullName || userId}]`;
+
     const languageCode = ctx.from?.language_code ?? null;
     const isBot = Boolean(ctx.from?.is_bot);
     const chatId = ctx.chat?.id ?? null;
@@ -151,7 +179,10 @@ export class ArgusSecurityService {
     const rawMetadata = {
       update_id: ctx.update.update_id,
       date: ctx.message?.date ?? Math.floor(Date.now() / 1000),
-      is_premium: (ctx.from as { is_premium?: boolean } | undefined)?.is_premium ?? false
+      is_premium: (ctx.from as { is_premium?: boolean } | undefined)?.is_premium ?? false,
+      has_public_username: Boolean(rawUsername),
+      active_usernames: activeUsernames,
+      tg_deep_link: `tg://user?id=${userId}`
     };
 
     try {
