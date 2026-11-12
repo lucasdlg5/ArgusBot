@@ -6,6 +6,7 @@ import { queryArgus } from '../lib/db';
 import { ArgusReceiptProcessor, type ExtractedReceiptData } from '../services/ArgusReceiptProcessor';
 import { ArgusOptimizerService } from '../services/ArgusOptimizerService';
 import { ArgusReconciliationService } from '../services/ArgusReconciliationService';
+import { ArgusSecurityService } from '../services/ArgusSecurityService';
 
 const pendingReceiptsCache = new Map<string, ExtractedReceiptData>();
 
@@ -16,12 +17,13 @@ export function createArgusBot(): Bot {
   const processor = new ArgusReceiptProcessor();
   const optimizer = new ArgusOptimizerService();
   const reconciler = new ArgusReconciliationService();
+  const security = new ArgusSecurityService();
 
   bot.catch((err) => {
     logger.error({ err: err.error }, '[ArgusBot] Erro capturado pelo handler global');
   });
 
-  // 0. Guardião de Acesso Exclusivo (Allowlist por User ID e Username)
+  // 0. Guardião de Acesso Exclusivo & Detector de Ataques (Allowlist + Persistência em argus.security_audit_logs)
   bot.use(async (ctx, next) => {
     const allowedIds = new Set<string>([
       ...env.TELEGRAM_ALLOWED_USER_IDS,
@@ -39,13 +41,37 @@ export function createArgusBot(): Bot {
     // Se houver regras configuradas, exige match estrito (ID imutável ou @AsminnAeterna)
     if (allowedIds.size > 0 || allowedUsernames.size > 0) {
       if (!isAuthorizedById && !isAuthorizedByUsername) {
+        const incident = await security.recordBlockedInteraction(ctx);
+
         logger.warn(
           {
             unauthorizedUserId: senderId,
-            unauthorizedUsername: senderUsername
+            unauthorizedUsername: senderUsername,
+            threatLevel: incident.threatLevel,
+            threatCategory: incident.threatCategory,
+            attemptCountInWindow: incident.attemptCountInWindow
           },
-          '[ArgusBot] Tentativa de acesso bloqueada pelo Guardião de Segurança'
+          '[ArgusBot] Tentativa de acesso bloqueada e persistida em argus.security_audit_logs'
         );
+
+        // Notifica proativamente o proprietário (@AsminnAeterna) quando detectar ameaça HIGH ou CRITICAL
+        if (
+          env.TELEGRAM_DEFAULT_CHAT_ID &&
+          (incident.threatLevel === 'HIGH' || incident.threatLevel === 'CRITICAL')
+        ) {
+          await bot.api
+            .sendMessage(
+              env.TELEGRAM_DEFAULT_CHAT_ID,
+              `🚨 *ALERTA DE SEGURANÇA ARGUS (${incident.threatLevel})*\n\n` +
+                `• *Intruso:* \`${senderId}\` (@${senderUsername || 'sem_username'})\n` +
+                `• *Vetor:* \`${incident.threatCategory}\` (${incident.interactionType})\n` +
+                `• *Tentativas (5 min):* ${incident.attemptCountInWindow}\n` +
+                `• *Payload:* \`${incident.payloadPreview.replace(/`/g, "'").slice(0, 140)}\`\n\n` +
+                `Registrado na tabela \`argus.security_audit_logs\`.`,
+              { parse_mode: 'Markdown' }
+            )
+            .catch(() => {});
+        }
 
         if (ctx.callbackQuery) {
           await ctx.answerCallbackQuery({
@@ -54,7 +80,7 @@ export function createArgusBot(): Bot {
           });
         } else {
           await ctx.reply(
-            '⛔ *ACESSO BLOQUEADO PELO ARGUS*\n\nEsta instância do `@MonetaArgusBot` é de uso exclusivo do proprietário autorizado (`@AsminnAeterna`). Sua tentativa foi registrada pela auditoria.',
+            `⛔ *ACESSO BLOQUEADO PELO ARGUS*\n\nEsta instância do \`@MonetaArgusBot\` é de uso exclusivo do proprietário autorizado (\`@AsminnAeterna\`).\n\n🛡️ *Auditoria:* Tentativa #${incident.attemptCountInWindow} classificada como \`${incident.threatCategory}\` (\`${incident.threatLevel}\`) e gravada em \`argus.security_audit_logs\`.`,
             { parse_mode: 'Markdown' }
           );
         }
@@ -79,6 +105,7 @@ export function createArgusBot(): Bot {
       '• `/receita` — Calcula o *Custo Proporcional por Marmita* vs. *Desembolso de Caixa (Embalagens Fechadas)* das suas receitas.',
       '• `/otimizar` — Roda o Simulador Logístico (Rota Real OSRM: Mercado Único vs. Compra Dividida | Gasolina vs. Uber com trava de R$ 25,00).',
       '• `/reconciliar` — Cruza cupons fiscais com transações do Pluggy Open Finance (`-2h` a `+48h`, `<= R$ 0,05`) e sincroniza a planilha *Argus Ledger*.',
+      '• `/seguranca` — Exibe o relatório de tentativas de invasão e acessos bloqueados em `argus.security_audit_logs`.',
       `• \`/dashboard\` — Painel interativo *Argus Vision BI*: ${dashboardUrl}`
     ].join('\n');
 
@@ -87,7 +114,9 @@ export function createArgusBot(): Bot {
       .text('🍲 Custos de Receitas', 'quick:receita')
       .row()
       .text('🚗 Simular Rota (Carro vs Uber)', 'quick:otimizar')
-      .text('🏦 Conciliar Open Finance', 'quick:reconciliar');
+      .text('🏦 Conciliar Open Finance', 'quick:reconciliar')
+      .row()
+      .text('🛡️ Auditoria de Segurança (Ataques)', 'quick:seguranca');
 
     await ctx.reply(welcome, { parse_mode: 'Markdown', reply_markup: kb });
   });
@@ -229,6 +258,36 @@ export function createArgusBot(): Bot {
     );
   });
 
+  // 6.1. /seguranca — Relatório de Auditoria de Interações Bloqueadas & Tentativas de Ataque
+  async function handleSeguranca(ctx: { reply: any }) {
+    const report = await security.getRecentSecurityReport(8);
+    const lines = [
+      '🛡️ *AUDITORIA DE SEGURANÇA ARGUS (`argus.security_audit_logs`)*',
+      '',
+      `• 🚫 Total de Interações Bloqueadas: *${report.totalBlockedCount}*`,
+      `• 👤 Usuários/Bots Intrusos Únicos: *${report.uniqueAttackersCount}*`,
+      `• 🚨 Tentativas de Alta Severidade (\`HIGH\`/\`CRITICAL\`): *${report.criticalOrHighCount}*`,
+      ''
+    ];
+
+    if (report.recentLogs.length === 0) {
+      lines.push('✅ _Nenhuma tentativa de acesso não autorizado ou ataque registrada até o momento._');
+    } else {
+      lines.push('📋 *Últimos Eventos Bloqueados:*');
+      for (const log of report.recentLogs) {
+        const dt = new Date(log.created_at).toLocaleString('pt-BR');
+        const userLabel = log.telegram_username ? `@${log.telegram_username}` : `ID ${log.telegram_user_id}`;
+        lines.push(
+          `• [${log.threat_level}] *${log.threat_category}* — ${userLabel} (${dt})\n  ↳ Tipo: \`${log.interaction_type}\` | Ação: \`${log.command_or_action || '-'}\``
+        );
+      }
+    }
+
+    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+  }
+
+  bot.command('seguranca', async (ctx) => handleSeguranca(ctx));
+
   // 7. Recebimento de Foto ou Documento PDF de Cupom Fiscal com Botões Inline de Confirmação
   bot.on(['message:photo', 'message:document'], async (ctx) => {
     try {
@@ -288,6 +347,7 @@ export function createArgusBot(): Bot {
       if (key === 'receita') await handleReceita({ reply: ctx.reply.bind(ctx) });
       if (key === 'otimizar') await handleOtimizar({ reply: ctx.reply.bind(ctx) });
       if (key === 'reconciliar') await handleReconciliar({ reply: ctx.reply.bind(ctx) });
+      if (key === 'seguranca') await handleSeguranca({ reply: ctx.reply.bind(ctx) });
       return;
     }
 
