@@ -175,24 +175,48 @@ export class ArgusReceiptProcessor {
   }
 
   private async generateWithModelFallback(
-    params: Parameters<GoogleGenAI['models']['generateContent']>[0]
+    params: Parameters<GoogleGenAI['models']['generateContent']>[0],
+    timeoutMsPerModel = 18000
   ) {
     if (!this.ai) {
       throw new Error('GEMINI_API_KEY não configurada.');
     }
     const candidateModels = Array.from(
-      new Set([env.GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash'])
+      new Set([
+        env.GEMINI_MODEL,
+        'gemini-3.6-flash',
+        'gemini-3.5-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-3.8-flash'
+      ])
     );
     let lastError: unknown;
     for (const modelName of candidateModels) {
+      let timer: NodeJS.Timeout | undefined;
       try {
-        return await this.ai.models.generateContent({
-          ...params,
-          model: modelName
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error(`Timeout (${timeoutMsPerModel}ms) no modelo ${modelName}`)),
+            timeoutMsPerModel
+          );
         });
+
+        const result = await Promise.race([
+          this.ai.models.generateContent({
+            ...params,
+            model: modelName
+          }),
+          timeoutPromise
+        ]);
+        if (timer) clearTimeout(timer);
+        return result;
       } catch (err) {
+        if (timer) clearTimeout(timer);
         lastError = err;
-        logger.warn({ modelName, err: (err as Error).message }, '[ArgusReceiptProcessor] Tentando próximo modelo Gemini');
+        logger.warn(
+          { modelName, err: (err as Error).message },
+          '[ArgusReceiptProcessor] Tentando próximo modelo Gemini'
+        );
       }
     }
     throw lastError;
@@ -211,62 +235,81 @@ export class ArgusReceiptProcessor {
       );
     }
 
-    const response = await this.generateWithModelFallback({
-      model: env.GEMINI_MODEL,
-      contents: [
-        {
-          inlineData: {
-            data: imageBuffer.toString('base64'),
-            mimeType
-          }
-        },
-        {
-          text: 'Você é o Argus (@MonetaArgusBot), auditor fiscal. Extraia o cabeçalho e todos os itens deste cupom fiscal brasileiro (NFC-e / SAT).'
-        }
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            storeCnpj: { type: Type.STRING },
-            storeRawName: { type: Type.STRING },
-            storeTradingName: { type: Type.STRING },
-            storeAddress: { type: Type.STRING },
-            purchaseDate: { type: Type.STRING },
-            totalAmount: { type: Type.NUMBER },
-            discountAmount: { type: Type.NUMBER },
-            paymentMethod: {
-              type: Type.STRING,
-              enum: ['PIX', 'CREDIT_CARD', 'DEBIT', 'VR_VA', 'CASH']
-            },
-            accessKey: { type: Type.STRING },
-            items: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  rawDescription: { type: Type.STRING },
-                  quantity: { type: Type.NUMBER },
-                  unitType: { type: Type.STRING, enum: ['KG', 'UN', 'LT'] },
-                  unitPrice: { type: Type.NUMBER },
-                  totalPrice: { type: Type.NUMBER }
-                },
-                required: ['rawDescription', 'quantity', 'unitType', 'unitPrice', 'totalPrice']
-              }
+    // Otimiza a imagem com sharp antes de enviar ao Gemini Vision para reduzir latência de rede e inferência
+    let optimizedBuffer = imageBuffer;
+    let optimizedMime = mimeType;
+    if (mimeType.startsWith('image/')) {
+      try {
+        optimizedBuffer = await sharp(imageBuffer)
+          .rotate()
+          .resize({ width: 1400, height: 2200, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 82, mozjpeg: true })
+          .toBuffer();
+        optimizedMime = 'image/jpeg';
+      } catch {
+        optimizedBuffer = imageBuffer;
+      }
+    }
+
+    const response = await this.generateWithModelFallback(
+      {
+        model: env.GEMINI_MODEL,
+        contents: [
+          {
+            inlineData: {
+              data: optimizedBuffer.toString('base64'),
+              mimeType: optimizedMime
             }
           },
-          required: [
-            'storeCnpj',
-            'storeTradingName',
-            'totalAmount',
-            'paymentMethod',
-            'accessKey',
-            'items'
-          ]
+          {
+            text: 'Você é o Argus (@MonetaArgusBot), auditor fiscal. Extraia o cabeçalho e todos os itens deste cupom fiscal brasileiro (NFC-e / SAT).'
+          }
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              storeCnpj: { type: Type.STRING },
+              storeRawName: { type: Type.STRING },
+              storeTradingName: { type: Type.STRING },
+              storeAddress: { type: Type.STRING },
+              purchaseDate: { type: Type.STRING },
+              totalAmount: { type: Type.NUMBER },
+              discountAmount: { type: Type.NUMBER },
+              paymentMethod: {
+                type: Type.STRING,
+                enum: ['PIX', 'CREDIT_CARD', 'DEBIT', 'VR_VA', 'CASH']
+              },
+              accessKey: { type: Type.STRING },
+              items: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    rawDescription: { type: Type.STRING },
+                    quantity: { type: Type.NUMBER },
+                    unitType: { type: Type.STRING, enum: ['KG', 'UN', 'LT'] },
+                    unitPrice: { type: Type.NUMBER },
+                    totalPrice: { type: Type.NUMBER }
+                  },
+                  required: ['rawDescription', 'quantity', 'unitType', 'unitPrice', 'totalPrice']
+                }
+              }
+            },
+            required: [
+              'storeCnpj',
+              'storeTradingName',
+              'totalAmount',
+              'paymentMethod',
+              'accessKey',
+              'items'
+            ]
+          }
         }
-      }
-    });
+      },
+      20000
+    );
 
     const parsed = JSON.parse(response.text || '{}') as ExtractedReceiptData;
     return {
@@ -380,60 +423,7 @@ export class ArgusReceiptProcessor {
     rawDescription: string,
     unitType: ReceiptUnitType
   ): Promise<NormalizedItemInfo> {
-    if (this.ai) {
-      try {
-        const res = await this.generateWithModelFallback({
-          model: env.GEMINI_MODEL,
-          contents: `Normalize o item de nota fiscal brasileira "${rawDescription}" (unidade na nota: ${unitType}). Classifique a categoria, defina a unidade base ('g', 'ml' ou 'un'), o tamanho padrão da embalagem na unidade base (ex: 1000 para 1kg/1L, 500 para 500g), o tamanho real visto na descrição (para detectar reduflação, ex: 80g se disser 80G) e se é essencial (false para chocolates, refrigerantes, salgadinhos, doces, cerveja).`,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                canonicalName: { type: Type.STRING },
-                category: {
-                  type: Type.STRING,
-                  enum: [
-                    'Carnes',
-                    'Laticínios',
-                    'Hortifruti',
-                    'Mercearia',
-                    'Limpeza',
-                    'Higiene',
-                    'Bebidas',
-                    'Besteiras/Impulso',
-                    'Combustível'
-                  ]
-                },
-                baseUnit: { type: Type.STRING, enum: ['g', 'ml', 'un'] },
-                standardPackageSize: { type: Type.NUMBER },
-                seenPackageSize: { type: Type.NUMBER },
-                isEssential: { type: Type.BOOLEAN }
-              },
-              required: [
-                'canonicalName',
-                'category',
-                'baseUnit',
-                'standardPackageSize',
-                'seenPackageSize',
-                'isEssential'
-              ]
-            }
-          }
-        });
-        const parsed = JSON.parse(res.text || '{}');
-        if (parsed.canonicalName) {
-          return {
-            ...parsed,
-            packageMultiplier: 1
-          };
-        }
-      } catch (err) {
-        logger.warn({ err }, '[ArgusReceiptProcessor] Usando normalizador local determinístico');
-      }
-    }
-
-    // Heurística determinística de alta precisão
+    // Heurística determinística instantânea (preserva 100% da cota de RPM do Gemini Free Tier para o OCR Vision)
     const upper = rawDescription.toUpperCase();
     const weightMatch = upper.match(/(\d+(?:[.,]\d+)?)\s*(KG|G|ML|L|LT|UN)\b/);
     let seenSize = unitType === 'KG' || unitType === 'LT' ? 1000 : 1;

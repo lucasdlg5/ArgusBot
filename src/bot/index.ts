@@ -364,55 +364,127 @@ export function createArgusBot(): Bot {
 
   bot.command('seguranca', async (ctx) => handleSeguranca(ctx));
 
+  // Helper que exibe o balãozinho "MonetaArgusBot está digitando..." continuamente até a tarefa concluir
+  async function withTypingIndicator<T>(
+    ctx: { replyWithChatAction: (action: 'typing') => Promise<unknown> },
+    fn: () => Promise<T>
+  ): Promise<T> {
+    await ctx.replyWithChatAction('typing').catch(() => {});
+    const interval = setInterval(() => {
+      ctx.replyWithChatAction('typing').catch(() => {});
+    }, 4000);
+    try {
+      return await fn();
+    } finally {
+      clearInterval(interval);
+    }
+  }
+
   // 7. Recebimento de Foto ou Documento PDF de Cupom Fiscal com Botões Inline de Confirmação & Compressão no Bucket FotosArgus
   bot.on(['message:photo', 'message:document'], async (ctx) => {
+    const startMs = Date.now();
+    const statusMsg = await ctx.reply(
+      '⏳ [1/3] Baixando imagem e procurando QR Code SEFAZ local...'
+    );
+
+    const updateStatus = async (text: string, kb?: InlineKeyboard) => {
+      try {
+        await ctx.api.editMessageText(
+          ctx.chat.id,
+          statusMsg.message_id,
+          text,
+          kb ? { reply_markup: kb } : undefined
+        );
+      } catch {
+        // Caso a mensagem não possa ser editada, envia nova
+        await ctx.reply(text, kb ? { reply_markup: kb } : undefined);
+      }
+    };
+
     try {
-      await ctx.reply(
-        '👁️ *Argus em ação:* Analisando imagem do cupom fiscal (buscando QR Code SEFAZ local via `sharp` + `jsqr` e preparando fallback `gemini-3.8-flash`)...',
-        { parse_mode: 'Markdown' }
-      );
+      await withTypingIndicator(ctx, async () => {
+        let timeoutHandle: NodeJS.Timeout | undefined;
+        const globalTimeout = new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  'Tempo limite de processamento (45s) excedido. Por favor, envie a imagem novamente.'
+                )
+              ),
+            45000
+          );
+        });
 
-      const file = await ctx.getFile();
-      const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-      const res = await fetch(fileUrl);
-      const buffer = Buffer.from(await res.arrayBuffer());
-      const mimeType = ctx.message?.document?.mime_type || 'image/jpeg';
+        try {
+          await Promise.race([
+            (async () => {
+              const file = await ctx.getFile();
+              const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+              const res = await fetch(fileUrl);
+              const buffer = Buffer.from(await res.arrayBuffer());
+              const mimeType = ctx.message?.document?.mime_type || 'image/jpeg';
 
-      let extracted: ExtractedReceiptData | null = null;
-      const qrData = await processor.decodeQrCodeFromImage(buffer);
-      if (qrData) {
-        extracted = await processor.scrapeSefazReceipt(qrData);
-      }
-      if (!extracted) {
-        extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
-      }
+              let extracted: ExtractedReceiptData | null = null;
+              const qrData = await processor.decodeQrCodeFromImage(buffer);
+              if (qrData) {
+                await updateStatus('🔍 [2/3] QR Code detectado! Consultando portal SEFAZ...');
+                extracted = await processor.scrapeSefazReceipt(qrData);
+              }
+              if (!extracted) {
+                await updateStatus(
+                  '🧠 [2/3] Extraindo cabeçalho e itens via Gemini Vision IA (aguarde ~3 a 10s)...'
+                );
+                extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
+              }
 
-      const tokenKey = `rcpt_${Date.now()}`;
-      pendingReceiptsCache.set(tokenKey, {
-        extracted,
-        rawBuffer: buffer,
-        mimeType
+              const tokenKey = `rcpt_${Date.now()}`;
+              pendingReceiptsCache.set(tokenKey, {
+                extracted,
+                rawBuffer: buffer,
+                mimeType
+              });
+
+              const kb = new InlineKeyboard()
+                .text('✅ Confirmar, Comprimir & Salvar', `confirm:${tokenKey}`)
+                .text('❌ Descartar', `cancel:${tokenKey}`);
+
+              const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
+              const topItemsPreview = extracted.items
+                .slice(0, 6)
+                .map(
+                  (it) =>
+                    `  • ${it.rawDescription} (${it.quantity} ${it.unitType}) — R$ ${it.totalPrice.toFixed(2)}`
+                )
+                .join('\n');
+              const moreItems =
+                extracted.items.length > 6
+                  ? `\n  ... e mais ${extracted.items.length - 6} item(ns)`
+                  : '';
+
+              const preview = [
+                `👁️ CUPOM FISCAL EXTRAÍDO EM ${elapsedSec}s (${extracted.extractionMethod})`,
+                `🏪 Mercado: ${extracted.storeTradingName} (${extracted.storeCnpj})`,
+                `💳 Pagamento: ${extracted.paymentMethod} | 💰 Total: R$ ${extracted.totalAmount.toFixed(2)}`,
+                `📦 Itens Identificados (${extracted.items.length}):`,
+                topItemsPreview + moreItems,
+                '',
+                `🗄️ Destino da Imagem: Bucket '${env.SUPABASE_STORAGE_BUCKET}' (WebP comprimido)`,
+                'Deseja gravar este cupom no schema argus, comprimir a foto no bucket FotosArgus e conciliar com o Open Finance?'
+              ].join('\n');
+
+              await updateStatus(preview, kb);
+            })(),
+            globalTimeout
+          ]);
+        } finally {
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+        }
       });
-
-      const kb = new InlineKeyboard()
-        .text('✅ Confirmar, Comprimir & Salvar', `confirm:${tokenKey}`)
-        .text('❌ Descartar', `cancel:${tokenKey}`);
-
-      const preview = [
-        `👁️ CUPOM FISCAL EXTRAÍDO PELO ARGUS (${extracted.extractionMethod})`,
-        `🏪 Mercado: ${extracted.storeTradingName} (${extracted.storeCnpj})`,
-        `💳 Pagamento: ${extracted.paymentMethod} | 💰 Total: R$ ${extracted.totalAmount.toFixed(2)}`,
-        `📦 Itens Identificados: ${extracted.items.length}`,
-        `🗄️ Destino da Imagem: Bucket '${env.SUPABASE_STORAGE_BUCKET}' (Compressão WebP inteligente)`,
-        '',
-        'Deseja gravar este cupom no schema argus, comprimir a foto no bucket FotosArgus e conciliar com o Open Finance?'
-      ].join('\n');
-
-      await ctx.reply(preview, { reply_markup: kb });
     } catch (err) {
       logger.error({ err }, '[ArgusBot] Erro ao processar foto/PDF');
-      await ctx.reply(
-        `⚠️ Argus informa: Não foi possível extrair o cupom: ${(err as Error).message.slice(0, 280)}`
+      await updateStatus(
+        `⚠️ Argus informa: Não foi possível concluir a leitura do cupom (${(err as Error).message.slice(0, 220)}). Você pode reenviar a foto agora.`
       );
     }
   });
@@ -424,12 +496,14 @@ export function createArgusBot(): Bot {
 
     if (action === 'quick') {
       await ctx.answerCallbackQuery().catch(() => {});
-      if (key === 'preco') await handlePreco({ reply: ctx.reply.bind(ctx), match: '' });
-      if (key === 'receita') await handleReceita({ reply: ctx.reply.bind(ctx) });
-      if (key === 'otimizar') await handleOtimizar({ reply: ctx.reply.bind(ctx) });
-      if (key === 'reconciliar') await handleReconciliar({ reply: ctx.reply.bind(ctx) });
-      if (key === 'dashboard') await handleDashboard({ reply: ctx.reply.bind(ctx) });
-      if (key === 'seguranca') await handleSeguranca({ reply: ctx.reply.bind(ctx) });
+      await withTypingIndicator(ctx, async () => {
+        if (key === 'preco') await handlePreco({ reply: ctx.reply.bind(ctx), match: '' });
+        if (key === 'receita') await handleReceita({ reply: ctx.reply.bind(ctx) });
+        if (key === 'otimizar') await handleOtimizar({ reply: ctx.reply.bind(ctx) });
+        if (key === 'reconciliar') await handleReconciliar({ reply: ctx.reply.bind(ctx) });
+        if (key === 'dashboard') await handleDashboard({ reply: ctx.reply.bind(ctx) });
+        if (key === 'seguranca') await handleSeguranca({ reply: ctx.reply.bind(ctx) });
+      });
       return;
     }
 
@@ -448,38 +522,48 @@ export function createArgusBot(): Bot {
       }
       pendingReceiptsCache.delete(key);
 
-      // 1. Comprime a foto para WebP e envia para o bucket FotosArgus no Supabase Storage
-      const uploadRes = await storage.compressAndUploadReceiptImage(
-        session.rawBuffer,
-        session.extracted.accessKey,
-        session.extracted.storeTradingName,
-        session.mimeType
-      );
+      await ctx
+        .answerCallbackQuery({ text: 'Comprimindo foto e gravando no banco...' })
+        .catch(() => {});
+      await ctx
+        .editMessageText(
+          '⏳ [3/3] Comprimindo foto para WebP no bucket FotosArgus, normalizando itens no schema argus e conciliando com Open Finance...'
+        )
+        .catch(() => {});
 
-      session.extracted.storageBucket = uploadRes.bucket;
-      session.extracted.storagePath = uploadRes.storagePath;
-      session.extracted.originalSizeBytes = uploadRes.originalBytes;
-      session.extracted.compressedSizeBytes = uploadRes.compressedBytes;
+      await withTypingIndicator(ctx, async () => {
+        // 1. Comprime a foto para WebP e envia para o bucket FotosArgus no Supabase Storage
+        const uploadRes = await storage.compressAndUploadReceiptImage(
+          session.rawBuffer,
+          session.extracted.accessKey,
+          session.extracted.storeTradingName,
+          session.mimeType
+        );
 
-      // 2. Grava cupom + itens normalizados no schema argus e concilia com Pluggy Open Finance
-      const result = await processor.ingestReceipt(session.extracted);
-      await reconciler.reconcileAndSyncSheets();
+        session.extracted.storageBucket = uploadRes.bucket;
+        session.extracted.storagePath = uploadRes.storagePath;
+        session.extracted.originalSizeBytes = uploadRes.originalBytes;
+        session.extracted.compressedSizeBytes = uploadRes.compressedBytes;
 
-      const shrinkMsg =
-        result.shrinkflationAlerts.length > 0
-          ? `\n🚨 ALERTA DE REDUFLAÇÃO: ${result.shrinkflationAlerts.join('; ')}`
-          : '';
+        // 2. Grava cupom + itens normalizados no schema argus e concilia com Pluggy Open Finance
+        const result = await processor.ingestReceipt(session.extracted);
+        await reconciler.reconcileAndSyncSheets();
 
-      const origKb = (uploadRes.originalBytes / 1024).toFixed(1);
-      const compKb = (uploadRes.compressedBytes / 1024).toFixed(1);
-      const storageMsg = uploadRes.uploaded
-        ? `\n🗄️ Foto arquivada em '${uploadRes.bucket}/${uploadRes.storagePath}' (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}% de espaço!)`
-        : `\n🗄️ Foto comprimida (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}%).`;
+        const shrinkMsg =
+          result.shrinkflationAlerts.length > 0
+            ? `\n🚨 ALERTA DE REDUFLAÇÃO: ${result.shrinkflationAlerts.join('; ')}`
+            : '';
 
-      await ctx.answerCallbackQuery({ text: 'Cupom gravado, comprimido e conciliado!' }).catch(() => {});
-      await ctx.editMessageText(
-        `✅ Argus auditou e persistiu o cupom! (${result.itemsProcessed} itens normalizados para g/ml/un).${storageMsg}${shrinkMsg}`
-      );
+        const origKb = (uploadRes.originalBytes / 1024).toFixed(1);
+        const compKb = (uploadRes.compressedBytes / 1024).toFixed(1);
+        const storageMsg = uploadRes.uploaded
+          ? `\n🗄️ Foto arquivada em '${uploadRes.bucket}/${uploadRes.storagePath}' (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}% de espaço!)`
+          : `\n🗄️ Foto comprimida (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}%).`;
+
+        await ctx.editMessageText(
+          `✅ Argus auditou e persistiu o cupom! (${result.itemsProcessed} itens normalizados para g/ml/un).${storageMsg}${shrinkMsg}`
+        );
+      });
     }
   });
 

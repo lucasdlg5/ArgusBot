@@ -1,5 +1,17 @@
+import dns from 'node:dns';
+import net from 'node:net';
 import 'dotenv/config';
 import { z } from 'zod';
+
+// Evita travamentos de 5 minutos (TypeError: fetch failed) no Windows quando a rota IPv6 da operadora falha
+try {
+  dns.setDefaultResultOrder('ipv4first');
+  if (typeof net.setDefaultAutoSelectFamily === 'function') {
+    net.setDefaultAutoSelectFamily(false);
+  }
+} catch {
+  // Ignorado caso não suportado pelo runtime
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -29,7 +41,7 @@ const envSchema = z.object({
 
   // Google Gemini (Zero-Cost Google AI Studio)
   GEMINI_API_KEY: z.string().default(''),
-  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
 
   // Supabase / PostgreSQL (Schema isolado: argus) & Storage Bucket (FotosArgus)
   SUPABASE_URL: z.string().default(''),
