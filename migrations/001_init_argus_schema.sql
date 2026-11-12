@@ -61,8 +61,17 @@ CREATE TABLE IF NOT EXISTS argus.receipts (
   ),
   access_key VARCHAR(44) UNIQUE NOT NULL,
   open_finance_tx_id TEXT UNIQUE,
-  reconciled BOOLEAN NOT NULL DEFAULT FALSE
+  reconciled BOOLEAN NOT NULL DEFAULT FALSE,
+  storage_bucket TEXT DEFAULT 'FotosArgus',
+  storage_path TEXT,
+  original_size_bytes INTEGER,
+  compressed_size_bytes INTEGER
 );
+
+ALTER TABLE argus.receipts ADD COLUMN IF NOT EXISTS storage_bucket TEXT DEFAULT 'FotosArgus';
+ALTER TABLE argus.receipts ADD COLUMN IF NOT EXISTS storage_path TEXT;
+ALTER TABLE argus.receipts ADD COLUMN IF NOT EXISTS original_size_bytes INTEGER;
+ALTER TABLE argus.receipts ADD COLUMN IF NOT EXISTS compressed_size_bytes INTEGER;
 
 -- 5. RECEIPT ITEMS (Itens dos Cupons com Preço Normalizado por g/ml/un)
 CREATE TABLE IF NOT EXISTS argus.receipt_items (

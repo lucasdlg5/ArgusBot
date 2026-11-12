@@ -7,8 +7,15 @@ import { ArgusReceiptProcessor, type ExtractedReceiptData } from '../services/Ar
 import { ArgusOptimizerService } from '../services/ArgusOptimizerService';
 import { ArgusReconciliationService } from '../services/ArgusReconciliationService';
 import { ArgusSecurityService } from '../services/ArgusSecurityService';
+import { ArgusStorageService } from '../services/ArgusStorageService';
 
-const pendingReceiptsCache = new Map<string, ExtractedReceiptData>();
+interface PendingReceiptSession {
+  extracted: ExtractedReceiptData;
+  rawBuffer: Buffer;
+  mimeType: string;
+}
+
+const pendingReceiptsCache = new Map<string, PendingReceiptSession>();
 
 export function createArgusBot(): Bot {
   const token = env.TELEGRAM_BOT_TOKEN || '0000000000:AAH_ARGUS_PLACEHOLDER_TOKEN_FOR_BUILD';
@@ -18,6 +25,7 @@ export function createArgusBot(): Bot {
   const optimizer = new ArgusOptimizerService();
   const reconciler = new ArgusReconciliationService();
   const security = new ArgusSecurityService();
+  const storage = new ArgusStorageService();
 
   bot.catch((err) => {
     logger.error({ err: err.error }, '[ArgusBot] Erro capturado pelo handler global');
@@ -95,20 +103,20 @@ export function createArgusBot(): Bot {
 
   // 1. /start — Apresentação oficial da persona Argus (@MonetaArgusBot - "O Olho Fiscal")
   bot.command('start', async (ctx) => {
-    const dashboardUrl = `http://localhost:${env.PORT || 3000}`;
+    const publicUrl = env.PUBLIC_DASHBOARD_URL.trim();
     const welcome = [
       '👁️ *Saudações. Eu sou o ARGUS (@MonetaArgusBot) — O Olho Fiscal do ecossistema Moneta.*',
       '',
       'Sou um auditor analítico, direto e afiado. Minha função é vigiar cada centavo do seu orçamento, caçar reduflação oculta nas embalagens, calcular o custo exato por grama de cada receita e decidir na ponta do lápis se compensa ir de carro ou de Uber.',
       '',
       '📋 *Comandos de Auditoria Disponíveis:*',
-      '• 📸 *Envie uma Foto ou PDF de Cupom Fiscal (NFC-e/SAT)* — Decodifico o QR Code localmente (`sharp` + `jsqr`), raspo a SEFAZ ou aciono o `gemini-2.5-flash`.',
+      '• 📸 *Envie uma Foto ou PDF de Cupom Fiscal (NFC-e/SAT)* — Decodifico o QR Code localmente (`sharp` + `jsqr`), raspo a SEFAZ ou aciono o `gemini-3.8-flash` e salvo a foto comprimida em WebP no bucket `FotosArgus`.',
       '• `/preco <item>` — Consulta o preço estimado atual por grama/ml em cada mercado e alerta se é hora de estocar.',
       '• `/receita` — Calcula o *Custo Proporcional por Marmita* vs. *Desembolso de Caixa (Embalagens Fechadas)* das suas receitas.',
       '• `/otimizar` — Roda o Simulador Logístico (Rota Real OSRM: Mercado Único vs. Compra Dividida | Gasolina vs. Uber com trava de R$ 25,00).',
       '• `/reconciliar` — Cruza cupons fiscais com transações do Pluggy Open Finance (`-2h` a `+48h`, `<= R$ 0,05`) e sincroniza a planilha *Argus Ledger*.',
       '• `/seguranca` — Exibe o relatório de tentativas de invasão e acessos bloqueados em `argus.security_audit_logs`.',
-      `• \`/dashboard\` — Painel interativo *Argus Vision BI*: ${dashboardUrl}`
+      '• `/dashboard` — Exibe o Resumo Executivo de BI (ou abre o *Argus Vision BI* na nuvem).'
     ].join('\n');
 
     const kb = new InlineKeyboard()
@@ -118,7 +126,12 @@ export function createArgusBot(): Bot {
       .text('🚗 Simular Rota (Carro vs Uber)', 'quick:otimizar')
       .text('🏦 Conciliar Open Finance', 'quick:reconciliar')
       .row()
-      .text('🛡️ Auditoria de Segurança (Ataques)', 'quick:seguranca');
+      .text('📊 Resumo BI', 'quick:dashboard')
+      .text('🛡️ Segurança', 'quick:seguranca');
+
+    if (publicUrl && /^https?:\/\//i.test(publicUrl) && !publicUrl.includes('localhost')) {
+      kb.row().url('🌐 Abrir Argus Vision BI Web', publicUrl);
+    }
 
     await ctx.reply(welcome, { parse_mode: 'Markdown', reply_markup: kb });
   });
@@ -251,14 +264,73 @@ export function createArgusBot(): Bot {
 
   bot.command('reconciliar', async (ctx) => handleReconciliar(ctx));
 
-  // 6. /dashboard — Link direto para o Argus Vision BI
-  bot.command('dashboard', async (ctx) => {
-    const url = `http://localhost:${env.PORT || 3000}`;
-    await ctx.reply(
-      `👁️ *Argus Vision BI — Market Arbitrage, Recipe Costing & Open Finance Intelligence*\n\n🚀 Acesse o painel executivo no navegador:\n${url}`,
-      { parse_mode: 'Markdown' }
-    );
-  });
+  // 6. /dashboard — Resumo Executivo de BI no Telegram + Link Cloud (Sem exibir localhost!)
+  async function handleDashboard(ctx: { reply: any }) {
+    const publicUrl = env.PUBLIC_DASHBOARD_URL.trim();
+    const [spendingRows, shrinkRows, lowRows] = await Promise.all([
+      queryArgus<{ spending_pillar: string; total_spent: string }>(
+        `SELECT spending_pillar, ROUND(SUM(total_spent), 2)::text AS total_spent
+         FROM argus.v_true_spending_breakdown
+         WHERE ref_month = (SELECT MAX(ref_month) FROM argus.v_true_spending_breakdown)
+         GROUP BY spending_pillar
+         ORDER BY SUM(total_spent) DESC`
+      ),
+      queryArgus<{ product_name: string; package_reduction_pct: string }>(
+        `SELECT DISTINCT product_name, package_reduction_pct::text
+         FROM argus.v_personal_inflation_and_shrinkflation
+         WHERE shrinkflation_detected = TRUE OR package_reduction_pct > 0`
+      ),
+      queryArgus<{ product_name: string; store_name: string; estimated_package_price: string }>(
+        `SELECT product_name, store_name, estimated_package_price::text
+         FROM argus.v_current_product_prices
+         WHERE estimated_package_price <= min_historical_price * 1.02
+         ORDER BY estimated_package_price ASC
+         LIMIT 5`
+      )
+    ]);
+
+    const lines = [
+      '📊 *ARGUS VISION BI — RESUMO EXECUTIVO DIRETO NO TELEGRAM*',
+      ''
+    ];
+
+    if (spendingRows.length > 0) {
+      lines.push('💳 *Desconstrução de Gastos (Mês Atual):*');
+      for (const s of spendingRows) {
+        lines.push(`  • ${s.spending_pillar}: *R$ ${Number(s.total_spent).toFixed(2)}*`);
+      }
+      lines.push('');
+    }
+
+    if (shrinkRows.length > 0) {
+      lines.push(`🚨 *Produtos com Reduflação Detectada (${shrinkRows.length}):*`);
+      for (const sh of shrinkRows) {
+        lines.push(`  • ${sh.product_name} (-${sh.package_reduction_pct}% na embalagem)`);
+      }
+      lines.push('');
+    }
+
+    if (lowRows.length > 0) {
+      lines.push('🔥 *Top Oportunidades na Mínima Histórica (Estocar):*');
+      for (const lw of lowRows) {
+        lines.push(`  • ${lw.product_name} (${lw.store_name}): *R$ ${Number(lw.estimated_package_price).toFixed(2)}*`);
+      }
+      lines.push('');
+    }
+
+    if (publicUrl && /^https?:\/\//i.test(publicUrl) && !publicUrl.includes('localhost')) {
+      const kb = new InlineKeyboard().url('🌐 Abrir Argus Vision BI na Nuvem', publicUrl);
+      lines.push(`🌐 *Painel Web Online:* ${publicUrl}`);
+      await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', reply_markup: kb });
+    } else {
+      lines.push(
+        '☁️ _Status Web UI: Quando você hospedar o Argus Vision BI (ex: Vercel/Render), basta preencher `PUBLIC_DASHBOARD_URL` no `.env` para habilitar o botão direto de WebApp aqui!_'
+      );
+      await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+    }
+  }
+
+  bot.command('dashboard', async (ctx) => handleDashboard(ctx));
 
   // 6.1. /seguranca — Relatório de Auditoria de Interações Bloqueadas & Tentativas de Ataque
   async function handleSeguranca(ctx: { reply: any }) {
@@ -290,11 +362,11 @@ export function createArgusBot(): Bot {
 
   bot.command('seguranca', async (ctx) => handleSeguranca(ctx));
 
-  // 7. Recebimento de Foto ou Documento PDF de Cupom Fiscal com Botões Inline de Confirmação
+  // 7. Recebimento de Foto ou Documento PDF de Cupom Fiscal com Botões Inline de Confirmação & Compressão no Bucket FotosArgus
   bot.on(['message:photo', 'message:document'], async (ctx) => {
     try {
       await ctx.reply(
-        '👁️ *Argus em ação:* Analisando imagem do cupom fiscal (buscando QR Code SEFAZ local via `sharp` + `jsqr` e preparando fallback `gemini-2.5-flash`)...',
+        '👁️ *Argus em ação:* Analisando imagem do cupom fiscal (buscando QR Code SEFAZ local via `sharp` + `jsqr` e preparando fallback `gemini-3.8-flash`)...',
         { parse_mode: 'Markdown' }
       );
 
@@ -302,6 +374,7 @@ export function createArgusBot(): Bot {
       const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
       const res = await fetch(fileUrl);
       const buffer = Buffer.from(await res.arrayBuffer());
+      const mimeType = ctx.message?.document?.mime_type || 'image/jpeg';
 
       let extracted: ExtractedReceiptData | null = null;
       const qrData = await processor.decodeQrCodeFromImage(buffer);
@@ -309,14 +382,18 @@ export function createArgusBot(): Bot {
         extracted = await processor.scrapeSefazReceipt(qrData);
       }
       if (!extracted) {
-        extracted = await processor.extractReceiptViaGeminiVision(buffer);
+        extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
       }
 
       const tokenKey = `rcpt_${Date.now()}`;
-      pendingReceiptsCache.set(tokenKey, extracted);
+      pendingReceiptsCache.set(tokenKey, {
+        extracted,
+        rawBuffer: buffer,
+        mimeType
+      });
 
       const kb = new InlineKeyboard()
-        .text('✅ Confirmar & Auditar Cupom', `confirm:${tokenKey}`)
+        .text('✅ Confirmar, Comprimir & Salvar', `confirm:${tokenKey}`)
         .text('❌ Descartar', `cancel:${tokenKey}`);
 
       const preview = [
@@ -324,8 +401,9 @@ export function createArgusBot(): Bot {
         `🏪 Mercado: ${extracted.storeTradingName} (${extracted.storeCnpj})`,
         `💳 Pagamento: ${extracted.paymentMethod} | 💰 Total: R$ ${extracted.totalAmount.toFixed(2)}`,
         `📦 Itens Identificados: ${extracted.items.length}`,
+        `🗄️ Destino da Imagem: Bucket '${env.SUPABASE_STORAGE_BUCKET}' (Compressão WebP inteligente)`,
         '',
-        'Deseja gravar este cupom no schema argus e conciliar com o Open Finance?'
+        'Deseja gravar este cupom no schema argus, comprimir a foto no bucket FotosArgus e conciliar com o Open Finance?'
       ].join('\n');
 
       await ctx.reply(preview, { reply_markup: kb });
@@ -348,6 +426,7 @@ export function createArgusBot(): Bot {
       if (key === 'receita') await handleReceita({ reply: ctx.reply.bind(ctx) });
       if (key === 'otimizar') await handleOtimizar({ reply: ctx.reply.bind(ctx) });
       if (key === 'reconciliar') await handleReconciliar({ reply: ctx.reply.bind(ctx) });
+      if (key === 'dashboard') await handleDashboard({ reply: ctx.reply.bind(ctx) });
       if (key === 'seguranca') await handleSeguranca({ reply: ctx.reply.bind(ctx) });
       return;
     }
@@ -360,14 +439,28 @@ export function createArgusBot(): Bot {
     }
 
     if (action === 'confirm') {
-      const receipt = pendingReceiptsCache.get(key);
-      if (!receipt) {
+      const session = pendingReceiptsCache.get(key);
+      if (!session) {
         await ctx.answerCallbackQuery({ text: 'Sessão expirada.' }).catch(() => {});
         return;
       }
       pendingReceiptsCache.delete(key);
 
-      const result = await processor.ingestReceipt(receipt);
+      // 1. Comprime a foto para WebP e envia para o bucket FotosArgus no Supabase Storage
+      const uploadRes = await storage.compressAndUploadReceiptImage(
+        session.rawBuffer,
+        session.extracted.accessKey,
+        session.extracted.storeTradingName,
+        session.mimeType
+      );
+
+      session.extracted.storageBucket = uploadRes.bucket;
+      session.extracted.storagePath = uploadRes.storagePath;
+      session.extracted.originalSizeBytes = uploadRes.originalBytes;
+      session.extracted.compressedSizeBytes = uploadRes.compressedBytes;
+
+      // 2. Grava cupom + itens normalizados no schema argus e concilia com Pluggy Open Finance
+      const result = await processor.ingestReceipt(session.extracted);
       await reconciler.reconcileAndSyncSheets();
 
       const shrinkMsg =
@@ -375,9 +468,15 @@ export function createArgusBot(): Bot {
           ? `\n🚨 ALERTA DE REDUFLAÇÃO: ${result.shrinkflationAlerts.join('; ')}`
           : '';
 
-      await ctx.answerCallbackQuery({ text: 'Cupom gravado e conciliado!' }).catch(() => {});
+      const origKb = (uploadRes.originalBytes / 1024).toFixed(1);
+      const compKb = (uploadRes.compressedBytes / 1024).toFixed(1);
+      const storageMsg = uploadRes.uploaded
+        ? `\n🗄️ Foto arquivada em '${uploadRes.bucket}/${uploadRes.storagePath}' (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}% de espaço!)`
+        : `\n🗄️ Foto comprimida (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}%).`;
+
+      await ctx.answerCallbackQuery({ text: 'Cupom gravado, comprimido e conciliado!' }).catch(() => {});
       await ctx.editMessageText(
-        `✅ Argus auditou e persistiu o cupom! (${result.itemsProcessed} itens normalizados para g/ml/un).${shrinkMsg}`
+        `✅ Argus auditou e persistiu o cupom! (${result.itemsProcessed} itens normalizados para g/ml/un).${storageMsg}${shrinkMsg}`
       );
     }
   });

@@ -31,11 +31,15 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().default(''),
   GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
 
-  // Supabase / PostgreSQL (Schema isolado: argus)
+  // Supabase / PostgreSQL (Schema isolado: argus) & Storage Bucket (FotosArgus)
   SUPABASE_URL: z.string().default(''),
   SUPABASE_SERVICE_ROLE_KEY: z.string().default(''),
+  SUPABASE_STORAGE_BUCKET: z.string().default('FotosArgus'),
   DATABASE_URL: z.string().default(''),
   DIRECT_URL: z.string().default(''),
+
+  // URL pública do Dashboard Web (quando hospedado em produção; vazio se ainda não hospedado)
+  PUBLIC_DASHBOARD_URL: z.string().default(''),
 
   // Open Finance (Pluggy API - Herdado de MonetaSync)
   PLUGGY_CLIENT_ID: z.string().default(''),

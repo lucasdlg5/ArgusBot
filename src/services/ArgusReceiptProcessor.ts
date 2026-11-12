@@ -33,6 +33,10 @@ export interface ExtractedReceiptData {
   accessKey: string;
   items: ExtractedReceiptItemInput[];
   extractionMethod: 'QR_SEFAZ_SCRAPER' | 'GEMINI_VISION_2_5_FLASH' | 'STRUCTURED_INPUT';
+  storageBucket?: string;
+  storagePath?: string;
+  originalSizeBytes?: number;
+  compressedSizeBytes?: number;
 }
 
 export interface NormalizedItemInfo {
@@ -530,11 +534,12 @@ export class ArgusReceiptProcessor {
       );
       const storeId = storeRes.rows[0].id;
 
-      // 2. Insere o cabeçalho do cupom
+      // 2. Insere o cabeçalho do cupom (incluindo referência ao arquivo comprimido no bucket FotosArgus)
       const receiptRes = await client.query<{ id: string }>(
         `INSERT INTO argus.receipts (
-           store_id, purchase_date, total_amount, discount_amount, payment_method, access_key, reconciled
-         ) VALUES ($1, $2, $3, $4, $5, $6, FALSE)
+           store_id, purchase_date, total_amount, discount_amount, payment_method, access_key, reconciled,
+           storage_bucket, storage_path, original_size_bytes, compressed_size_bytes
+         ) VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9, $10)
          RETURNING id`,
         [
           storeId,
@@ -542,7 +547,11 @@ export class ArgusReceiptProcessor {
           data.totalAmount,
           data.discountAmount,
           data.paymentMethod,
-          data.accessKey
+          data.accessKey,
+          data.storageBucket || 'FotosArgus',
+          data.storagePath || null,
+          data.originalSizeBytes || null,
+          data.compressedSizeBytes || null
         ]
       );
       const receiptId = receiptRes.rows[0].id;
