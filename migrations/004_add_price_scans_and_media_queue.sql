@@ -31,9 +31,13 @@ CREATE TABLE IF NOT EXISTS argus.media_processing_queue (
   confidence_warnings TEXT[] NOT NULL DEFAULT '{}',
   items_extracted_count INT NOT NULL DEFAULT 0,
   result_summary JSONB,
+  raw_ai_response JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   processed_at TIMESTAMPTZ
 );
+
+ALTER TABLE argus.media_processing_queue
+  ADD COLUMN IF NOT EXISTS raw_ai_response JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_argus_media_queue_status_retry
   ON argus.media_processing_queue (status, next_retry_at);
