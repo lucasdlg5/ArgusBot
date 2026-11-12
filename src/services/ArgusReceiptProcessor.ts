@@ -22,6 +22,23 @@ export interface ExtractedReceiptItemInput {
   totalPrice: number;
 }
 
+export type DetectedDocumentCategory =
+  | 'FISCAL_RECEIPT'
+  | 'MARKET_FLYER'
+  | 'SHELF_TAG'
+  | 'UNCERTAIN';
+
+export interface DocumentClassificationVerdict {
+  decision: 'DEFINITE_RECEIPT' | 'DEFINITE_FLYER_OR_SHELF' | 'UNCERTAIN_ASK_USER';
+  category: DetectedDocumentCategory;
+  confidencePct: number;
+  receiptScore: number;
+  flyerScore: number;
+  colorSaturationScore: number;
+  detectedFeatures: string[];
+  summaryReason: string;
+}
+
 export interface ExtractedReceiptData {
   storeCnpj: string;
   storeRawName: string;
@@ -43,6 +60,14 @@ export interface ExtractedReceiptData {
   storagePath?: string;
   originalSizeBytes?: number;
   compressedSizeBytes?: number;
+  // Metadados de Classificação Multimodal (Nota Fiscal vs. Flyer/Panfleto/Gôndola)
+  detectedDocumentType?: DetectedDocumentCategory;
+  classificationConfidencePct?: number;
+  hasPrintedTotalLine?: boolean;
+  hasPaymentOrChangeLine?: boolean;
+  hasTabularQtyUnitColumns?: boolean;
+  hasPromotionalFlyerMarkers?: boolean;
+  classificationReasoning?: string;
 }
 
 export interface DuplicateVerificationResult {
@@ -218,26 +243,24 @@ export class ArgusReceiptProcessor {
       !cleanKeyDigits.endsWith('9999999999') &&
       !cleanKeyDigits.endsWith('0000000000');
 
-    // Extrai/normaliza identificador secundário (COO / Extrato / Nº do Cupom ou carimbo de data+hora exato impresso)
-    const rawReceiptNum = (raw.receiptNumber || '').trim();
+    // Extrai/normaliza identificador secundário (COO / Extrato / Nº do Cupom / Pedido)
+    const rawReceiptNum = (raw.receiptNumber || '')
+      .trim()
+      .replace(/^(?:pedido|coo|extrato|doc|cupom|ccf|n[ºo°]?)\s*[:#\-]?\s*/i, '')
+      .trim();
     const receiptNumber =
       rawReceiptNum && !/^(null|undefined|n\/a|none|0+)$/i.test(rawReceiptNum)
         ? rawReceiptNum.slice(0, 64)
         : null;
 
-    // Constrói a assinatura semântica imutável do conteúdo (Mercado + Total + Preços ordenados dos itens)
-    const normStoreKey = storeTradingName
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, '');
-
+    // Constrói a assinatura semântica imutável do conteúdo (Total + Quantidade de itens + Preços ordenados dos itens)
+    // Agnóstica ao nome da loja no cabeçalho para detectar a mesma nota mesmo quando o topo está cortado na foto!
     const itemPricesSignature = [...(raw.items || [])]
       .map((it) => `${Number(it.quantity || 1).toFixed(2)}x${Number(it.totalPrice || 0).toFixed(2)}`)
       .sort()
       .join('|');
 
-    const fingerprintPayload = `${normStoreKey}::${totalAmount.toFixed(2)}::${raw.items?.length || 0}::${itemPricesSignature}`;
+    const fingerprintPayload = `${totalAmount.toFixed(2)}::${raw.items?.length || 0}::${itemPricesSignature}`;
     const contentFingerprint = crypto
       .createHash('sha256')
       .update(fingerprintPayload)
@@ -308,45 +331,79 @@ export class ArgusReceiptProcessor {
       }
     }
 
-    // Camada 3: Número do Cupom / COO / Extrato + Mesmo Mercado/CNPJ + Mesmo Valor Total
+    // Camada 3: Número do Cupom / COO / Extrato / Pedido + Mesmo Valor Total
+    // (Mesmo se o cabeçalho do mercado foi cortado em um dos ângulos da foto)
     if (data.receiptNumber) {
+      const normalizedCoo = data.receiptNumber
+        .replace(/^(?:pedido|coo|extrato|doc|cupom|ccf|n[ºo°]?)\s*[:#\-]?\s*/i, '')
+        .trim();
+
       const byCoo = await queryArgus<{
         id: string;
+        store_id: string;
+        store_cnpj: string;
         trading_name: string;
         total_amount: string;
         purchase_date: string;
       }>(
-        `SELECT r.id, s.trading_name, r.total_amount::text, r.purchase_date::text
+        `SELECT r.id, r.store_id, s.cnpj AS store_cnpj, s.trading_name, r.total_amount::text, r.purchase_date::text
          FROM argus.receipts r
          JOIN argus.stores s ON s.id = r.store_id
-         WHERE r.receipt_number = $1
-           AND ABS(r.total_amount - $2) <= 0.05
-           AND (s.cnpj = $3 OR UPPER(s.trading_name) = UPPER($4))
+         WHERE (
+           r.receipt_number = $1
+           OR r.receipt_number = $2
+           OR REGEXP_REPLACE(COALESCE(r.receipt_number, ''), '^(pedido|coo|extrato|doc|cupom|ccf|n[ºo°]?)\\s*[:#\\-]?\\s*', '', 'i') = $2
+         )
+           AND ABS(r.total_amount - $3) <= 0.05
          LIMIT 1`,
-        [data.receiptNumber, data.totalAmount, data.storeCnpj, data.storeTradingName]
+        [data.receiptNumber, normalizedCoo, data.totalAmount]
       );
       if (byCoo.length > 0) {
+        // Se a nota anterior foi salva a partir de um ângulo com topo cortado (CNPJ sintético 99.*)
+        // e este novo ângulo traz o CNPJ real de 14 dígitos e nome real da loja, enriquece o cadastro da loja!
+        if (
+          byCoo[0].store_cnpj.startsWith('99.') &&
+          data.storeCnpj &&
+          !data.storeCnpj.startsWith('99.') &&
+          !data.storeCnpj.startsWith('00.')
+        ) {
+          await queryArgus(
+            `UPDATE argus.stores
+             SET cnpj = $1, raw_name = $2, trading_name = $3
+             WHERE id = $4
+               AND NOT EXISTS (SELECT 1 FROM argus.stores s2 WHERE s2.cnpj = $1 AND s2.id <> $4)`,
+            [data.storeCnpj, data.storeRawName, data.storeTradingName, byCoo[0].store_id]
+          ).catch(() => undefined);
+        }
+
         return {
           isDuplicate: true,
           layer: 'LAYER_3_RECEIPT_NUMBER_COO',
-          reason: `Camada 3 (Identificador de Cupom/COO Nº ${data.receiptNumber}): Documento já auditado para ${byCoo[0].trading_name}.`,
+          reason: `Camada 3 (Identificador de Cupom/Pedido Nº ${normalizedCoo}): Mesma nota fiscal detectada (mesmo Pedido/COO e mesmo Total R$ ${Number(
+            byCoo[0].total_amount
+          ).toFixed(2)}), mesmo enviada de outro ângulo.`,
           existingReceiptId: byCoo[0].id,
-          existingStoreName: byCoo[0].trading_name,
+          existingStoreName:
+            !byCoo[0].store_cnpj.startsWith('99.') || data.storeCnpj.startsWith('99.')
+              ? byCoo[0].trading_name
+              : data.storeTradingName,
           existingTotalAmount: Number(byCoo[0].total_amount),
           existingPurchaseDate: byCoo[0].purchase_date
         };
       }
     }
 
-    // Camada 4: Content Fingerprint (Assinatura Semântica de Mercado + Total + Preços dos Itens)
+    // Camada 4: Content Fingerprint (Assinatura Semântica de Total + Quantidades e Preços dos Itens)
     if (data.contentFingerprint) {
       const byFp = await queryArgus<{
         id: string;
+        store_id: string;
+        store_cnpj: string;
         trading_name: string;
         total_amount: string;
         purchase_date: string;
       }>(
-        `SELECT r.id, s.trading_name, r.total_amount::text, r.purchase_date::text
+        `SELECT r.id, r.store_id, s.cnpj AS store_cnpj, s.trading_name, r.total_amount::text, r.purchase_date::text
          FROM argus.receipts r
          JOIN argus.stores s ON s.id = r.store_id
          WHERE r.content_fingerprint = $1 OR r.access_key = $2
@@ -354,11 +411,26 @@ export class ArgusReceiptProcessor {
         [data.contentFingerprint, data.accessKey]
       );
       if (byFp.length > 0) {
+        if (
+          byFp[0].store_cnpj.startsWith('99.') &&
+          data.storeCnpj &&
+          !data.storeCnpj.startsWith('99.') &&
+          !data.storeCnpj.startsWith('00.')
+        ) {
+          await queryArgus(
+            `UPDATE argus.stores
+             SET cnpj = $1, raw_name = $2, trading_name = $3
+             WHERE id = $4
+               AND NOT EXISTS (SELECT 1 FROM argus.stores s2 WHERE s2.cnpj = $1 AND s2.id <> $4)`,
+            [data.storeCnpj, data.storeRawName, data.storeTradingName, byFp[0].store_id]
+          ).catch(() => undefined);
+        }
+
         return {
           isDuplicate: true,
           layer: 'LAYER_4_CONTENT_FINGERPRINT',
           reason:
-            'Camada 4 (Fingerprint Semântico de Conteúdo): Cupom sem chave SEFAZ oficial, mas com idêntica assinatura de estabelecimento, total e lista de itens.',
+            'Camada 4 (Fingerprint Semântico dos Itens e Total): Cupom sem chave SEFAZ oficial, mas com idêntica assinatura matemática de itens, pesos e valor total.',
           existingReceiptId: byFp[0].id,
           existingStoreName: byFp[0].trading_name,
           existingTotalAmount: Number(byFp[0].total_amount),
@@ -367,45 +439,289 @@ export class ArgusReceiptProcessor {
       }
     }
 
-    // Camada 5: Heurística de Colisão de Compra (Mesmo Mercado + Mesmo Valor Total Exato + Mesma Quantidade de Itens)
-    const byCollision = await queryArgus<{
-      id: string;
-      trading_name: string;
-      total_amount: string;
-      purchase_date: string;
-      items_count: number;
-    }>(
-      `SELECT
-         r.id,
-         s.trading_name,
-         r.total_amount::text,
-         r.purchase_date::text,
-         (SELECT count(*)::int FROM argus.receipt_items ri WHERE ri.receipt_id = r.id) AS items_count
-       FROM argus.receipts r
-       JOIN argus.stores s ON s.id = r.store_id
-       WHERE (s.cnpj = $1 OR UPPER(s.trading_name) = UPPER($2))
-         AND ABS(r.total_amount - $3) <= 0.01
-       LIMIT 5`,
-      [data.storeCnpj, data.storeTradingName, data.totalAmount]
-    );
+    // Camada 5: Heurística de Colisão de Compra (Mesmo Valor Total Exato > 0 + Mesma Quantidade Exata de Itens >= 4)
+    if (data.totalAmount > 0 && data.items.length >= 4) {
+      const byCollision = await queryArgus<{
+        id: string;
+        trading_name: string;
+        total_amount: string;
+        purchase_date: string;
+        items_count: number;
+      }>(
+        `SELECT
+           r.id,
+           s.trading_name,
+           r.total_amount::text,
+           r.purchase_date::text,
+           (SELECT count(*)::int FROM argus.receipt_items ri WHERE ri.receipt_id = r.id) AS items_count
+         FROM argus.receipts r
+         JOIN argus.stores s ON s.id = r.store_id
+         WHERE ABS(r.total_amount - $1) <= 0.01
+         LIMIT 5`,
+        [data.totalAmount]
+      );
 
-    for (const row of byCollision) {
-      if (Math.abs(row.items_count - data.items.length) <= 1) {
-        return {
-          isDuplicate: true,
-          layer: 'LAYER_5_STORE_TOTAL_ITEMS_COLLISION',
-          reason: `Camada 5 (Colisão de Compra): Já existe uma nota no mercado ${row.trading_name} com o valor exato de R$ ${Number(
-            row.total_amount
-          ).toFixed(2)} e ${row.items_count} itens.`,
-          existingReceiptId: row.id,
-          existingStoreName: row.trading_name,
-          existingTotalAmount: Number(row.total_amount),
-          existingPurchaseDate: row.purchase_date
-        };
+      for (const row of byCollision) {
+        if (row.items_count === data.items.length) {
+          return {
+            isDuplicate: true,
+            layer: 'LAYER_5_STORE_TOTAL_ITEMS_COLLISION',
+            reason: `Camada 5 (Colisão de Compra): Já existe uma nota registrada (${row.trading_name}) com o valor exato de R$ ${Number(
+              row.total_amount
+            ).toFixed(2)} e os mesmos ${row.items_count} itens.`,
+            existingReceiptId: row.id,
+            existingStoreName: row.trading_name,
+            existingTotalAmount: Number(row.total_amount),
+            existingPurchaseDate: row.purchase_date
+          };
+        }
       }
     }
 
     return { isDuplicate: false, layer: 'NONE', reason: '' };
+  }
+
+  /**
+   * Verifica se o conteúdo de um QR Code pertence de fato à SEFAZ (NFC-e / SAT / NF-e)
+   * ou se é apenas um QR Code promocional de Flyer/Encarte ("Baixe nosso App", Instagram, Linktree, etc.).
+   */
+  isGenuineSefazQrUrl(qrData: string | null | undefined): boolean {
+    if (!qrData) return false;
+    const clean = qrData.trim();
+    if (/fazenda|sefaz|nfce|nfe|sat\.|cfe|portalcf|dec\.fazenda/i.test(clean)) {
+      return true;
+    }
+    const digitsOnly = clean.replace(/\D/g, '');
+    if (digitsOnly.length >= 44 && /\d{44}/.test(clean)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Analisa o perfil cromático (saturação RGB) da imagem via `sharp`:
+   * - Cupons fiscais térmicos têm papel monocromático (branco/cinza/amarelo pálido e letras pretas) -> baixa saturação (< 22) e poucos pixels vivos (< 12%).
+   * - Flyers/Encartes de supermercado (ex: Clube NE / Quarta Verde / Ofertas) têm fundos vermelhos, amarelos, verdes e fotos coloridas -> alta saturação (>= 26) e muitos pixels vivos (>= 18%).
+   */
+  async analyzeImageColorSaturation(imageBuffer: Buffer): Promise<{
+    meanChannelDiff: number;
+    vividPixelPct: number;
+    isHighlyColorful: boolean;
+    isMonochromeThermal: boolean;
+  }> {
+    try {
+      const { data, info } = await sharp(imageBuffer)
+        .resize(64, 64, { fit: 'fill' })
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const pixelCount = info.width * info.height;
+      let totalDiff = 0;
+      let vividPixels = 0;
+
+      for (let i = 0; i < data.length; i += 3) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const diff = max - min;
+        totalDiff += diff;
+        if (diff >= 55 && max >= 75) {
+          vividPixels++;
+        }
+      }
+
+      const meanChannelDiff = Number((totalDiff / Math.max(1, pixelCount)).toFixed(1));
+      const vividPixelPct = Number(((vividPixels / Math.max(1, pixelCount)) * 100).toFixed(1));
+
+      return {
+        meanChannelDiff,
+        vividPixelPct,
+        isHighlyColorful: meanChannelDiff >= 26 || vividPixelPct >= 18,
+        isMonochromeThermal: meanChannelDiff <= 19 && vividPixelPct <= 8
+      };
+    } catch {
+      return {
+        meanChannelDiff: 20,
+        vividPixelPct: 10,
+        isHighlyColorful: false,
+        isMonochromeThermal: false
+      };
+    }
+  }
+
+  /**
+   * Classificador Multicritério (Visual + Estrutural + Fiscal) que diferencia:
+   * - `DEFINITE_RECEIPT`: Cupom Fiscal / Pedido de Caixa (ex: Mercado Souza)
+   * - `DEFINITE_FLYER_OR_SHELF`: Flyer / Panfleto de Ofertas / Etiqueta de Gôndola (ex: Nova Época / Clube NE)
+   * - `UNCERTAIN_ASK_USER`: Caso fronteiriço onde o bot exibe as características detectadas e pergunta ao usuário.
+   */
+  async evaluateDocumentClassification(
+    extracted: ExtractedReceiptData,
+    imageBuffer: Buffer,
+    qrData?: string | null
+  ): Promise<DocumentClassificationVerdict> {
+    const colorStats = await this.analyzeImageColorSaturation(imageBuffer);
+    let receiptScore = 0;
+    let flyerScore = 0;
+    const detectedFeatures: string[] = [];
+
+    // 1. Sinais de QR Code (SEFAZ vs. App Promocional de Encarte)
+    if (qrData) {
+      if (this.isGenuineSefazQrUrl(qrData)) {
+        receiptScore += 60;
+        detectedFeatures.push('QR Code oficial SEFAZ/NFC-e validado');
+      } else {
+        flyerScore += 40;
+        detectedFeatures.push(`QR Code promocional (não-SEFAZ: "${qrData.slice(0, 38)}...") típico de encarte/app`);
+      }
+    }
+
+    // 2. Chave SEFAZ de 44 dígitos real
+    if (extracted.hasOfficialAccessKey) {
+      receiptScore += 55;
+      detectedFeatures.push('Chave de Acesso SEFAZ de 44 dígitos presente');
+    }
+
+    // 3. Perfil Cromático (Papel Térmico Monocromático vs. Arte Gráfica Colorida de Flyer)
+    if (colorStats.isHighlyColorful) {
+      flyerScore += 32;
+      detectedFeatures.push(
+        `Alta saturação de cores RGB (${colorStats.vividPixelPct}% pixels vivos / Δ=${colorStats.meanChannelDiff}) típica de Flyer/Encarte ou Gôndola`
+      );
+    } else if (colorStats.isMonochromeThermal) {
+      receiptScore += 24;
+      detectedFeatures.push(
+        `Papel monocromático de baixa saturação (${colorStats.vividPixelPct}% pixels vivos) típico de bobina térmica`
+      );
+    }
+
+    // 4. Classificação direta da Visão Multimodal Gemini
+    if (extracted.detectedDocumentType === 'MARKET_FLYER') {
+      flyerScore += 45;
+      detectedFeatures.push('Layout visual de Panfleto/Jornal de Ofertas (grade de produtos com selos de preço)');
+    } else if (extracted.detectedDocumentType === 'SHELF_TAG') {
+      flyerScore += 45;
+      detectedFeatures.push('Layout visual de Etiqueta de Gôndola / Prateleira de supermercado');
+    } else if (extracted.detectedDocumentType === 'FISCAL_RECEIPT') {
+      receiptScore += 35;
+      detectedFeatures.push('Layout estrutural de Cupom Fiscal / Pedido de Caixa');
+    }
+
+    // 5. Marcadores promocionais de Flyer (Clube NE, Quarta Verde, Ofertas Válidas, Imagens Ilustrativas, Loja 001/002/003)
+    const rawCombinedText = `${extracted.storeRawName} ${extracted.storeTradingName} ${extracted.storeAddress} ${extracted.classificationReasoning || ''}`;
+    const hasFlyerKeywords =
+      extracted.hasPromotionalFlyerMarkers === true ||
+      /clube\s+ne|quarta\s+verde|quinta\s+vermelha|ofertas\s+v[aá]lidas|imagens\s+ilustrativas|enquanto\s+durarem|baixe\s+j[aá]\s+o\s+nosso\s+app|jornal\s+de\s+ofertas|encarte|folheto|loja\s+001.*loja\s+002/i.test(
+        rawCombinedText
+      );
+    if (hasFlyerKeywords) {
+      flyerScore += 45;
+      detectedFeatures.push('Termos promocionais de encarte detectados ("Ofertas Válidas / Clube / Imagens Ilustrativas")');
+    }
+
+    // 6. Presença de linha impressa de TOTAL + Pagamento/Troco vs. Ausência de totalização de caixa
+    if (extracted.hasPrintedTotalLine === true && extracted.totalAmount > 0) {
+      receiptScore += 25;
+      detectedFeatures.push(`Linha impressa de TOTAL de caixa (R$ ${extracted.totalAmount.toFixed(2)})`);
+    } else if (extracted.hasPrintedTotalLine === false || extracted.totalAmount <= 0) {
+      flyerScore += 30;
+      detectedFeatures.push('Ausência de linha impressa de TOTAL a pagar no documento');
+    }
+
+    if (extracted.hasPaymentOrChangeLine === true) {
+      receiptScore += 25;
+      detectedFeatures.push(' Meio de pagamento / TROCO / Vendedor impresso no rodapé');
+    }
+
+    // 7. Colunas tabulares (Desc | Qtd | Unit | Total) e pesos fracionados de balança (ex: 0,206 kg, 0,414 kg)
+    const hasFractionalWeights = (extracted.items || []).some((it) => {
+      const q = Number(it.quantity || 1);
+      return q > 0 && Math.abs(q - Math.round(q)) > 0.001;
+    });
+    if (hasFractionalWeights) {
+      receiptScore += 30;
+      detectedFeatures.push('Itens pesados na balança do caixa com quantidade fracionada (ex: 0,206 kg / 0,414 kg)');
+    }
+
+    if (extracted.hasTabularQtyUnitColumns === true) {
+      receiptScore += 20;
+      detectedFeatures.push('Tabela sequencial com colunas Desc. do Produto | Qtd | Unit | Total');
+    }
+
+    // 8. Padrão de catálogo: muitos itens (>= 12) onde 100% têm quantidade inteira igual a 1 e sem CNPJ real impresso
+    const allQtyOne =
+      (extracted.items || []).length >= 8 &&
+      (extracted.items || []).every((it) => Number(it.quantity || 1) === 1);
+    const hasSyntheticCnpj =
+      !extracted.storeCnpj ||
+      extracted.storeCnpj.startsWith('99.') ||
+      extracted.storeCnpj.startsWith('00.');
+
+    if (allQtyOne && hasSyntheticCnpj) {
+      flyerScore += 25;
+      detectedFeatures.push(
+        `Grade de catálogo (${extracted.items.length} produtos todos com Qtd = 1 e sem CNPJ fiscal impresso)`
+      );
+    }
+
+    // 9. Número de Pedido / COO / Extrato impresso
+    if (extracted.receiptNumber) {
+      receiptScore += 20;
+      detectedFeatures.push(`Identificador de Pedido/Cupom impresso (Nº ${extracted.receiptNumber})`);
+    }
+
+    const diff = Math.abs(receiptScore - flyerScore);
+    const maxScore = Math.max(receiptScore, flyerScore, 1);
+    const confidencePct = Math.min(99, Math.max(50, Math.round(50 + (diff / maxScore) * 49)));
+
+    // Regra de decisão com zona de incerteza explícita
+    if (flyerScore >= receiptScore + 25 && flyerScore >= 45) {
+      const category: DetectedDocumentCategory =
+        extracted.detectedDocumentType === 'SHELF_TAG' ? 'SHELF_TAG' : 'MARKET_FLYER';
+      return {
+        decision: 'DEFINITE_FLYER_OR_SHELF',
+        category,
+        confidencePct,
+        receiptScore,
+        flyerScore,
+        colorSaturationScore: colorStats.meanChannelDiff,
+        detectedFeatures,
+        summaryReason:
+          extracted.classificationReasoning ||
+          'Identificado automaticamente como Panfleto/Encarte de Ofertas ou Gôndola.'
+      };
+    }
+
+    if (receiptScore >= flyerScore + 25 && receiptScore >= 45) {
+      return {
+        decision: 'DEFINITE_RECEIPT',
+        category: 'FISCAL_RECEIPT',
+        confidencePct,
+        receiptScore,
+        flyerScore,
+        colorSaturationScore: colorStats.meanChannelDiff,
+        detectedFeatures,
+        summaryReason:
+          extracted.classificationReasoning ||
+          'Identificado automaticamente como Cupom Fiscal / Pedido de Compra.'
+      };
+    }
+
+    return {
+      decision: 'UNCERTAIN_ASK_USER',
+      category: 'UNCERTAIN',
+      confidencePct,
+      receiptScore,
+      flyerScore,
+      colorSaturationScore: colorStats.meanChannelDiff,
+      detectedFeatures,
+      summaryReason:
+        extracted.classificationReasoning ||
+        'A imagem apresenta características mistas ou parciais entre Nota Fiscal e Flyer/Gôndola.'
+    };
   }
 
   /**
@@ -614,7 +930,19 @@ export class ArgusReceiptProcessor {
             }
           },
           {
-            text: 'Você é o Argus (@MonetaArgusBot), auditor fiscal. Extraia o cabeçalho e todos os itens deste cupom fiscal brasileiro (NFC-e / SAT / Cupom de Mercado). Se a chave de acesso de 44 dígitos não estiver visível na foto, retorne string vazia em accessKey e extraia em receiptNumber qualquer número fixo do documento (COO, Extrato, Pedido, Caixa ou Data+Hora exata impressa no cabeçalho).'
+            text: `Você é o Argus (@MonetaArgusBot), auditor fiscal e classificador multimodal de documentos de supermercado.
+PRIMEIRA TAREFA (CLASSIFICAÇÃO):
+Classifique a imagem em detectedDocumentType:
+- 'FISCAL_RECEIPT': Cupom fiscal térmico, NFC-e, SAT ou Pedido de Caixa (papel monocromático, colunas Desc/Qtd/Unit/Total, linha impressa de TOTAL a pagar, meio de pagamento/TROCO, número de Pedido/COO). Mesmo se o topo com nome do mercado ou CNPJ estiver cortado na foto, se tiver tabela de itens comprados + Pedido + TOTAL + CREDITO/TROCO, é 'FISCAL_RECEIPT'!
+- 'MARKET_FLYER': Panfleto, jornal de ofertas, encarte promocional ou post de Instagram de supermercado (arte gráfica colorida, grade de fotos de produtos com selos amarelos/vermelhos de preço, "Clube", "Ofertas Válidas", "Quarta Verde", "Quinta Vermelha", "Imagens Ilustrativas", múltiplos endereços de lojas no rodapé, sem linha de TOTAL de compra).
+- 'SHELF_TAG': Foto de etiqueta de preço na gôndola/prateleira física do supermercado.
+- 'UNCERTAIN': Imagem ambígua ou parcialmente ilegível onde não há certeza absoluta entre nota fiscal e panfleto/gôndola.
+
+REGRAS ESTRITAS DE EXTRAÇÃO:
+1. NUNCA some preços de um panfleto/flyer para inventar um totalAmount! Se NÃO houver uma linha de TOTAL de caixa explicitamente impressa no documento, retorne hasPrintedTotalLine = false e totalAmount = 0.
+2. Em receiptNumber, extraia APENAS os dígitos/código do número do Pedido, COO ou Extrato (ex: se estiver escrito "Pedido: 2596437", retorne "2596437").
+3. Se o CNPJ não estiver visível na foto (por exemplo, topo cortado ou panfleto), retorne string vazia "" em storeCnpj.
+4. Preencha hasPaymentOrChangeLine (true se houver PIX/CREDITO/DEBITO/DINHEIRO/TROCO impresso), hasTabularQtyUnitColumns (true se houver colunas Qtd x Unit = Total), e hasPromotionalFlyerMarkers (true se houver selos de oferta/clube/encarte).`
           }
         ],
         config: {
@@ -622,6 +950,16 @@ export class ArgusReceiptProcessor {
           responseSchema: {
             type: Type.OBJECT,
             properties: {
+              detectedDocumentType: {
+                type: Type.STRING,
+                enum: ['FISCAL_RECEIPT', 'MARKET_FLYER', 'SHELF_TAG', 'UNCERTAIN']
+              },
+              classificationConfidencePct: { type: Type.NUMBER },
+              hasPrintedTotalLine: { type: Type.BOOLEAN },
+              hasPaymentOrChangeLine: { type: Type.BOOLEAN },
+              hasTabularQtyUnitColumns: { type: Type.BOOLEAN },
+              hasPromotionalFlyerMarkers: { type: Type.BOOLEAN },
+              classificationReasoning: { type: Type.STRING },
               storeCnpj: { type: Type.STRING },
               storeRawName: { type: Type.STRING },
               storeTradingName: { type: Type.STRING },
@@ -651,6 +989,13 @@ export class ArgusReceiptProcessor {
               }
             },
             required: [
+              'detectedDocumentType',
+              'classificationConfidencePct',
+              'hasPrintedTotalLine',
+              'hasPaymentOrChangeLine',
+              'hasTabularQtyUnitColumns',
+              'hasPromotionalFlyerMarkers',
+              'classificationReasoning',
               'storeCnpj',
               'storeTradingName',
               'totalAmount',

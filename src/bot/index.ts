@@ -870,14 +870,45 @@ export function createArgusBot(): Bot {
           };
         }
         if (
+          extracted.receiptNumber &&
+          ex.receiptNumber &&
+          extracted.receiptNumber === ex.receiptNumber &&
+          Math.abs((ex.totalAmount || 0) - (extracted.totalAmount || 0)) <= 0.05
+        ) {
+          if (
+            ex.storeCnpj.startsWith('99.') &&
+            extracted.storeCnpj &&
+            !extracted.storeCnpj.startsWith('99.')
+          ) {
+            ex.storeCnpj = extracted.storeCnpj;
+            ex.storeRawName = extracted.storeRawName;
+            ex.storeTradingName = extracted.storeTradingName;
+          }
+          return {
+            isDuplicate: true,
+            reason: `Camada 3 (Fila Pendente - Pedido/COO #${extracted.receiptNumber}): Este mesmo cupom (R$ ${ex.totalAmount.toFixed(
+              2
+            )}) já foi lido em outro ângulo e aguarda confirmação logo acima.`
+          };
+        }
+        if (
           extracted.contentFingerprint &&
           ex.contentFingerprint === extracted.contentFingerprint
         ) {
+          if (
+            ex.storeCnpj.startsWith('99.') &&
+            extracted.storeCnpj &&
+            !extracted.storeCnpj.startsWith('99.')
+          ) {
+            ex.storeCnpj = extracted.storeCnpj;
+            ex.storeRawName = extracted.storeRawName;
+            ex.storeTradingName = extracted.storeTradingName;
+          }
           return {
             isDuplicate: true,
-            reason: `Camada 4 (Fila Pendente - Fingerprint Semântico): Um cupom com os mesmos itens e valor (R$ ${ex.totalAmount.toFixed(
+            reason: `Camada 4 (Fila Pendente - Fingerprint Semântico de Itens): Um cupom com os mesmos ${ex.items.length} itens e valor (R$ ${ex.totalAmount.toFixed(
               2
-            )}) já aguarda confirmação acima.`
+            )}) já foi lido em outro ângulo e aguarda confirmação acima.`
           };
         }
       }
@@ -1067,13 +1098,13 @@ export function createArgusBot(): Bot {
 
               let extracted: ExtractedReceiptData | null = null;
               const qrData = await processor.decodeQrCodeFromImage(buffer);
-              if (qrData) {
-                await updateStatus('🔍 [2/3] QR Code detectado! Consultando portal SEFAZ...');
+              if (qrData && processor.isGenuineSefazQrUrl(qrData)) {
+                await updateStatus('🔍 [2/3] QR Code SEFAZ detectado! Consultando portal da Fazenda...');
                 extracted = await processor.scrapeSefazReceipt(qrData);
               }
               if (!extracted) {
                 await updateStatus(
-                  '🧠 [2/3] Analisando imagem via Gemini Vision IA (Cupom Fiscal ou Gôndola/Panfleto)...'
+                  '🧠 [2/3] Classificando documento (Cupom Fiscal vs. Flyer/Panfleto/Gôndola) e extraindo itens via Gemini Vision...'
                 );
                 try {
                   extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
@@ -1116,22 +1147,39 @@ export function createArgusBot(): Bot {
                 }
               }
 
-              // Se a imagem não parece ser um cupom fiscal (ex.: totalAmount = 0 ou sem CNPJ e sem chave SEFAZ),
-              // verifica no Scanner de Gôndola/Panfleto!
-              const looksLikeNonReceiptShelfOrFlyer =
-                !qrData &&
-                (!extracted.items ||
-                  extracted.items.length === 0 ||
-                  (extracted.totalAmount <= 0 && !extracted.storeCnpj));
+              // Avalia o Classificador Multicritério (Cor/Saturação RGB + QR Code + Layout + Colunas + Total impresso)
+              const verdict = await processor.evaluateDocumentClassification(
+                extracted,
+                buffer,
+                qrData
+              );
 
-              if (looksLikeNonReceiptShelfOrFlyer) {
+              logger.info(
+                {
+                  decision: verdict.decision,
+                  category: verdict.category,
+                  confidencePct: verdict.confidencePct,
+                  receiptScore: verdict.receiptScore,
+                  flyerScore: verdict.flyerScore,
+                  colorSaturation: verdict.colorSaturationScore
+                },
+                '[ArgusBot] Veredito do Classificador Cupom Fiscal vs. Flyer/Gôndola'
+              );
+
+              // CASO 1: Identificado com certeza como FLYER / PANFLETO DE OFERTAS / GÔNDOLA
+              if (verdict.decision === 'DEFINITE_FLYER_OR_SHELF') {
+                const kindLabel =
+                  verdict.category === 'MARKET_FLYER'
+                    ? 'Panfleto / Encarte de Ofertas'
+                    : 'Etiqueta de Gôndola / Prateleira';
                 await updateStatus(
-                  '🏷️ [2/3] Imagem identificada como Gôndola / Etiqueta / Panfleto! Calculando preços coletados e % de confiabilidade...'
+                  `📰 [2/3] Classificado automaticamente como ${kindLabel} (${verdict.confidencePct}% certeza)! Registrando preços coletados e score de confiabilidade...`
                 );
                 const scanOutcome = await priceScanner.ingestAndProcessPriceScanMedia({
                   mediaBuffer: buffer,
                   mimeType,
-                  initialMediaKind: 'SHELF_PHOTO',
+                  initialMediaKind:
+                    verdict.category === 'MARKET_FLYER' ? 'MARKET_FLYER' : 'SHELF_PHOTO',
                   telegramChatId: ctx.chat.id,
                   telegramMessageId: originalMessageId,
                   telegramFileId,
@@ -1152,7 +1200,16 @@ export function createArgusBot(): Bot {
                     : undefined;
 
                 const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
-                await updateStatus(formatPriceScanOutcomeMessage(scanOutcome, elapsedSec), kbRetry);
+                const classifierHeader = [
+                  `🧭 CLASSIFICADOR AUTOMÁTICO: ${kindLabel.toUpperCase()} (${verdict.confidencePct}% certeza)`,
+                  `• Sinais detectados: ${verdict.detectedFeatures.slice(0, 3).join(' | ')}`,
+                  ''
+                ].join('\n');
+
+                await updateStatus(
+                  classifierHeader + formatPriceScanOutcomeMessage(scanOutcome, elapsedSec),
+                  kbRetry
+                );
                 await stickers.sendEmotionalSticker(
                   ctx,
                   scanOutcome.status === 'SUCCEEDED' ? 'DETECTIVE' : 'SHOCK_ALERT'
@@ -1160,7 +1217,7 @@ export function createArgusBot(): Bot {
                 return;
               }
 
-              // Consolida identificadores multicamada (Chave SEFAZ 44d OU Fallback COO + Content Fingerprint)
+              // Consolida identificadores multicamada (Chave SEFAZ 44d OU Fallback Pedido/COO + Content Fingerprint)
               extracted = processor.finalizeReceiptIdentifiers(extracted, {
                 imageSha256,
                 normalizedImageSha256
@@ -1188,7 +1245,7 @@ export function createArgusBot(): Bot {
                     '🛡️ NOTA FISCAL DUPLICADA BLOQUEADA (PÓS-OCR)',
                     `• ${postOcrDup.reason}`,
                     `• Cupom Original no Banco: ${postOcrDup.existingStoreName} — R$ ${(postOcrDup.existingTotalAmount || 0).toFixed(2)} (${dtStr})`,
-                    '• Ação: O cupom não foi duplicado.'
+                    '• Ação: O cupom não foi duplicado (mesma compra reconhecida mesmo em outro ângulo).'
                   ].join('\n')
                 );
                 await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
@@ -1213,12 +1270,6 @@ export function createArgusBot(): Bot {
                 logger.warn({ err }, '[ArgusBot] Aviso ao persistir sessão pendente no banco');
               });
 
-              const kb = new InlineKeyboard()
-                .text('✅ Confirmar, Comprimir & Salvar', `confirm:${tokenKey}`)
-                .text('🏷️ Ler como Gôndola/Flyer', `as_scan:${tokenKey}`)
-                .row()
-                .text('❌ Descartar', `cancel:${tokenKey}`);
-
               const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
               const topItemsPreview = extracted.items
                 .slice(0, 6)
@@ -1232,14 +1283,55 @@ export function createArgusBot(): Bot {
                   ? `\n  ... e mais ${extracted.items.length - 6} item(ns)`
                   : '';
 
+              // CASO 2: INCERTEZA NA CLASSIFICAÇÃO -> Mostra as características detectadas e pede ao usuário para escolher!
+              if (verdict.decision === 'UNCERTAIN_ASK_USER') {
+                const kbUncertain = new InlineKeyboard()
+                  .text('🧾 É Nota Fiscal (Registrar Compra)', `confirm:${tokenKey}`)
+                  .row()
+                  .text('📰 É Flyer / Gôndola (Coletar Preços)', `as_scan:${tokenKey}`)
+                  .row()
+                  .text('❌ Descartar', `cancel:${tokenKey}`);
+
+                const featuresBullets =
+                  verdict.detectedFeatures.length > 0
+                    ? verdict.detectedFeatures.map((f) => `  • ${f}`).join('\n')
+                    : '  • Características visuais mistas entre cupom e encarte';
+
+                const uncertainMsg = [
+                  `🤔 INCERTEZA NA CLASSIFICAÇÃO (${elapsedSec}s) — ESCOLHA O MODO DE REGISTRO:`,
+                  `• Motivo: ${verdict.summaryReason}`,
+                  `• Pontuação: Cupom Fiscal (${verdict.receiptScore} pts) vs. Flyer/Gôndola (${verdict.flyerScore} pts)`,
+                  '🔍 Características identificadas na imagem:',
+                  featuresBullets,
+                  '',
+                  `🏪 Estabelecimento: ${extracted.storeTradingName}`,
+                  `📦 Itens Detectados (${extracted.items.length}):`,
+                  topItemsPreview + moreItems,
+                  '',
+                  '👇 Como você deseja registrar esta imagem?'
+                ].join('\n');
+
+                await updateStatus(uncertainMsg, kbUncertain);
+                await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+                return;
+              }
+
+              // CASO 3: Identificado com certeza como CUPOM FISCAL / PEDIDO DE COMPRA
+              const kb = new InlineKeyboard()
+                .text('✅ Confirmar Cupom Fiscal', `confirm:${tokenKey}`)
+                .text('🏷️ Ler como Gôndola/Flyer', `as_scan:${tokenKey}`)
+                .row()
+                .text('❌ Descartar', `cancel:${tokenKey}`);
+
               const idLayerBadge = extracted.hasOfficialAccessKey
                 ? `🔑 ID Fiscal (Camada 2): Chave SEFAZ 44 dígitos (${extracted.accessKey.slice(0, 12)}...)`
                 : `🧬 ID Multicamada (Sem Chave 44d): ${
-                    extracted.receiptNumber ? `Doc/COO #${extracted.receiptNumber} + ` : ''
+                    extracted.receiptNumber ? `Pedido/COO #${extracted.receiptNumber} + ` : ''
                   }Fingerprint #${(extracted.contentFingerprint || '').slice(0, 12)}`;
 
               const preview = [
-                `✅ SUCESSO NA LEITURA DA IMAGEM EM ${elapsedSec}s (${extracted.extractionMethod})!`,
+                `✅ CUPOM FISCAL IDENTIFICADO EM ${elapsedSec}s (${verdict.confidencePct}% certeza)!`,
+                `🧭 Sinais Fiscais: ${verdict.detectedFeatures.slice(0, 3).join(' | ')}`,
                 `🏪 Mercado: ${extracted.storeTradingName} (${extracted.storeCnpj})`,
                 `💳 Pagamento: ${extracted.paymentMethod} | 💰 Total: R$ ${extracted.totalAmount.toFixed(2)}`,
                 idLayerBadge,
@@ -1247,7 +1339,7 @@ export function createArgusBot(): Bot {
                 topItemsPreview + moreItems,
                 '',
                 `🗄️ Destino da Imagem: Bucket '${env.SUPABASE_STORAGE_BUCKET}' (WebP comprimido)`,
-                'Deseja gravar este cupom no schema argus ou reclassificar como foto de Gôndola/Panfleto?'
+                'Deseja confirmar esta compra no schema argus ou reclassificar como Gôndola/Panfleto?'
               ].join('\n');
 
               await updateStatus(preview, kb);
