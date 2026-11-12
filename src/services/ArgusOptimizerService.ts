@@ -290,6 +290,36 @@ export class ArgusOptimizerService {
       longitude: string;
     }>(`SELECT id, trading_name, latitude, longitude FROM argus.stores ORDER BY trading_name ASC`);
 
+    if (stores.length === 0) {
+      const emptyScenario: LogisticsScenario = {
+        mode: 'SINGLE_STORE',
+        title: 'Aguardando 1º Cupom Fiscal Real',
+        storesVisited: [],
+        productsCost: 0,
+        totalDistanceKm: 0,
+        totalDurationMin: 0,
+        gasCost: 0,
+        uberCost: 0,
+        totalWithGas: 0,
+        totalWithUber: 0,
+        routeLegs: []
+      };
+      return {
+        singleStoreBest: emptyScenario,
+        splitStoreBest: { ...emptyScenario, mode: 'SPLIT_STORES' },
+        otherSingleStores: [],
+        grossProductSavings: 0,
+        netSavingsWithGas: 0,
+        netSavingsWithUber: 0,
+        minSavingsHurdle: env.MIN_SAVINGS_HURDLE,
+        recommendSplitWithGas: false,
+        recommendSplitWithUber: false,
+        recommendedTransportMode: 'CAR_GAS',
+        argusVerdictText:
+          '👁️ VEREDITO ARGUS: Nenhum mercado real cadastrado ainda. Envie a foto do seu primeiro cupom fiscal para habilitar a simulação logística de rotas!'
+      };
+    }
+
     const priceRows = await queryArgus<{
       canonical_product_id: string;
       product_name: string;

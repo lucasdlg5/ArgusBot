@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import sharp from 'sharp';
 import jsQR from 'jsqr';
 import * as cheerio from 'cheerio';
@@ -31,12 +32,34 @@ export interface ExtractedReceiptData {
   discountAmount: number;
   paymentMethod: PaymentMethod;
   accessKey: string;
+  hasOfficialAccessKey?: boolean;
+  receiptNumber?: string | null;
+  imageSha256?: string | null;
+  normalizedImageSha256?: string | null;
+  contentFingerprint?: string | null;
   items: ExtractedReceiptItemInput[];
   extractionMethod: 'QR_SEFAZ_SCRAPER' | 'GEMINI_VISION_2_5_FLASH' | 'STRUCTURED_INPUT';
   storageBucket?: string;
   storagePath?: string;
   originalSizeBytes?: number;
   compressedSizeBytes?: number;
+}
+
+export interface DuplicateVerificationResult {
+  isDuplicate: boolean;
+  layer:
+    | 'NONE'
+    | 'LAYER_1_EXACT_IMAGE_HASH'
+    | 'LAYER_1_NORMALIZED_VISUAL_HASH'
+    | 'LAYER_2_OFFICIAL_SEFAZ_KEY'
+    | 'LAYER_3_RECEIPT_NUMBER_COO'
+    | 'LAYER_4_CONTENT_FINGERPRINT'
+    | 'LAYER_5_STORE_TOTAL_ITEMS_COLLISION';
+  reason: string;
+  existingReceiptId?: string;
+  existingStoreName?: string;
+  existingTotalAmount?: number;
+  existingPurchaseDate?: string;
 }
 
 export interface NormalizedItemInfo {
@@ -54,6 +77,335 @@ export class ArgusReceiptProcessor {
 
   constructor() {
     this.ai = env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: env.GEMINI_API_KEY }) : null;
+  }
+
+  /**
+   * Camada 1 (Pré-OCR): Calcula o SHA-256 exato dos bytes e o SHA-256 visual normalizado (16x16 grayscale)
+   * para identificar a mesma imagem mesmo se reencaminhada/recomprimida pelo Telegram.
+   */
+  async computeImageHashes(imageBuffer: Buffer): Promise<{
+    imageSha256: string;
+    normalizedImageSha256: string;
+  }> {
+    const imageSha256 = crypto.createHash('sha256').update(imageBuffer).digest('hex');
+    try {
+      const visualMatrix = await sharp(imageBuffer)
+        .rotate()
+        .grayscale()
+        .resize(16, 16, { fit: 'fill' })
+        .raw()
+        .toBuffer();
+      // Quantiza pixels em blocos de 16 níveis para tolerar recompressão JPEG do Telegram
+      const quantized = Buffer.from(visualMatrix.map((b) => Math.floor(b / 16)));
+      const normalizedImageSha256 = crypto.createHash('sha256').update(quantized).digest('hex');
+      return { imageSha256, normalizedImageSha256 };
+    } catch {
+      return { imageSha256, normalizedImageSha256: imageSha256 };
+    }
+  }
+
+  /**
+   * Verifica no banco `argus.receipts` se a imagem já foi processada (antes de gastar cota do Gemini Vision)
+   */
+  async checkPreOcrImageDuplicate(
+    imageSha256: string,
+    normalizedImageSha256: string
+  ): Promise<DuplicateVerificationResult> {
+    const rows = await queryArgus<{
+      id: string;
+      trading_name: string;
+      total_amount: string;
+      purchase_date: string;
+      image_sha256: string | null;
+      normalized_image_sha256: string | null;
+    }>(
+      `SELECT r.id, s.trading_name, r.total_amount::text, r.purchase_date::text, r.image_sha256, r.normalized_image_sha256
+       FROM argus.receipts r
+       JOIN argus.stores s ON s.id = r.store_id
+       WHERE r.image_sha256 = $1 OR r.normalized_image_sha256 = $2
+       LIMIT 1`,
+      [imageSha256, normalizedImageSha256]
+    );
+
+    if (rows.length > 0) {
+      const match = rows[0];
+      const isExact = match.image_sha256 === imageSha256;
+      return {
+        isDuplicate: true,
+        layer: isExact ? 'LAYER_1_EXACT_IMAGE_HASH' : 'LAYER_1_NORMALIZED_VISUAL_HASH',
+        reason: isExact
+          ? 'Camada 1 (Hash Binário SHA-256): Este exato arquivo de imagem já foi processado e salvo.'
+          : 'Camada 1 (Assinatura Visual 16x16): Esta mesma foto já foi enviada e salva anteriormente.',
+        existingReceiptId: match.id,
+        existingStoreName: match.trading_name,
+        existingTotalAmount: Number(match.total_amount),
+        existingPurchaseDate: match.purchase_date
+      };
+    }
+
+    return { isDuplicate: false, layer: 'NONE', reason: '' };
+  }
+
+  /**
+   * Normaliza datas brasileiras (ex: "11/11/2026 15:39:42") ou ISO para TIMESTAMPTZ seguro
+   */
+  normalizeReceiptDate(rawDate?: string): string {
+    if (!rawDate) return new Date().toISOString();
+    const trimmed = rawDate.trim();
+    const brMatch = trimmed.match(
+      /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/
+    );
+    if (brMatch) {
+      const day = brMatch[1].padStart(2, '0');
+      const month = brMatch[2].padStart(2, '0');
+      const year = brMatch[3].length === 2 ? `20${brMatch[3]}` : brMatch[3];
+      const hour = (brMatch[4] || '12').padStart(2, '0');
+      const min = (brMatch[5] || '00').padStart(2, '0');
+      const sec = (brMatch[6] || '00').padStart(2, '0');
+      const isoCandidate = `${year}-${month}-${day}T${hour}:${min}:${sec}-03:00`;
+      const parsed = new Date(isoCandidate);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toISOString();
+      }
+    }
+    const fallback = new Date(trimmed);
+    if (!Number.isNaN(fallback.getTime())) {
+      return fallback.toISOString();
+    }
+    return new Date().toISOString();
+  }
+
+  /**
+   * Normaliza o CNPJ da loja; se o cupom não tiver CNPJ visível, gera um CNPJ sintético determinístico
+   * baseado no nome do mercado para que mercados distintos nunca colidam no mesmo placeholder.
+   */
+  normalizeStoreCnpj(rawCnpj: string | undefined, storeTradingName: string): string {
+    const digits = (rawCnpj || '').replace(/\D/g, '');
+    if (digits.length === 14 && !/^0+$/.test(digits) && !/^9+$/.test(digits)) {
+      return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
+    }
+    const cleanStore = (storeTradingName || 'MERCADO DESCONHECIDO')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+    const hashHex = crypto.createHash('sha256').update(cleanStore).digest('hex');
+    const numericHash = hashHex
+      .split('')
+      .map((c) => String(parseInt(c, 16) % 10))
+      .join('');
+    return `99.${numericHash.slice(0, 3)}.${numericHash.slice(3, 6)}/0001-${numericHash.slice(6, 8)}`;
+  }
+
+  /**
+   * Calcula todos os identificadores multicamada do cupom (Chave Oficial vs. Sintética Determinística,
+   * Número do Cupom/COO e Fingerprint Semântico do Conteúdo).
+   */
+  finalizeReceiptIdentifiers(
+    raw: ExtractedReceiptData,
+    hashes?: { imageSha256?: string; normalizedImageSha256?: string }
+  ): ExtractedReceiptData {
+    const storeTradingName = (raw.storeTradingName || raw.storeRawName || 'Mercado Identificado').trim();
+    const storeCnpj = this.normalizeStoreCnpj(raw.storeCnpj, storeTradingName);
+    const purchaseDate = this.normalizeReceiptDate(raw.purchaseDate);
+    const totalAmount = Number(Number(raw.totalAmount || 0).toFixed(2));
+
+    // Verifica se há uma Chave de Acesso SEFAZ oficial de 44 dígitos reais (não preenchida artificialmente)
+    const cleanKeyDigits = (raw.accessKey || '').replace(/\D/g, '');
+    const isGenuine44Key =
+      cleanKeyDigits.length === 44 &&
+      !/^(\d)\1{15,}$/.test(cleanKeyDigits) &&
+      !cleanKeyDigits.endsWith('9999999999') &&
+      !cleanKeyDigits.endsWith('0000000000');
+
+    // Extrai/normaliza identificador secundário (COO / Extrato / Nº do Cupom ou carimbo de data+hora exato impresso)
+    const rawReceiptNum = (raw.receiptNumber || '').trim();
+    const receiptNumber =
+      rawReceiptNum && !/^(null|undefined|n\/a|none|0+)$/i.test(rawReceiptNum)
+        ? rawReceiptNum.slice(0, 64)
+        : null;
+
+    // Constrói a assinatura semântica imutável do conteúdo (Mercado + Total + Preços ordenados dos itens)
+    const normStoreKey = storeTradingName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+
+    const itemPricesSignature = [...(raw.items || [])]
+      .map((it) => `${Number(it.quantity || 1).toFixed(2)}x${Number(it.totalPrice || 0).toFixed(2)}`)
+      .sort()
+      .join('|');
+
+    const fingerprintPayload = `${normStoreKey}::${totalAmount.toFixed(2)}::${raw.items?.length || 0}::${itemPricesSignature}`;
+    const contentFingerprint = crypto
+      .createHash('sha256')
+      .update(fingerprintPayload)
+      .digest('hex');
+
+    // Se não houver chave SEFAZ de 44 dígitos no cupom, deriva uma chave determinística de 44 dígitos do contentFingerprint
+    const deterministicNumericKey =
+      '8888' +
+      contentFingerprint
+        .split('')
+        .map((ch) => String(parseInt(ch, 16) % 10))
+        .join('')
+        .slice(0, 40)
+        .padEnd(40, '7');
+
+    const finalAccessKey = isGenuine44Key ? cleanKeyDigits : deterministicNumericKey;
+
+    return {
+      ...raw,
+      storeCnpj,
+      storeRawName: raw.storeRawName || storeTradingName,
+      storeTradingName,
+      storeAddress: raw.storeAddress || 'São Paulo - SP',
+      purchaseDate,
+      totalAmount,
+      discountAmount: Number(raw.discountAmount || 0),
+      accessKey: finalAccessKey,
+      hasOfficialAccessKey: isGenuine44Key,
+      receiptNumber,
+      imageSha256: hashes?.imageSha256 ?? raw.imageSha256 ?? null,
+      normalizedImageSha256: hashes?.normalizedImageSha256 ?? raw.normalizedImageSha256 ?? null,
+      contentFingerprint
+    };
+  }
+
+  /**
+   * Camadas 2, 3, 4 e 5 (Pós-OCR): Verifica no banco `argus.receipts` se este cupom já foi registrado,
+   * mesmo quando a foto não possui a Chave de Acesso de 44 dígitos ou foi tirada de outro ângulo.
+   */
+  async checkPostOcrDuplicateLayers(
+    data: ExtractedReceiptData
+  ): Promise<DuplicateVerificationResult> {
+    // Camada 2: Chave de Acesso SEFAZ Oficial de 44 dígitos
+    if (data.hasOfficialAccessKey && data.accessKey) {
+      const byKey = await queryArgus<{
+        id: string;
+        trading_name: string;
+        total_amount: string;
+        purchase_date: string;
+      }>(
+        `SELECT r.id, s.trading_name, r.total_amount::text, r.purchase_date::text
+         FROM argus.receipts r
+         JOIN argus.stores s ON s.id = r.store_id
+         WHERE r.access_key = $1
+         LIMIT 1`,
+        [data.accessKey]
+      );
+      if (byKey.length > 0) {
+        return {
+          isDuplicate: true,
+          layer: 'LAYER_2_OFFICIAL_SEFAZ_KEY',
+          reason: `Camada 2 (Chave SEFAZ 44 dígitos): A chave oficial ${data.accessKey.slice(0, 12)}... já consta no banco.`,
+          existingReceiptId: byKey[0].id,
+          existingStoreName: byKey[0].trading_name,
+          existingTotalAmount: Number(byKey[0].total_amount),
+          existingPurchaseDate: byKey[0].purchase_date
+        };
+      }
+    }
+
+    // Camada 3: Número do Cupom / COO / Extrato + Mesmo Mercado/CNPJ + Mesmo Valor Total
+    if (data.receiptNumber) {
+      const byCoo = await queryArgus<{
+        id: string;
+        trading_name: string;
+        total_amount: string;
+        purchase_date: string;
+      }>(
+        `SELECT r.id, s.trading_name, r.total_amount::text, r.purchase_date::text
+         FROM argus.receipts r
+         JOIN argus.stores s ON s.id = r.store_id
+         WHERE r.receipt_number = $1
+           AND ABS(r.total_amount - $2) <= 0.05
+           AND (s.cnpj = $3 OR UPPER(s.trading_name) = UPPER($4))
+         LIMIT 1`,
+        [data.receiptNumber, data.totalAmount, data.storeCnpj, data.storeTradingName]
+      );
+      if (byCoo.length > 0) {
+        return {
+          isDuplicate: true,
+          layer: 'LAYER_3_RECEIPT_NUMBER_COO',
+          reason: `Camada 3 (Identificador de Cupom/COO Nº ${data.receiptNumber}): Documento já auditado para ${byCoo[0].trading_name}.`,
+          existingReceiptId: byCoo[0].id,
+          existingStoreName: byCoo[0].trading_name,
+          existingTotalAmount: Number(byCoo[0].total_amount),
+          existingPurchaseDate: byCoo[0].purchase_date
+        };
+      }
+    }
+
+    // Camada 4: Content Fingerprint (Assinatura Semântica de Mercado + Total + Preços dos Itens)
+    if (data.contentFingerprint) {
+      const byFp = await queryArgus<{
+        id: string;
+        trading_name: string;
+        total_amount: string;
+        purchase_date: string;
+      }>(
+        `SELECT r.id, s.trading_name, r.total_amount::text, r.purchase_date::text
+         FROM argus.receipts r
+         JOIN argus.stores s ON s.id = r.store_id
+         WHERE r.content_fingerprint = $1 OR r.access_key = $2
+         LIMIT 1`,
+        [data.contentFingerprint, data.accessKey]
+      );
+      if (byFp.length > 0) {
+        return {
+          isDuplicate: true,
+          layer: 'LAYER_4_CONTENT_FINGERPRINT',
+          reason:
+            'Camada 4 (Fingerprint Semântico de Conteúdo): Cupom sem chave SEFAZ oficial, mas com idêntica assinatura de estabelecimento, total e lista de itens.',
+          existingReceiptId: byFp[0].id,
+          existingStoreName: byFp[0].trading_name,
+          existingTotalAmount: Number(byFp[0].total_amount),
+          existingPurchaseDate: byFp[0].purchase_date
+        };
+      }
+    }
+
+    // Camada 5: Heurística de Colisão de Compra (Mesmo Mercado + Mesmo Valor Total Exato + Mesma Quantidade de Itens)
+    const byCollision = await queryArgus<{
+      id: string;
+      trading_name: string;
+      total_amount: string;
+      purchase_date: string;
+      items_count: number;
+    }>(
+      `SELECT
+         r.id,
+         s.trading_name,
+         r.total_amount::text,
+         r.purchase_date::text,
+         (SELECT count(*)::int FROM argus.receipt_items ri WHERE ri.receipt_id = r.id) AS items_count
+       FROM argus.receipts r
+       JOIN argus.stores s ON s.id = r.store_id
+       WHERE (s.cnpj = $1 OR UPPER(s.trading_name) = UPPER($2))
+         AND ABS(r.total_amount - $3) <= 0.01
+       LIMIT 5`,
+      [data.storeCnpj, data.storeTradingName, data.totalAmount]
+    );
+
+    for (const row of byCollision) {
+      if (Math.abs(row.items_count - data.items.length) <= 1) {
+        return {
+          isDuplicate: true,
+          layer: 'LAYER_5_STORE_TOTAL_ITEMS_COLLISION',
+          reason: `Camada 5 (Colisão de Compra): Já existe uma nota no mercado ${row.trading_name} com o valor exato de R$ ${Number(
+            row.total_amount
+          ).toFixed(2)} e ${row.items_count} itens.`,
+          existingReceiptId: row.id,
+          existingStoreName: row.trading_name,
+          existingTotalAmount: Number(row.total_amount),
+          existingPurchaseDate: row.purchase_date
+        };
+      }
+    }
+
+    return { isDuplicate: false, layer: 'NONE', reason: '' };
   }
 
   /**
@@ -155,7 +507,7 @@ export class ArgusReceiptProcessor {
 
       const totalAmount = items.reduce((acc, item) => acc + item.totalPrice, 0);
 
-      return {
+      return this.finalizeReceiptIdentifiers({
         storeCnpj,
         storeRawName: storeTradingName,
         storeTradingName,
@@ -167,7 +519,7 @@ export class ArgusReceiptProcessor {
         accessKey,
         items,
         extractionMethod: 'QR_SEFAZ_SCRAPER'
-      };
+      });
     } catch (err) {
       logger.warn({ err }, '[ArgusReceiptProcessor] Falha no scraping direto da SEFAZ; acionando fallback Gemini Vision');
       return null;
@@ -262,7 +614,7 @@ export class ArgusReceiptProcessor {
             }
           },
           {
-            text: 'Você é o Argus (@MonetaArgusBot), auditor fiscal. Extraia o cabeçalho e todos os itens deste cupom fiscal brasileiro (NFC-e / SAT).'
+            text: 'Você é o Argus (@MonetaArgusBot), auditor fiscal. Extraia o cabeçalho e todos os itens deste cupom fiscal brasileiro (NFC-e / SAT / Cupom de Mercado). Se a chave de acesso de 44 dígitos não estiver visível na foto, retorne string vazia em accessKey e extraia em receiptNumber qualquer número fixo do documento (COO, Extrato, Pedido, Caixa ou Data+Hora exata impressa no cabeçalho).'
           }
         ],
         config: {
@@ -282,6 +634,7 @@ export class ArgusReceiptProcessor {
                 enum: ['PIX', 'CREDIT_CARD', 'DEBIT', 'VR_VA', 'CASH']
               },
               accessKey: { type: Type.STRING },
+              receiptNumber: { type: Type.STRING },
               items: {
                 type: Type.ARRAY,
                 items: {
@@ -312,15 +665,10 @@ export class ArgusReceiptProcessor {
     );
 
     const parsed = JSON.parse(response.text || '{}') as ExtractedReceiptData;
-    return {
+    return this.finalizeReceiptIdentifiers({
       ...parsed,
-      storeRawName: parsed.storeRawName || parsed.storeTradingName,
-      storeAddress: parsed.storeAddress || 'São Paulo - SP',
-      purchaseDate: parsed.purchaseDate || new Date().toISOString(),
-      discountAmount: parsed.discountAmount || 0,
-      accessKey: (parsed.accessKey || '').replace(/\D/g, '').padEnd(44, '9').slice(0, 44),
       extractionMethod: 'GEMINI_VISION_2_5_FLASH'
-    };
+    });
   }
 
   /**
@@ -481,23 +829,26 @@ export class ArgusReceiptProcessor {
   }
 
   /**
-   * 5. Persiste o Cupom Fiscal completo no schema `argus` garantindo idempotência via `access_key`
+   * 5. Persiste o Cupom Fiscal completo no schema `argus` garantindo idempotência em 5 camadas
    */
-  async ingestReceipt(data: ExtractedReceiptData): Promise<{
+  async ingestReceipt(rawInput: ExtractedReceiptData): Promise<{
     receiptId: string;
     alreadyExisted: boolean;
+    duplicateLayer?: string;
+    duplicateReason?: string;
     itemsProcessed: number;
     shrinkflationAlerts: string[];
   }> {
-    // Verifica duplicidade via access_key
-    const existing = await queryArgus<{ id: string }>(
-      `SELECT id FROM argus.receipts WHERE access_key = $1 LIMIT 1`,
-      [data.accessKey]
-    );
-    if (existing.length > 0) {
+    const data = this.finalizeReceiptIdentifiers(rawInput);
+
+    // Verifica duplicidade nas Camadas 2 a 5 contra o banco argus.receipts
+    const dupCheck = await this.checkPostOcrDuplicateLayers(data);
+    if (dupCheck.isDuplicate && dupCheck.existingReceiptId) {
       return {
-        receiptId: existing[0].id,
+        receiptId: dupCheck.existingReceiptId,
         alreadyExisted: true,
+        duplicateLayer: dupCheck.layer,
+        duplicateReason: dupCheck.reason,
         itemsProcessed: 0,
         shrinkflationAlerts: []
       };
@@ -524,12 +875,13 @@ export class ArgusReceiptProcessor {
       );
       const storeId = storeRes.rows[0].id;
 
-      // 2. Insere o cabeçalho do cupom (incluindo referência ao arquivo comprimido no bucket FotosArgus)
+      // 2. Insere o cabeçalho do cupom (incluindo colunas multicamada de deduplicação + bucket FotosArgus)
       const receiptRes = await client.query<{ id: string }>(
         `INSERT INTO argus.receipts (
            store_id, purchase_date, total_amount, discount_amount, payment_method, access_key, reconciled,
-           storage_bucket, storage_path, original_size_bytes, compressed_size_bytes
-         ) VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9, $10)
+           storage_bucket, storage_path, original_size_bytes, compressed_size_bytes,
+           has_official_access_key, receipt_number, image_sha256, normalized_image_sha256, content_fingerprint
+         ) VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          RETURNING id`,
         [
           storeId,
@@ -541,7 +893,12 @@ export class ArgusReceiptProcessor {
           data.storageBucket || 'FotosArgus',
           data.storagePath || null,
           data.originalSizeBytes || null,
-          data.compressedSizeBytes || null
+          data.compressedSizeBytes || null,
+          Boolean(data.hasOfficialAccessKey),
+          data.receiptNumber || null,
+          data.imageSha256 || null,
+          data.normalizedImageSha256 || null,
+          data.contentFingerprint || null
         ]
       );
       const receiptId = receiptRes.rows[0].id;

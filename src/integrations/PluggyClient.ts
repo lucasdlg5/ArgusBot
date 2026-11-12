@@ -26,7 +26,7 @@ export class ArgusPluggyClient {
 
   async fetchRecentTransactions(): Promise<OpenFinanceTransaction[]> {
     if (!this.sdk || env.PLUGGY_ITEM_IDS.length === 0) {
-      return this.getFallbackDemoTransactions();
+      return [];
     }
 
     const output: OpenFinanceTransaction[] = [];
@@ -54,14 +54,11 @@ export class ArgusPluggyClient {
           }
         }
       }
-      if (output.length > 0) {
-        return output;
-      }
+      return output;
     } catch (err) {
-      logger.warn({ err }, '[ArgusPluggyClient] Aviso na consulta Pluggy ao vivo; complementando com espelho local.');
+      logger.warn({ err }, '[ArgusPluggyClient] Aviso na consulta Pluggy ao vivo; retornando lista vazia.');
+      return [];
     }
-
-    return this.getFallbackDemoTransactions();
   }
 
   /**

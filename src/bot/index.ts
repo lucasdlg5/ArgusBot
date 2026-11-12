@@ -17,6 +17,7 @@ interface PendingReceiptSession {
 }
 
 const pendingReceiptsCache = new Map<string, PendingReceiptSession>();
+const inFlightImageHashes = new Set<string>();
 
 export function createArgusBot(): Bot {
   const token = env.TELEGRAM_BOT_TOKEN || '0000000000:AAH_ARGUS_PLACEHOLDER_TOKEN_FOR_BUILD';
@@ -170,7 +171,9 @@ export function createArgusBot(): Bot {
 
     if (rows.length === 0) {
       await ctx.reply(
-        `👁️ *Argus informa:* Nenhum item localizado para *"${query}"*. Tente \`/preco frango\`, \`/preco arroz\`, \`/preco leite\` ou \`/preco omo\`.`,
+        query
+          ? `👁️ *Argus informa:* Nenhum item real localizado para *"${query}"*. Envie fotos das suas notas fiscais para popular o histórico real!`
+          : '👁️ *Argus informa:* A base foi limpa de dados fictícios e ainda não possui itens reais cadastrados. Envie a foto do seu primeiro cupom fiscal aqui no chat!',
         { parse_mode: 'Markdown' }
       );
       await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
@@ -215,6 +218,12 @@ export function createArgusBot(): Bot {
       '👁️ *LABORATÓRIO DE RECEITAS ARGUS — CUSTO POR GRAMA vs. CAIXA*',
       ''
     ];
+
+    if (evaluations.length === 0) {
+      lines.push(
+        'ℹ️ _Nenhuma receita cadastrada após a limpeza dos dados fictícios. À medida que seus cupons reais entrarem no banco, suas receitas usarão exclusivamente os preços reais das suas compras._'
+      );
+    }
 
     for (const rec of evaluations) {
       lines.push(`🍲 *${rec.recipeName}* (${rec.servings} porções/marmitas)`);
@@ -339,6 +348,13 @@ export function createArgusBot(): Bot {
       ''
     ];
 
+    if (spendingRows.length === 0 && shrinkRows.length === 0 && lowRows.length === 0) {
+      lines.push(
+        '✨ *Base 100% Limpa (Somente Dados Reais):* Todos os valores fictícios foram removidos. Envie seu primeiro cupom fiscal real aqui no chat para inaugurar os indicadores!'
+      );
+      lines.push('');
+    }
+
     if (spendingRows.length > 0) {
       lines.push('💳 *Desconstrução de Gastos (Mês Atual):*');
       for (const s of spendingRows) {
@@ -441,11 +457,53 @@ export function createArgusBot(): Bot {
     }
   }
 
-  // 7. Recebimento de Foto ou Documento PDF de Cupom Fiscal com Botões Inline de Confirmação & Compressão no Bucket FotosArgus
+  // Verifica se já existe uma sessão pendente de confirmação com os mesmos hashes ou dados
+  function checkPendingQueueDuplicate(
+    imageSha256: string,
+    normalizedImageSha256: string,
+    extracted?: ExtractedReceiptData
+  ): { isDuplicate: boolean; reason: string } {
+    for (const [, session] of pendingReceiptsCache.entries()) {
+      const ex = session.extracted;
+      if (
+        ex.imageSha256 === imageSha256 ||
+        ex.normalizedImageSha256 === normalizedImageSha256
+      ) {
+        return {
+          isDuplicate: true,
+          reason: `Camada 1 (Fila de Confirmação Pendente): Esta foto (${ex.storeTradingName} — R$ ${ex.totalAmount.toFixed(
+            2
+          )}) já foi lida e aguarda seu clique em "✅ Confirmar" logo acima.`
+        };
+      }
+      if (extracted) {
+        if (extracted.hasOfficialAccessKey && ex.accessKey === extracted.accessKey) {
+          return {
+            isDuplicate: true,
+            reason: `Camada 2 (Fila Pendente - Chave SEFAZ 44d): Este cupom já aguarda confirmação acima.`
+          };
+        }
+        if (
+          extracted.contentFingerprint &&
+          ex.contentFingerprint === extracted.contentFingerprint
+        ) {
+          return {
+            isDuplicate: true,
+            reason: `Camada 4 (Fila Pendente - Fingerprint Semântico): Um cupom com os mesmos itens e valor (R$ ${ex.totalAmount.toFixed(
+              2
+            )}) já aguarda confirmação acima.`
+          };
+        }
+      }
+    }
+    return { isDuplicate: false, reason: '' };
+  }
+
+  // 7. Recebimento de Foto ou Documento PDF de Cupom Fiscal com 5 Camadas Anti-Duplicidade & Compressão no Bucket FotosArgus
   bot.on(['message:photo', 'message:document'], async (ctx) => {
     const startMs = Date.now();
     const statusMsg = await ctx.reply(
-      '⏳ [1/3] Baixando imagem e procurando QR Code SEFAZ local...'
+      '⏳ [1/3] Baixando imagem e executando verificação anti-duplicidade (Camada 1)...'
     );
 
     const updateStatus = async (text: string, kb?: InlineKeyboard) => {
@@ -465,6 +523,9 @@ export function createArgusBot(): Bot {
     try {
       await withTypingIndicator(ctx, async () => {
         let timeoutHandle: NodeJS.Timeout | undefined;
+        let currentImgHash = '';
+        let currentNormHash = '';
+
         const globalTimeout = new Promise<never>((_, reject) => {
           timeoutHandle = setTimeout(
             () =>
@@ -486,6 +547,59 @@ export function createArgusBot(): Bot {
               const buffer = Buffer.from(await res.arrayBuffer());
               const mimeType = ctx.message?.document?.mime_type || 'image/jpeg';
 
+              // CAMADA 0 & 1 (PRÉ-OCR): Hash binário SHA-256 + Hash visual normalizado 16x16
+              const { imageSha256, normalizedImageSha256 } =
+                await processor.computeImageHashes(buffer);
+              currentImgHash = imageSha256;
+              currentNormHash = normalizedImageSha256;
+
+              // 1A. Verifica se já está em processamento simultâneo neste exato segundo (in-flight)
+              if (
+                inFlightImageHashes.has(imageSha256) ||
+                inFlightImageHashes.has(normalizedImageSha256)
+              ) {
+                await updateStatus(
+                  '⏳ [Camada 0 - Processamento Ativo] Esta mesma imagem já está sendo analisada neste instante! Aguarde a resposta na mensagem anterior.'
+                );
+                return;
+              }
+
+              // 1B. Verifica se já está na fila de botões aguardando confirmação (pendingReceiptsCache)
+              const pendingImgDup = checkPendingQueueDuplicate(
+                imageSha256,
+                normalizedImageSha256
+              );
+              if (pendingImgDup.isDuplicate) {
+                await updateStatus(`🛡️ DUPLICIDADE EVITADA\n${pendingImgDup.reason}`);
+                await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+                return;
+              }
+
+              // 1C. Verifica se a foto já foi salva no banco argus.receipts (sem gastar cota do Gemini!)
+              const preOcrDup = await processor.checkPreOcrImageDuplicate(
+                imageSha256,
+                normalizedImageSha256
+              );
+              if (preOcrDup.isDuplicate) {
+                const dtStr = preOcrDup.existingPurchaseDate
+                  ? new Date(preOcrDup.existingPurchaseDate).toLocaleDateString('pt-BR')
+                  : '-';
+                await updateStatus(
+                  [
+                    '🛡️ NOTA FISCAL DUPLICADA BLOQUEADA (PRÉ-OCR)',
+                    `• Motivo: ${preOcrDup.reason}`,
+                    `• Registro Existente: ${preOcrDup.existingStoreName} — R$ ${(preOcrDup.existingTotalAmount || 0).toFixed(2)} (${dtStr})`,
+                    '• Economia de Cota: Bloqueado instantaneamente antes de acionar a IA.'
+                  ].join('\n')
+                );
+                await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+                return;
+              }
+
+              // Marca imagem como "em processamento" (in-flight)
+              inFlightImageHashes.add(imageSha256);
+              inFlightImageHashes.add(normalizedImageSha256);
+
               let extracted: ExtractedReceiptData | null = null;
               const qrData = await processor.decodeQrCodeFromImage(buffer);
               if (qrData) {
@@ -497,6 +611,41 @@ export function createArgusBot(): Bot {
                   '🧠 [2/3] Extraindo cabeçalho e itens via Gemini Vision IA (aguarde ~3 a 10s)...'
                 );
                 extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
+              }
+
+              // Consolida identificadores multicamada (Chave SEFAZ 44d OU Fallback COO + Content Fingerprint)
+              extracted = processor.finalizeReceiptIdentifiers(extracted, {
+                imageSha256,
+                normalizedImageSha256
+              });
+
+              // CAMADAS 2, 3, 4 e 5 (PÓS-OCR): Verifica se o conteúdo extraído já está na fila pendente ou no banco
+              const pendingContentDup = checkPendingQueueDuplicate(
+                imageSha256,
+                normalizedImageSha256,
+                extracted
+              );
+              if (pendingContentDup.isDuplicate) {
+                await updateStatus(`🛡️ DUPLICIDADE EVITADA\n${pendingContentDup.reason}`);
+                await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+                return;
+              }
+
+              const postOcrDup = await processor.checkPostOcrDuplicateLayers(extracted);
+              if (postOcrDup.isDuplicate) {
+                const dtStr = postOcrDup.existingPurchaseDate
+                  ? new Date(postOcrDup.existingPurchaseDate).toLocaleDateString('pt-BR')
+                  : '-';
+                await updateStatus(
+                  [
+                    '🛡️ NOTA FISCAL DUPLICADA BLOQUEADA (PÓS-OCR)',
+                    `• ${postOcrDup.reason}`,
+                    `• Cupom Original no Banco: ${postOcrDup.existingStoreName} — R$ ${(postOcrDup.existingTotalAmount || 0).toFixed(2)} (${dtStr})`,
+                    '• Ação: O cupom não foi duplicado.'
+                  ].join('\n')
+                );
+                await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+                return;
               }
 
               const tokenKey = `rcpt_${Date.now()}`;
@@ -523,10 +672,17 @@ export function createArgusBot(): Bot {
                   ? `\n  ... e mais ${extracted.items.length - 6} item(ns)`
                   : '';
 
+              const idLayerBadge = extracted.hasOfficialAccessKey
+                ? `🔑 ID Fiscal (Camada 2): Chave SEFAZ 44 dígitos (${extracted.accessKey.slice(0, 12)}...)`
+                : `🧬 ID Multicamada (Sem Chave 44d): ${
+                    extracted.receiptNumber ? `Doc/COO #${extracted.receiptNumber} + ` : ''
+                  }Fingerprint #${(extracted.contentFingerprint || '').slice(0, 12)}`;
+
               const preview = [
                 `👁️ CUPOM FISCAL EXTRAÍDO EM ${elapsedSec}s (${extracted.extractionMethod})`,
                 `🏪 Mercado: ${extracted.storeTradingName} (${extracted.storeCnpj})`,
                 `💳 Pagamento: ${extracted.paymentMethod} | 💰 Total: R$ ${extracted.totalAmount.toFixed(2)}`,
+                idLayerBadge,
                 `📦 Itens Identificados (${extracted.items.length}):`,
                 topItemsPreview + moreItems,
                 '',
@@ -541,6 +697,8 @@ export function createArgusBot(): Bot {
           ]);
         } finally {
           if (timeoutHandle) clearTimeout(timeoutHandle);
+          if (currentImgHash) inFlightImageHashes.delete(currentImgHash);
+          if (currentNormHash) inFlightImageHashes.delete(currentNormHash);
         }
       });
     } catch (err) {
@@ -596,6 +754,16 @@ export function createArgusBot(): Bot {
         .catch(() => {});
 
       await withTypingIndicator(ctx, async () => {
+        // Verifica última trava transacional antes de subir para o bucket FotosArgus
+        const preCommitDup = await processor.checkPostOcrDuplicateLayers(session.extracted);
+        if (preCommitDup.isDuplicate) {
+          await ctx.editMessageText(
+            `🛡️ Duplicidade evitada na gravação final!\n• ${preCommitDup.reason}\n• Nenhuma imagem ou linha duplicada foi gerada.`
+          );
+          await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+          return;
+        }
+
         // 1. Comprime a foto para WebP e envia para o bucket FotosArgus no Supabase Storage
         const uploadRes = await storage.compressAndUploadReceiptImage(
           session.rawBuffer,
@@ -611,6 +779,14 @@ export function createArgusBot(): Bot {
 
         // 2. Grava cupom + itens normalizados no schema argus e concilia com Pluggy Open Finance
         const result = await processor.ingestReceipt(session.extracted);
+        if (result.alreadyExisted) {
+          await ctx.editMessageText(
+            `🛡️ Duplicidade evitada no banco (${result.duplicateReason || 'Cupom já registrado'}).`
+          );
+          await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+          return;
+        }
+
         await reconciler.reconcileAndSyncSheets();
 
         const shrinkMsg =
