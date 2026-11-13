@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
         }
       }
     : {
+        output: 'standalone',
         serverExternalPackages: ['sharp', 'pg', 'googleapis', 'pluggy-sdk', 'grammy']
       }),
   env: {

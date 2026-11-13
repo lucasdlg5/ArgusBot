@@ -18,6 +18,10 @@ import {
   type PriceScanProcessOutcome
 } from '../services/ArgusPriceScannerService';
 import { ArgusDashboardBuilderService } from '../services/ArgusDashboardBuilderService';
+import {
+  ArgusConversationService,
+  type ArgusSuggestedAction
+} from '../services/ArgusConversationService';
 
 interface PendingReceiptSession {
   extracted: ExtractedReceiptData;
@@ -44,6 +48,7 @@ export function createArgusBot(): Bot {
   const stickers = new ArgusStickerService();
   const priceScanner = new ArgusPriceScannerService();
   const dashboardBuilder = new ArgusDashboardBuilderService();
+  const conversation = new ArgusConversationService();
   let lastPriceScanJobId: string | null = null;
 
   bot.catch(async (err) => {
@@ -137,7 +142,12 @@ export function createArgusBot(): Bot {
   });
 
   // 1. /start — Apresentação oficial da persona Argus (@MonetaArgusBot - "O Olho Fiscal")
-  bot.command('start', async (ctx) => {
+  async function handleStart(ctx: {
+    api: Bot['api'];
+    chat?: { id: number };
+    reply: any;
+    replyWithSticker?: (sticker: string) => Promise<unknown>;
+  }) {
     const publicUrl = env.PUBLIC_DASHBOARD_URL.trim();
     const welcome = [
       '👁️ *Saudações. Eu sou o ARGUS (@MonetaArgusBot) — O Olho Fiscal do ecossistema Moneta.*',
@@ -145,11 +155,12 @@ export function createArgusBot(): Bot {
       'Sou um auditor analítico, direto e afiado. Minha função é vigiar cada centavo do seu orçamento, caçar reduflação oculta nas embalagens, calcular o custo exato por grama de cada receita e decidir na ponta do lápis se compensa ir de carro ou de Uber.',
       '',
       '📋 *Comandos de Auditoria Disponíveis:*',
+      '• 💬 *Converse normalmente comigo* — Respondo perguntas básicas sem rodeios e sempre te guio para a opção ou comando certo (ex: `/produto arroz`).',
       '• 📸 *Envie uma Foto ou PDF de Cupom Fiscal (NFC-e/SAT)* — Decodifico o QR Code localmente (`sharp` + `jsqr`), raspo a SEFAZ ou aciono o Gemini Vision e salvo a foto comprimida em WebP no bucket `FotosArgus`.',
       '• 🎥 *Envie um Vídeo do Corredor ou Foto de Gôndola/Panfleto (Flyer)* — Extraio todos os produtos e preços visíveis, calculo a *% de Confiabilidade* (apontando se faltou loja, filial ou nitidez), gravo na planilha `Precos_Coletados` e mantenho fila automática em `argus.media_processing_queue` caso precise reprocessar!',
+      '• `/produto <item>` (ou `/preco <item>`) — Consulta o preço estimado atual por grama/ml em cada mercado (ex: `/produto arroz`) e alerta se é hora de estocar.',
       '• `/fila` — Consulta a Tabela de Controle de mídias processadas com sucesso, fila de reprocessamento e últimos preços coletados de gôndolas/flyers.',
       '• `/loja <Nome do Mercado | Bairro>` — Define ou corrige a loja da última coleta de vídeo/gôndola para elevar o score de confiabilidade.',
-      '• `/preco <item>` — Consulta o preço estimado atual por grama/ml em cada mercado e alerta se é hora de estocar.',
       '• `/receita` — Calcula o *Custo Proporcional por Marmita* vs. *Desembolso de Caixa (Embalagens Fechadas)* das suas receitas.',
       '• `/otimizar` — Roda o Simulador Logístico (Rota Real OSRM: Mercado Único vs. Compra Dividida | Gasolina vs. Uber com trava de R$ 25,00).',
       '• `/reconciliar` — Cruza cupons fiscais com transações do Pluggy Open Finance (`-2h` a `+48h`, `<= R$ 0,05`) e sincroniza a planilha *Argus Ledger*.',
@@ -175,17 +186,34 @@ export function createArgusBot(): Bot {
 
     await ctx.reply(welcome, { parse_mode: 'Markdown', reply_markup: kb });
     await stickers.sendEmotionalSticker(ctx, 'DETECTIVE');
+  }
+
+  bot.command('start', async (ctx) => handleStart(ctx));
+  bot.command(['ajuda', 'help'], async (ctx) => {
+    const reply = await conversation.replyToMessage('/ajuda', ctx.chat?.id);
+    const kb = new InlineKeyboard()
+      .text('🔍 Ex: /produto arroz', 'quick_preco:arroz')
+      .text('🍲 Receitas', 'quick:receita')
+      .row()
+      .text('🚗 Simular Rota', 'quick:otimizar')
+      .text('📋 Menu Completo', 'quick:start');
+    await ctx.reply(reply.replyText, { reply_markup: kb });
   });
 
-  // 2. /preco <termo> — Histórico e arbitragem de preços por unidade base (g/ml/un)
-  async function handlePreco(ctx: {
-    api: Bot['api'];
-    chat?: { id: number };
-    reply: any;
-    replyWithSticker?: (sticker: string) => Promise<unknown>;
-    match?: unknown;
-  }) {
-    const query = typeof ctx.match === 'string' ? ctx.match.trim() : '';
+  // 2. /produto <termo> ou /preco <termo> — Histórico e arbitragem de preços por unidade base (g/ml/un)
+  async function handlePreco(
+    ctx: {
+      api: Bot['api'];
+      chat?: { id: number };
+      reply: any;
+      replyWithSticker?: (sticker: string) => Promise<unknown>;
+      match?: unknown;
+    },
+    overrideQuery?: string
+  ) {
+    const query = (
+      overrideQuery ?? (typeof ctx.match === 'string' ? ctx.match : '')
+    ).trim();
     const rows = await queryArgus<{
       product_name: string;
       store_name: string;
@@ -238,7 +266,7 @@ export function createArgusBot(): Bot {
     await stickers.sendEmotionalSticker(ctx, foundHistoricalLow ? 'CELEBRATION' : 'DETECTIVE');
   }
 
-  bot.command('preco', async (ctx) => handlePreco(ctx));
+  bot.command(['preco', 'produto', 'precos', 'produtos'], async (ctx) => handlePreco(ctx));
 
   // 3. /receita — Duplo Custo de Receitas (Proporcional vs. Desembolso de Caixa)
   async function handleReceita(ctx: {
@@ -1686,14 +1714,84 @@ export function createArgusBot(): Bot {
     return null;
   }
 
+  function buildContextualKeyboard(
+    action: ArgusSuggestedAction,
+    productQuery?: string
+  ): InlineKeyboard {
+    const kb = new InlineKeyboard();
+    const cleanQuery = (productQuery || '').trim();
+
+    switch (action) {
+      case 'PRECO':
+        if (cleanQuery) {
+          kb.text(`🔍 Buscar "${cleanQuery}"`, `quick_preco:${cleanQuery.slice(0, 40)}`);
+        } else {
+          kb.text('🔍 Ex: /produto arroz', 'quick_preco:arroz');
+        }
+        kb.text('💰 Preços da Cesta', 'quick:preco');
+        break;
+      case 'RECEITA':
+        kb.text('🍲 Custos de Receitas', 'quick:receita').text('💰 Preços da Cesta', 'quick:preco');
+        break;
+      case 'OTIMIZAR':
+        kb.text('🚗 Simular Rota', 'quick:otimizar').text('💰 Preços da Cesta', 'quick:preco');
+        break;
+      case 'RECONCILIAR':
+        kb.text('🏦 Conciliar Open Finance', 'quick:reconciliar').text('📊 Resumo BI', 'quick:dashboard');
+        break;
+      case 'DASHBOARD':
+        kb.text('📊 Resumo BI', 'quick:dashboard').text('🚗 Simular Rota', 'quick:otimizar');
+        break;
+      case 'FILA':
+      case 'LOJA':
+      case 'ENVIAR_MIDIA':
+        kb.text('🗂️ Fila & Coletas', 'quick:fila').text('📊 Resumo BI', 'quick:dashboard');
+        break;
+      case 'SEGURANCA':
+        kb.text('🛡️ Segurança', 'quick:seguranca').text('📊 Resumo BI', 'quick:dashboard');
+        break;
+      case 'START':
+      default:
+        kb.text('🔍 Ex: /produto arroz', 'quick_preco:arroz').text('📋 Ver Comandos', 'quick:start');
+        kb.row().text('🍲 Receitas', 'quick:receita').text('🚗 Simular Rota', 'quick:otimizar');
+        break;
+    }
+
+    return kb;
+  }
+
+  // Conversa natural com o bot (responde perguntas básicas de forma concisa e guia para opções/comandos próximos)
+  bot.on('message:text', async (ctx) => {
+    const text = (ctx.message.text || '').trim();
+    if (!text) return;
+
+    await withTypingIndicator(ctx, async () => {
+      const convReply = await conversation.replyToMessage(text, ctx.chat?.id);
+      const kb = buildContextualKeyboard(
+        convReply.suggestedAction,
+        convReply.suggestedProductQuery
+      );
+
+      await ctx.reply(convReply.replyText, {
+        reply_markup: kb,
+        ...(ctx.message?.message_id
+          ? { reply_parameters: { message_id: ctx.message.message_id } }
+          : {})
+      });
+    });
+  });
+
   // Callback dos Botões Inline
   bot.on('callback_query:data', async (ctx) => {
     const data = ctx.callbackQuery.data;
-    const [action, key] = data.split(':');
+    const colonIdx = data.indexOf(':');
+    const action = colonIdx >= 0 ? data.slice(0, colonIdx) : data;
+    const key = colonIdx >= 0 ? data.slice(colonIdx + 1) : '';
 
     if (action === 'quick') {
       await ctx.answerCallbackQuery().catch(() => {});
       await withTypingIndicator(ctx, async () => {
+        if (key === 'start') await handleStart(ctx);
         if (key === 'preco') await handlePreco(ctx);
         if (key === 'receita') await handleReceita(ctx);
         if (key === 'otimizar') await handleOtimizar(ctx);
@@ -1701,6 +1799,14 @@ export function createArgusBot(): Bot {
         if (key === 'dashboard') await handleDashboard(ctx);
         if (key === 'seguranca') await handleSeguranca(ctx);
         if (key === 'fila') await handleFila(ctx);
+      });
+      return;
+    }
+
+    if (action === 'quick_preco') {
+      await ctx.answerCallbackQuery({ text: `Buscando "${key}"...` }).catch(() => {});
+      await withTypingIndicator(ctx, async () => {
+        await handlePreco(ctx, key);
       });
       return;
     }
