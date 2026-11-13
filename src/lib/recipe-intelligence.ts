@@ -180,3 +180,39 @@ export function computeSimilarRecipes(
     })
     .slice(0, limit);
 }
+
+/**
+ * Busca textual insensível a acentos e com múltiplos termos (todos os termos devem casar)
+ * sobre nome, ingredientes, tags culinárias, dificuldade, melhor mercado e preparo.
+ */
+export function matchesRecipeSearch(
+  recipe: Pick<
+    RecipeCostEvaluation,
+    | 'recipeName'
+    | 'instructions'
+    | 'difficulty'
+    | 'bestSingleStoreName'
+    | 'cuisineTags'
+    | 'ingredientsBreakdown'
+  >,
+  rawQuery: string
+): boolean {
+  const normalizedQuery = normalizePtText(rawQuery);
+  if (!normalizedQuery) return true;
+
+  const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return true;
+
+  const haystack = normalizePtText(
+    [
+      recipe.recipeName,
+      recipe.bestSingleStoreName,
+      recipe.difficulty,
+      recipe.instructions,
+      ...(recipe.cuisineTags || []),
+      ...recipe.ingredientsBreakdown.map((i) => i.productName)
+    ].join(' ')
+  );
+
+  return tokens.every((token) => haystack.includes(token));
+}

@@ -42,6 +42,7 @@ import type {
   PerishabilityTier,
   RecipeCostEvaluation
 } from '@/types/argus';
+import { matchesRecipeSearch } from '@/lib/recipe-intelligence';
 import RecipeStoreComparisonCard from './RecipeStoreComparisonCard';
 
 const ArgusLogisticsMap = dynamic(() => import('./ArgusLogisticsMap'), {
@@ -310,24 +311,22 @@ export default function ArgusRecipesPage() {
   }, [recipes]);
 
   const filteredRecipes = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
     return recipes.filter((r) => {
       const matchesTag = selectedTag === 'TODAS' || (r.cuisineTags || []).includes(selectedTag);
       if (!matchesTag) return false;
-      if (!q) return true;
-      return (
-        r.recipeName.toLowerCase().includes(q) ||
-        r.ingredientsBreakdown.some((i) => i.productName.toLowerCase().includes(q)) ||
-        (r.cuisineTags || []).some((t) => t.toLowerCase().includes(q))
-      );
+      return matchesRecipeSearch(r, searchQuery);
     });
   }, [recipes, searchQuery, selectedTag]);
 
   const activeRecipe = useMemo(() => {
+    if (filteredRecipes.length > 0) {
+      return (
+        filteredRecipes.find((r) => r.recipeId === selectedRecipeId) ||
+        filteredRecipes[0]
+      );
+    }
     return (
-      filteredRecipes.find((r) => r.recipeId === selectedRecipeId) ||
       recipes.find((r) => r.recipeId === selectedRecipeId) ||
-      filteredRecipes[0] ||
       recipes[0] ||
       null
     );
@@ -1049,15 +1048,52 @@ export default function ArgusRecipesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* COLUNA ESQUERDA: CATÁLOGO FILTRÁVEL DE RECEITAS */}
             <aside className="lg:col-span-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-3.5">
-              <div className="relative">
-                <Search className="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar receita ou ingrediente..."
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
-                />
+              <div className="space-y-1.5">
+                <div className="relative">
+                  <Search className="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="search"
+                    aria-label="Buscar receitas por nome, ingrediente, mercado ou preparo"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape' && searchQuery) {
+                        e.preventDefault();
+                        setSearchQuery('');
+                      }
+                    }}
+                    placeholder="Buscar receita, ingrediente ou mercado..."
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 pl-9 pr-8 py-2 text-xs text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                  />
+                  {searchQuery.length > 0 && (
+                    <button
+                      type="button"
+                      aria-label="Limpar busca de receitas"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {(searchQuery.trim().length > 0 || selectedTag !== 'TODAS') && (
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5 tabular-nums">
+                    <span>
+                      Exibindo <strong className="text-slate-200">{filteredRecipes.length}</strong> de{' '}
+                      {recipes.length} receita(s)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedTag('TODAS');
+                      }}
+                      className="text-emerald-400 hover:text-emerald-300 font-medium"
+                    >
+                      Limpar filtros
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* FILTROS POR CATEGORIA / TAG CULINÁRIA */}
@@ -1084,9 +1120,22 @@ export default function ArgusRecipesPage() {
               <LayoutGroup id="argus-recipe-catalog">
                 <div className="space-y-2.5 max-h-[720px] overflow-y-auto pr-1">
                   {filteredRecipes.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-4 text-center">
-                      Nenhuma receita encontrada para os filtros atuais.
-                    </p>
+                    <div className="py-6 px-3 text-center space-y-2 rounded-lg border border-slate-800/80 bg-slate-950/50">
+                      <p className="text-xs text-slate-300">
+                        Nenhuma receita encontrada para &ldquo;{searchQuery.trim() || selectedTag}&rdquo;.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setSelectedTag('TODAS');
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-emerald-300 hover:border-emerald-500/50"
+                      >
+                        <X className="h-3 w-3" />
+                        Limpar busca e filtros
+                      </button>
+                    </div>
                   ) : (
                     filteredRecipes.map((rec, index) => {
                       const isSelected = activeRecipe?.recipeId === rec.recipeId;

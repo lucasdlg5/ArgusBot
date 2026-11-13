@@ -11,6 +11,7 @@ import {
   validatePublicRecipeUrl
 } from '../lib/url-security';
 import { queryArgus } from '../lib/db';
+import { matchesRecipeSearch } from '../lib/recipe-intelligence';
 
 describe('ArgusRecipeService — Cadeia Fria, Custos & Persistência de Receitas', () => {
   const recipeService = new ArgusRecipeService();
@@ -250,6 +251,26 @@ describe('ArgusRecipeService — Cadeia Fria, Custos & Persistência de Receitas
     await expect(
       recipeService.extractRecipeFromHtml(cloudflareHtml, 'https://bloqueado.exemplo.com/receita')
     ).rejects.toThrow(RecipeFetchError);
+  });
+
+  it('filtra receitas por texto ignorando acentos e combinando múltiplos termos', () => {
+    const sampleRecipe = {
+      recipeName: 'Arroz Carreteiro Econômico de Acém com Ovos',
+      instructions: '1. Sele os cubos de acém na panela e misture com arroz.',
+      difficulty: 'Fácil' as const,
+      bestSingleStoreName: 'NE SUPERMERCADO',
+      cuisineTags: ['Caseira BR', 'Rica em Proteína'],
+      ingredientsBreakdown: [
+        { productName: 'Acém Bovino em Cubos (1kg)' } as never,
+        { productName: 'Arroz Agulhinha Tipo 1 (5kg)' } as never
+      ]
+    };
+
+    expect(matchesRecipeSearch(sampleRecipe, '')).toBe(true);
+    expect(matchesRecipeSearch(sampleRecipe, 'economico acem')).toBe(true);
+    expect(matchesRecipeSearch(sampleRecipe, 'arroz ne supermercado')).toBe(true);
+    expect(matchesRecipeSearch(sampleRecipe, 'proteina facil')).toBe(true);
+    expect(matchesRecipeSearch(sampleRecipe, 'chocolate sorvete')).toBe(false);
   });
 });
 

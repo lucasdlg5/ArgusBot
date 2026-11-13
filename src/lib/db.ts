@@ -17,9 +17,15 @@ import {
   getMockPriceEvolutionSeries
 } from './mock-db';
 
-let pgPool: Pool | null = null;
-let useMock = false;
-let verifiedConnection = false;
+const globalForArgusDb = globalThis as unknown as {
+  __argusPgPool?: Pool;
+  __argusUseMock?: boolean;
+  __argusVerifiedConnection?: boolean;
+};
+
+let pgPool: Pool | null = globalForArgusDb.__argusPgPool ?? null;
+let useMock = globalForArgusDb.__argusUseMock ?? false;
+let verifiedConnection = globalForArgusDb.__argusVerifiedConnection ?? false;
 let supabaseAdmin: SupabaseClient<any, 'argus'> | null = null;
 
 function hasValidDatabaseConfig(): boolean {
@@ -421,6 +427,7 @@ export function getArgusPool(): Pool {
   if (!pgPool) {
     if (!hasValidDatabaseConfig()) {
       useMock = true;
+      globalForArgusDb.__argusUseMock = true;
     }
     const isRenderEnv = Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL);
     // No Render (sem IPv6 de saída), prioriza DATABASE_URL (Supavisor Pooler IPv4) antes de DIRECT_URL
@@ -432,10 +439,11 @@ export function getArgusPool(): Pool {
     pgPool = new Pool({
       connectionString,
       ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
-      max: 10,
-      idleTimeoutMillis: 30000,
+      max: 3,
+      idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 10000
     });
+    globalForArgusDb.__argusPgPool = pgPool;
   }
   return pgPool;
 }
@@ -448,19 +456,36 @@ export async function queryArgus<T extends QueryResultRow = QueryResultRow>(
     return executeMockQuery<T>(text, params);
   }
 
-  try {
-    const pool = getArgusPool();
-    const res = await pool.query<T>(text, params);
-    verifiedConnection = true;
-    return res.rows;
-  } catch (err) {
-    if (!verifiedConnection) {
-      logger.warn({ err }, '[Argus DB] Banco offline — ativando repositório em memória/mock');
-      useMock = true;
-      return executeMockQuery<T>(text, params);
+  const pool = getArgusPool();
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await pool.query<T>(text, params);
+      verifiedConnection = true;
+      globalForArgusDb.__argusVerifiedConnection = true;
+      return res.rows;
+    } catch (err) {
+      const msg = (err as Error)?.message || '';
+      const isPoolExhausted =
+        msg.includes('EMAXCONNSESSION') ||
+        msg.toLowerCase().includes('max clients reached') ||
+        msg.toLowerCase().includes('too many clients');
+
+      if (isPoolExhausted && attempt < maxAttempts) {
+        await new Promise((res) => setTimeout(res, 200 * attempt));
+        continue;
+      }
+
+      if (!verifiedConnection && !isPoolExhausted) {
+        logger.warn({ err }, '[Argus DB] Banco offline — ativando repositório em memória/mock');
+        useMock = true;
+        globalForArgusDb.__argusUseMock = true;
+        return executeMockQuery<T>(text, params);
+      }
+      throw err;
     }
-    throw err;
   }
+  return [];
 }
 
 export async function withArgusTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
