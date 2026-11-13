@@ -354,8 +354,12 @@ export default function ArgusProductsPage() {
                 className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Painel Executivo
+                Painel
               </Link>
+              <span className="text-slate-700" aria-hidden="true">
+                /
+              </span>
+              <span className="text-sky-300 font-semibold">Produtos</span>
               <span className="text-slate-700" aria-hidden="true">
                 /
               </span>
@@ -364,7 +368,7 @@ export default function ArgusProductsPage() {
                 className="inline-flex items-center gap-1.5 text-slate-400 hover:text-emerald-300 transition-colors"
               >
                 <Store className="h-3.5 w-3.5" />
-                Mercados &amp; B.I.
+                Mercados
               </Link>
               <span className="text-slate-700" aria-hidden="true">
                 /
@@ -374,7 +378,7 @@ export default function ArgusProductsPage() {
                 className="inline-flex items-center gap-1.5 text-slate-400 hover:text-amber-300 transition-colors"
               >
                 <Utensils className="h-3.5 w-3.5" />
-                Receitas &amp; Cadeia Fria
+                Receitas
               </Link>
               <span className="text-slate-700" aria-hidden="true">
                 /
@@ -384,15 +388,15 @@ export default function ArgusProductsPage() {
                 className="inline-flex items-center gap-1.5 text-slate-400 hover:text-emerald-300 transition-colors"
               >
                 <Receipt className="h-3.5 w-3.5" />
-                Notas Fiscais
+                Notas
               </Link>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 pt-1">
               <Package className="h-6 w-6 text-emerald-400 shrink-0" />
-              Catálogo de Produtos Escaneados &amp; Preços
+              Produtos &amp; Preços
             </h1>
             <p className="text-xs text-slate-400">
-              Histórico completo de itens auditados em cupons fiscais, fotos de gôndola e folhetos com data, local, marca e preço normalizado.
+              Histórico de preços e medidas por mercado.
             </p>
           </div>
 
@@ -402,7 +406,7 @@ export default function ArgusProductsPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 hover:border-emerald-500/50 hover:text-emerald-300 px-4 py-2 text-xs font-medium text-slate-200 transition-colors"
             >
               <Store className="h-4 w-4 text-emerald-400" />
-              Explorar B.I. por Mercado
+              Ver Mercados
             </Link>
           </div>
         </header>
@@ -860,7 +864,7 @@ export default function ArgusProductsPage() {
                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300"
                                   >
                                     <Store className="h-3.5 w-3.5" />
-                                    Abrir B.I. do {item.storeName} →
+                                    Ver {item.storeName} →
                                   </Link>
                                 )}
                               </div>

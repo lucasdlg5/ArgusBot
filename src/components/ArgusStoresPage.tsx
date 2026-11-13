@@ -377,7 +377,7 @@ export default function ArgusStoresPage() {
                 className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Painel Executivo
+                Painel
               </Link>
               <span className="text-slate-700" aria-hidden="true">
                 /
@@ -387,8 +387,12 @@ export default function ArgusStoresPage() {
                 className="inline-flex items-center gap-1.5 text-slate-400 hover:text-sky-300 transition-colors"
               >
                 <Package className="h-3.5 w-3.5" />
-                Produtos Escaneados
+                Produtos
               </Link>
+              <span className="text-slate-700" aria-hidden="true">
+                /
+              </span>
+              <span className="text-emerald-300 font-semibold">Mercados</span>
               <span className="text-slate-700" aria-hidden="true">
                 /
               </span>
@@ -397,7 +401,7 @@ export default function ArgusStoresPage() {
                 className="inline-flex items-center gap-1.5 text-slate-400 hover:text-amber-300 transition-colors"
               >
                 <Utensils className="h-3.5 w-3.5" />
-                Receitas &amp; Cadeia Fria
+                Receitas
               </Link>
               <span className="text-slate-700" aria-hidden="true">
                 /
@@ -407,18 +411,18 @@ export default function ArgusStoresPage() {
                 className="inline-flex items-center gap-1.5 text-slate-400 hover:text-emerald-300 transition-colors"
               >
                 <Receipt className="h-3.5 w-3.5" />
-                Notas Fiscais
+                Notas
               </Link>
             </div>
 
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 pt-1">
               <Store className="h-6 w-6 text-emerald-400 shrink-0" />
-              {selectedStore ? `B.I. do Mercado: ${selectedStore.tradingName}` : 'Mercados & Inteligência por Loja'}
+              {selectedStore ? selectedStore.tradingName : 'Mercados'}
             </h1>
             <p className="text-xs text-slate-400">
               {selectedStore
-                ? 'Raio-X financeiro completo da loja: total já gasto, frequência diária, mês atual, produto mais consumido e histórico de cupons.'
-                : 'Selecione um mercado abaixo para abrir seu painel individual de Business Intelligence.'}
+                ? 'Gastos, frequência, produtos principais e histórico de compras.'
+                : 'Selecione um mercado para ver gastos e histórico.'}
             </p>
           </div>
 
@@ -1229,7 +1233,7 @@ export default function ArgusStoresPage() {
                               Editar
                             </button>
                             <span className="text-xs font-semibold text-emerald-400">
-                              B.I. →
+                              Abrir →
                             </span>
                           </div>
                         </div>

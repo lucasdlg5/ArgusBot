@@ -170,30 +170,30 @@ export default function ArgusReceiptsPage() {
                 className="inline-flex items-center gap-1 hover:text-white transition-colors"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Painel Executivo
+                Painel
               </Link>
               <span className="text-slate-700">/</span>
-              <span className="text-emerald-400 font-semibold">Notas Fiscais</span>
+              <span className="text-emerald-400 font-semibold">Notas</span>
               <span className="text-slate-700">/</span>
               <Link href="/produtos" className="hover:text-sky-300 transition-colors">
-                Produtos Escaneados
+                Produtos
               </Link>
               <span className="text-slate-700">/</span>
               <Link href="/mercados" className="hover:text-emerald-300 transition-colors">
-                Mercados &amp; B.I.
+                Mercados
               </Link>
               <span className="text-slate-700">/</span>
               <Link href="/receitas" className="hover:text-emerald-300 transition-colors">
-                Receitas &amp; Cadeia Fria
+                Receitas
               </Link>
             </nav>
 
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 pt-1">
               <Receipt className="h-6 w-6 text-emerald-400 shrink-0" />
-              Notas Fiscais &amp; Itens Comprados
+              Notas Fiscais
             </h1>
             <p className="text-xs text-slate-400">
-              Visualize cada cupom fiscal registrado com data, mercado, pagamento e a lista completa de produtos com preço unitário e total.
+              Cupons registrados com produtos, quantidades e preços pagos.
             </p>
           </div>
 
@@ -472,7 +472,7 @@ export default function ArgusReceiptsPage() {
                                 className="inline-flex items-center gap-1 font-semibold text-emerald-400 hover:text-emerald-300"
                               >
                                 <Store className="h-3.5 w-3.5" />
-                                B.I. do {rec.storeName} →
+                                Ver {rec.storeName} →
                               </Link>
                               <Link
                                 href={`/produtos?store=${encodeURIComponent(rec.storeId)}`}

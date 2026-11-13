@@ -607,31 +607,31 @@ export default function ArgusRecipesPage() {
               className="hover:text-white transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
             >
               <ArrowLeft className="h-4 w-4" />
-              Painel Geral
-            </Link>
-            <Link
-              href="/produtos"
-              className="hover:text-sky-300 transition-colors whitespace-nowrap shrink-0"
-            >
-              Produtos Escaneados
-            </Link>
-            <Link
-              href="/mercados"
-              className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0"
-            >
-              Mercados &amp; B.I.
-            </Link>
-            <Link
-              href="/receitas"
-              className="text-emerald-400 border-b border-emerald-400 pb-0.5 whitespace-nowrap shrink-0"
-            >
-              Receitas e Rotas
+              Painel
             </Link>
             <Link
               href="/notas"
               className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0"
             >
-              Notas Fiscais
+              Notas
+            </Link>
+            <Link
+              href="/produtos"
+              className="hover:text-sky-300 transition-colors whitespace-nowrap shrink-0"
+            >
+              Produtos
+            </Link>
+            <Link
+              href="/mercados"
+              className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0"
+            >
+              Mercados
+            </Link>
+            <Link
+              href="/receitas"
+              className="text-emerald-400 border-b border-emerald-400 pb-0.5 whitespace-nowrap shrink-0"
+            >
+              Receitas
             </Link>
           </nav>
 
@@ -666,19 +666,12 @@ export default function ArgusRecipesPage() {
         {/* HERO DA PÁGINA */}
         <section className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800/80 pb-5">
           <div>
-            <p className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" />
-              Custo Atualizado · Aproveitamento de Despensa · Cadeia Fria &amp; OSRM
-            </p>
-            <h1 className="text-2xl lg:text-3xl font-bold text-white mt-1">
-              Receitas, Menor Preço e Ordem Anti-Perecíveis
+            <h1 className="text-2xl lg:text-3xl font-bold text-white">
+              Receitas &amp; Custos
             </h1>
-            <p className="text-sm text-slate-400 mt-1 max-w-3xl">
-              Compare o menor custo dividido entre mercados contra o melhor mercado único, marque itens direto no carrinho, descubra receitas similares que reaproveitam sobras e trace sua rota anti-perecíveis no mapa.
+            <p className="text-sm text-slate-400 mt-1 max-w-2xl">
+              Compare preços entre mercados, consulte o que tem na geladeira e monte sua lista de compras.
             </p>
-          </div>
-          <div className="text-xs text-slate-400 tabular-nums shrink-0 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-            Base: <span className="text-slate-200 font-medium">{homeLocation.address}</span>
           </div>
         </section>
 
@@ -1374,7 +1367,7 @@ export default function ArgusRecipesPage() {
                                       className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-300 transition-colors"
                                     >
                                       <ShoppingCart className="h-3 w-3" />
-                                      <span>Lista &amp; Cadeia Fria</span>
+                                      <span>Lista de Compras</span>
                                     </motion.button>
 
                                     <motion.button
@@ -1511,7 +1504,7 @@ export default function ArgusRecipesPage() {
                               { id: 'OVERVIEW', label: 'Custos & Similares', icon: Sparkles },
                               {
                                 id: 'SHOPPING',
-                                label: `Lista & Cadeia Fria (${shoppingProgress.checkedCount}/${shoppingProgress.total})`,
+                                label: `Lista de Compras (${shoppingProgress.checkedCount}/${shoppingProgress.total})`,
                                 icon: ShoppingCart
                               },
                               {
@@ -1623,8 +1616,7 @@ export default function ArgusRecipesPage() {
                               <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
                                 <p className="text-xs font-medium text-sky-300 flex items-center gap-1.5">
                                   <Snowflake className="h-3.5 w-3.5" />
-                                  Cadeia Fria (Frescor:{' '}
-                                  {activeRecipe.routeAnalysis?.coldChainScore ?? 94}/100)
+                                  Ordem de Compra
                                 </p>
                                 <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
                                   {activeRecipe.coldChainSummary}
@@ -2188,7 +2180,7 @@ export default function ArgusRecipesPage() {
                             <div>
                               <h3 className="text-base font-bold text-white flex items-center gap-2">
                                 <Navigation className="h-4 w-4 text-emerald-400" />
-                                Mapa de Rota &amp; Cadeia Fria: &ldquo;{activeRecipe.recipeName}&rdquo;
+                                Mapa &amp; Rota: &ldquo;{activeRecipe.recipeName}&rdquo;
                               </h3>
                               <p className="text-xs text-slate-400 mt-0.5">
                                 {activeRecipe.routeAnalysis.coldChainProtectedMinutes} min de proteção fora da geladeira para perecíveis/congelados ao deixá-los para a última parada.

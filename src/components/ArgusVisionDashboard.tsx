@@ -354,14 +354,14 @@ export default function ArgusVisionDashboard() {
 
           <div className="mt-5 space-y-1.5">
             <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Módulos de Inteligência
+              Módulos
             </p>
             {[
-              { id: 'ALL', label: 'Visão Completa (4 Módulos)', icon: Eye },
-              { id: 'M1', label: '1. Raio-X Open Finance', icon: Wallet },
-              { id: 'M2', label: '2. Inflação & Reduflação', icon: AlertTriangle },
-              { id: 'M3', label: '3. Matriz de Mercados', icon: Store },
-              { id: 'M4', label: '4. Receitas & Rota OSRM', icon: Navigation }
+              { id: 'ALL', label: 'Visão Geral', icon: Eye },
+              { id: 'M1', label: '1. Gastos & Conciliação', icon: Wallet },
+              { id: 'M2', label: '2. Inflação', icon: AlertTriangle },
+              { id: 'M3', label: '3. Mercados', icon: Store },
+              { id: 'M4', label: '4. Rotas & Receitas', icon: Navigation }
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -382,12 +382,23 @@ export default function ArgusVisionDashboard() {
             })}
 
             <Link
+              href="/notas"
+              className="mt-2 w-full flex items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-left text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 transition"
+            >
+              <span className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 shrink-0" />
+                <span>Notas Fiscais</span>
+              </span>
+              <span className="text-[10px] text-emerald-400">Abrir →</span>
+            </Link>
+
+            <Link
               href="/produtos"
               className="mt-2 w-full flex items-center justify-between gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2.5 text-left text-xs font-semibold text-sky-300 hover:bg-sky-500/20 transition"
             >
               <span className="flex items-center gap-2">
                 <Package className="h-4 w-4 shrink-0" />
-                <span>Produtos Escaneados</span>
+                <span>Produtos</span>
               </span>
               <span className="text-[10px] text-sky-400">Abrir →</span>
             </Link>
@@ -398,7 +409,7 @@ export default function ArgusVisionDashboard() {
             >
               <span className="flex items-center gap-2">
                 <Store className="h-4 w-4 shrink-0" />
-                <span>Mercados &amp; B.I.</span>
+                <span>Mercados</span>
               </span>
               <span className="text-[10px] text-emerald-400">Abrir →</span>
             </Link>
@@ -409,20 +420,9 @@ export default function ArgusVisionDashboard() {
             >
               <span className="flex items-center gap-2">
                 <Utensils className="h-4 w-4 shrink-0" />
-                <span>Receitas &amp; Cadeia Fria</span>
+                <span>Receitas</span>
               </span>
               <span className="text-[10px] text-amber-400">Abrir →</span>
-            </Link>
-
-            <Link
-              href="/notas"
-              className="mt-2 w-full flex items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-left text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 transition"
-            >
-              <span className="flex items-center gap-2">
-                <Receipt className="h-4 w-4 shrink-0" />
-                <span>Notas Fiscais</span>
-              </span>
-              <span className="text-[10px] text-emerald-400">Abrir →</span>
             </Link>
           </div>
 
@@ -462,18 +462,11 @@ export default function ArgusVisionDashboard() {
         {/* TOP HEADER */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
           <div>
-            <div className="flex items-center gap-2 text-xs text-emerald-400 font-semibold uppercase tracking-wider">
-              <ShieldCheck className="h-4 w-4" />
-              <span>Ecossistema Moneta • Inteligência de Consumo &amp; Arbitragem</span>
-            </div>
-            <h2 className="text-2xl font-bold text-white mt-1">
-              Argus Vision BI — Painel Executivo do Olho Fiscal
+            <h2 className="text-2xl font-bold text-white">
+              Argus Vision
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Base Logística: <span className="text-slate-300">{data.homeLocation.address}</span> • Trava de Compra Dividida:{' '}
-              <span className="text-amber-400 font-semibold">
-                R$ {data.logisticsVerdict.minSavingsHurdle.toFixed(2)}
-              </span>
+              Resumo financeiro, preços por mercado e receitas.
             </p>
           </div>
 
