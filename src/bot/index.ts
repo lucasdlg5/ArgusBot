@@ -336,36 +336,26 @@ export function createArgusBot(): Bot {
   function formatSavedRecipeMessage(saved: SavedRecipeResult): string {
     const methodLabel =
       saved.extractionMethod === 'JSON_LD'
-        ? 'Link (schema.org/JSON-LD)'
+        ? 'Link'
         : saved.extractionMethod === 'MICRODATA'
-          ? 'Link (Microdata)'
+          ? 'Link'
           : saved.extractionMethod === 'HTML_AI' || saved.extractionMethod === 'HTML_HEURISTIC'
-            ? 'Link (Página Web)'
+            ? 'Página Web'
             : saved.extractionMethod === 'IMAGE'
-              ? 'Imagem / Vision'
+              ? 'Imagem'
               : 'Texto';
 
-    const lines = [
-      `✅ *RECEITA SALVA NO BANCO ARGUS: ${saved.recipeName}*`,
-      `• 🍽️ Rendimento: *${saved.servings} porções* | Ingredientes: *${saved.evaluation?.totalIngredientsCount ?? 0}* (${saved.matchedExistingProductsCount} já no catálogo, ${saved.createdNewProductsCount} novos) | Origem: *${methodLabel}*`,
-      ''
-    ];
-    if (saved.evaluation) {
-      lines.push(...formatRecipeEvaluationLines(saved.evaluation));
-      lines.push('');
-      lines.push('📋 *Ranking de Perecibilidade (Ordem de Compra):*');
-      for (const ing of saved.evaluation.ingredientsBreakdown.slice(0, 8)) {
-        const priceTag =
-          ing.hasRealPrice === false
-            ? `~R$ ${ing.cashOutlayCost.toFixed(2)} (estimado)`
-            : `R$ ${ing.cashOutlayCost.toFixed(2)} (${ing.bestStoreName})`;
-        const safeProd = (ing.productName || 'Ingrediente').replace(/[*_`\[\]]/g, '');
-        lines.push(`  • ${ing.perishabilityRank}º — ${safeProd} — ${priceTag}`);
-      }
-    }
-    lines.push('');
-    lines.push('🌐 _Consulte no painel web em `/receitas` para ver o mapa e a rota OSRM completa!_');
-    return lines.join('\n');
+    const baseDashboard = env.PUBLIC_DASHBOARD_URL.trim().replace(/\/+$/, '');
+    const receitasLink =
+      baseDashboard && /^https?:\/\//i.test(baseDashboard) && !baseDashboard.includes('localhost')
+        ? `${baseDashboard}/receitas/`
+        : '`/receitas`';
+
+    return [
+      `✅ *RECEITA ADICIONADA: ${saved.recipeName}*`,
+      `🍽️ ${saved.servings} porções · 📦 ${saved.evaluation?.totalIngredientsCount ?? 0} ingredientes · Origem: ${methodLabel}`,
+      `🌐 Disponível no painel para consultar: ${receitasLink}`
+    ].join('\n');
   }
 
   // 3. /receita [nome] — Menor Preço Possível, Melhor Mercado Único e Ordem Anti-Perecíveis
