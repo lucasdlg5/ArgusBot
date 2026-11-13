@@ -1292,4 +1292,82 @@ REGRAS ESTRITAS DE EXTRAÇÃO:
       };
     });
   }
+
+  /**
+   * Rollback transacional completo de um cupom fiscal já gravado (para desfazer ou reclassificar como Flyer/Gôndola).
+   * Remove `argus.receipt_items` (via CASCADE), `argus.receipts` e marca job vinculado na fila se houver.
+   */
+  async rollbackReceiptById(receiptId: string): Promise<{
+    deleted: boolean;
+    storeName: string;
+    totalAmount: number;
+    itemsRemoved: number;
+    telegramFileId?: string | null;
+    telegramMessageId?: number | null;
+    telegramChatId?: number | null;
+    mimeType?: string | null;
+    userCaption?: string | null;
+  }> {
+    return withArgusTransaction(async (client) => {
+      const existing = await client.query<{
+        id: string;
+        store_name: string;
+        total_amount: string;
+        items_count: number;
+      }>(
+        `SELECT
+           r.id,
+           s.trading_name AS store_name,
+           r.total_amount::text,
+           (SELECT count(*)::int FROM argus.receipt_items ri WHERE ri.receipt_id = r.id) AS items_count
+         FROM argus.receipts r
+         JOIN argus.stores s ON s.id = r.store_id
+         WHERE r.id = $1
+         LIMIT 1`,
+        [receiptId]
+      );
+
+      if (existing.rows.length === 0) {
+        return { deleted: false, storeName: '', totalAmount: 0, itemsRemoved: 0 };
+      }
+
+      const row = existing.rows[0];
+
+      // Busca metadados do arquivo original caso tenha sido salvo em media_processing_queue
+      const queueRow = await client.query<{
+        telegram_file_id: string | null;
+        telegram_message_id: number | null;
+        telegram_chat_id: number | null;
+        mime_type: string | null;
+        user_caption: string | null;
+      }>(
+        `SELECT telegram_file_id, telegram_message_id, telegram_chat_id, mime_type, user_caption
+         FROM argus.media_processing_queue
+         WHERE result_summary->>'receiptId' = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [receiptId]
+      );
+
+      await client.query(`DELETE FROM argus.receipt_items WHERE receipt_id = $1`, [receiptId]);
+      await client.query(`DELETE FROM argus.receipts WHERE id = $1`, [receiptId]);
+      await client.query(
+        `DELETE FROM argus.media_processing_queue WHERE result_summary->>'receiptId' = $1`,
+        [receiptId]
+      );
+
+      const q = queueRow.rows[0];
+      return {
+        deleted: true,
+        storeName: row.store_name,
+        totalAmount: Number(row.total_amount),
+        itemsRemoved: row.items_count,
+        telegramFileId: q?.telegram_file_id ?? null,
+        telegramMessageId: q?.telegram_message_id ?? null,
+        telegramChatId: q?.telegram_chat_id ?? null,
+        mimeType: q?.mime_type ?? null,
+        userCaption: q?.user_caption ?? null
+      };
+    });
+  }
 }

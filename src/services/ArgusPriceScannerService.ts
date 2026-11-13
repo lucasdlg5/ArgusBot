@@ -1183,4 +1183,60 @@ export class ArgusPriceScannerService {
       recentPrices
     };
   }
+
+  /**
+   * Rollback transacional completo de uma coleta de Flyer/Gôndola (para desfazer ou reclassificar como Nota Fiscal).
+   */
+  async rollbackPriceScanByJobId(queueJobId: string): Promise<{
+    deleted: boolean;
+    storeName: string;
+    itemsRemoved: number;
+    telegramFileId?: string | null;
+    telegramMessageId?: number | null;
+    telegramChatId?: number | null;
+    mimeType?: string | null;
+    userCaption?: string | null;
+  }> {
+    return withArgusTransaction(async (client) => {
+      const jobRes = await client.query<{
+        id: string;
+        store_name_detected: string | null;
+        items_extracted_count: number;
+        telegram_file_id: string | null;
+        telegram_message_id: number | null;
+        telegram_chat_id: number | null;
+        mime_type: string | null;
+        user_caption: string | null;
+      }>(
+        `SELECT id, store_name_detected, items_extracted_count, telegram_file_id,
+                telegram_message_id, telegram_chat_id, mime_type, user_caption
+         FROM argus.media_processing_queue
+         WHERE id = $1
+         LIMIT 1`,
+        [queueJobId]
+      );
+
+      if (jobRes.rows.length === 0) {
+        return { deleted: false, storeName: '', itemsRemoved: 0 };
+      }
+
+      const job = jobRes.rows[0];
+      const delPrices = await client.query(
+        `DELETE FROM argus.collected_prices WHERE queue_job_id = $1`,
+        [queueJobId]
+      );
+      await client.query(`DELETE FROM argus.media_processing_queue WHERE id = $1`, [queueJobId]);
+
+      return {
+        deleted: true,
+        storeName: job.store_name_detected || 'Mercado',
+        itemsRemoved: delPrices.rowCount ?? job.items_extracted_count ?? 0,
+        telegramFileId: job.telegram_file_id,
+        telegramMessageId: job.telegram_message_id,
+        telegramChatId: job.telegram_chat_id,
+        mimeType: job.mime_type,
+        userCaption: job.user_caption
+      };
+    });
+  }
 }
