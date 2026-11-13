@@ -627,6 +627,12 @@ export default function ArgusRecipesPage() {
             >
               Receitas e Rotas
             </Link>
+            <Link
+              href="/notas"
+              className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0"
+            >
+              Notas Fiscais
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2.5 shrink-0">

@@ -376,6 +376,16 @@ export default function ArgusProductsPage() {
                 <Utensils className="h-3.5 w-3.5" />
                 Receitas &amp; Cadeia Fria
               </Link>
+              <span className="text-slate-700" aria-hidden="true">
+                /
+              </span>
+              <Link
+                href="/notas"
+                className="inline-flex items-center gap-1.5 text-slate-400 hover:text-emerald-300 transition-colors"
+              >
+                <Receipt className="h-3.5 w-3.5" />
+                Notas Fiscais
+              </Link>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 pt-1">
               <Package className="h-6 w-6 text-emerald-400 shrink-0" />

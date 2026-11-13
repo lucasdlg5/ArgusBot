@@ -4,6 +4,8 @@ import { classifyAndNormalizeStoreName } from '../lib/store-normalization';
 import type {
   BaseUnit,
   PaymentMethod,
+  ReceiptDetailEntry,
+  ReceiptDetailItem,
   ScannedProductEntry,
   ScannedProductSourceKind,
   StoreBiCategoryPoint,
@@ -203,6 +205,7 @@ export class ArgusCatalogBiService {
   async getCatalogAndStoreBi(referenceDate: Date = new Date()): Promise<{
     scannedProducts: ScannedProductEntry[];
     storesBi: StoreBiDetail[];
+    receiptsDetailed: ReceiptDetailEntry[];
   }> {
     await queryArgus(
       `ALTER TABLE argus.stores ADD COLUMN IF NOT EXISTS google_maps_url TEXT`
@@ -728,9 +731,46 @@ export class ArgusCatalogBiService {
       return b.collectedPricesCount - a.collectedPricesCount;
     });
 
+    const itemsByReceiptId = new Map<string, ReceiptDetailItem[]>();
+    for (const item of receiptItemsRaw) {
+      const list = itemsByReceiptId.get(item.receipt_id) ?? [];
+      list.push({
+        id: item.id,
+        rawDescription: item.raw_description,
+        canonicalProductName: item.canonical_product_name,
+        category: item.category,
+        quantity: Number(item.quantity) || 1,
+        unitType: item.unit_type || 'UN',
+        unitPrice: Number(item.unit_price) || 0,
+        totalPrice: Number(item.total_price) || 0,
+        baseUnit: item.base_unit,
+        normalizedPricePerBaseUnit: Number(item.normalized_price_per_base_unit) || 0
+      });
+      itemsByReceiptId.set(item.receipt_id, list);
+    }
+
+    const receiptsDetailed: ReceiptDetailEntry[] = receiptsRaw.map((r) => {
+      const matchedStore = storeById.get(r.store_id);
+      const items = itemsByReceiptId.get(r.id) ?? [];
+      return {
+        receiptId: r.id,
+        storeId: r.store_id,
+        storeName: matchedStore?.trading_name ?? r.store_name,
+        storeAddress: matchedStore?.address ?? r.store_address ?? 'Endereço não informado',
+        purchaseDate: new Date(r.purchase_date).toISOString(),
+        totalAmount: Number(r.total_amount) || 0,
+        discountAmount: Number(r.discount_amount) || 0,
+        paymentMethod: r.payment_method,
+        reconciled: Boolean(r.reconciled),
+        itemsCount: items.length,
+        items
+      };
+    });
+
     return {
       scannedProducts,
-      storesBi
+      storesBi,
+      receiptsDetailed
     };
   }
 

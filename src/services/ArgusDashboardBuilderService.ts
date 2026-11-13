@@ -85,7 +85,8 @@ export class ArgusDashboardBuilderService {
       ).catch(() => []),
       catalogBiService.getCatalogAndStoreBi().catch(() => ({
         scannedProducts: [],
-        storesBi: []
+        storesBi: [],
+        receiptsDetailed: []
       }))
     ]);
 
@@ -184,7 +185,8 @@ export class ArgusDashboardBuilderService {
       collectedPrices: collectedPricesRaw,
       queueSummary: queueSummaryRaw,
       scannedProducts: catalogBiResult.scannedProducts,
-      storesBi: catalogBiResult.storesBi
+      storesBi: catalogBiResult.storesBi,
+      receiptsDetailed: catalogBiResult.receiptsDetailed
     };
   }
 

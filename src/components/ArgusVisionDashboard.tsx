@@ -413,6 +413,17 @@ export default function ArgusVisionDashboard() {
               </span>
               <span className="text-[10px] text-amber-400">Abrir →</span>
             </Link>
+
+            <Link
+              href="/notas"
+              className="mt-2 w-full flex items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-left text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 transition"
+            >
+              <span className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 shrink-0" />
+                <span>Notas Fiscais</span>
+              </span>
+              <span className="text-[10px] text-emerald-400">Abrir →</span>
+            </Link>
           </div>
 
           {/* Persona Card do Bot */}

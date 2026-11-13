@@ -623,3 +623,30 @@ export interface StoreBiDetail {
   recentReceipts: StoreBiReceiptSummary[];
   overallCompetitivenessIndex: number | null;
 }
+
+export interface ReceiptDetailItem {
+  id: string;
+  rawDescription: string;
+  canonicalProductName: string;
+  category: string;
+  quantity: number;
+  unitType: string;
+  unitPrice: number;
+  totalPrice: number;
+  baseUnit: BaseUnit;
+  normalizedPricePerBaseUnit: number;
+}
+
+export interface ReceiptDetailEntry {
+  receiptId: string;
+  storeId: string;
+  storeName: string;
+  storeAddress: string;
+  purchaseDate: string;
+  totalAmount: number;
+  discountAmount: number;
+  paymentMethod: PaymentMethod;
+  reconciled: boolean;
+  itemsCount: number;
+  items: ReceiptDetailItem[];
+}
