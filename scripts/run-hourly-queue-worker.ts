@@ -52,9 +52,15 @@ async function main() {
   }
 
   await reconciler.reconcileAndSyncSheets().catch(() => {});
-  const { supabasePublicUrl } = await dashboardBuilder.publishDashboardSnapshot();
+  const { supabasePublicUrl, storageErrorReason } = await dashboardBuilder.publishDashboardSnapshot();
   if (supabasePublicUrl) {
     console.log(`☁️  Snapshot atualizado no Supabase Storage: ${supabasePublicUrl}`);
+  } else {
+    console.warn(
+      `⚠️ [Storage] Snapshot NÃO publicado no Supabase Storage: ${
+        storageErrorReason || 'SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausente/inválida'
+      }`
+    );
   }
 }
 

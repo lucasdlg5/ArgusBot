@@ -620,6 +620,18 @@ export default function ArgusRecipesPage() {
               Painel Geral
             </Link>
             <Link
+              href="/produtos"
+              className="hover:text-sky-300 transition-colors whitespace-nowrap shrink-0"
+            >
+              Produtos Escaneados
+            </Link>
+            <Link
+              href="/mercados"
+              className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0"
+            >
+              Mercados &amp; B.I.
+            </Link>
+            <Link
               href="/receitas"
               className="text-emerald-400 border-b border-emerald-400 pb-0.5 whitespace-nowrap shrink-0"
             >

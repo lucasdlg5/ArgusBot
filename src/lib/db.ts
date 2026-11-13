@@ -303,17 +303,23 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
 
   // 10. receipts join stores
   if (/FROM\s+argus\.receipts\s+r\s+JOIN\s+argus\.stores/i.test(norm)) {
-    return MOCK_RECEIPTS.map((r) => ({
-      id: r.id,
-      store_id: r.store_id,
-      store_name: r.store_name,
-      purchase_date: r.purchase_date,
-      total_amount: String(r.total_amount),
-      payment_method: r.payment_method,
-      access_key: r.access_key,
-      open_finance_tx_id: r.open_finance_tx_id,
-      reconciled: r.reconciled
-    })) as unknown as T[];
+    const storeMap = new Map(MOCK_STORES.map((s) => [s.id, s]));
+    return MOCK_RECEIPTS.map((r) => {
+      const store = storeMap.get(r.store_id);
+      return {
+        id: r.id,
+        store_id: r.store_id,
+        store_name: store?.trading_name ?? r.store_name,
+        store_address: store?.address ?? '',
+        purchase_date: r.purchase_date,
+        total_amount: String(r.total_amount),
+        discount_amount: String(r.discount_amount ?? 0),
+        payment_method: r.payment_method,
+        access_key: r.access_key,
+        open_finance_tx_id: r.open_finance_tx_id,
+        reconciled: r.reconciled
+      };
+    }) as unknown as T[];
   }
 
   // 11. update receipts (reconciliation)
@@ -376,15 +382,27 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
   if (/FROM\s+argus\.receipt_items/i.test(norm)) {
     const prodMap = new Map(MOCK_PRODUCTS.map((p) => [p.id, p]));
     const recMap = new Map(MOCK_RECEIPTS.map((r) => [r.id, r]));
+    const storeMap = new Map(MOCK_STORES.map((s) => [s.id, s]));
     const nowIso = new Date().toISOString();
     return MOCK_RECEIPT_ITEMS.slice(0, 500).map((it) => {
       const rec = recMap.get(it.receipt_id);
+      const store = rec ? storeMap.get(rec.store_id) : undefined;
       const prod = prodMap.get(it.canonical_product_id);
       return {
+        id: it.id,
+        receipt_id: it.receipt_id,
+        store_id: rec?.store_id ?? null,
+        store_name: store?.trading_name ?? rec?.store_name ?? 'Mercado',
+        store_address: store?.address ?? 'Local não informado',
         purchase_date: rec?.purchase_date ?? nowIso,
-        store_name: rec?.store_name ?? 'Mercado',
+        payment_method: rec?.payment_method ?? 'PIX',
+        raw_description: it.raw_description,
+        canonical_product_id: it.canonical_product_id,
+        canonical_product_name: prod?.name ?? it.raw_description,
         product_name: prod?.name ?? it.raw_description,
         category: prod?.category ?? 'Mercearia',
+        is_essential: prod?.is_essential ?? true,
+        standard_package_size: String(prod?.standard_package_size ?? 1),
         quantity: String(it.quantity),
         unit_type: it.unit_type,
         unit_price: String(it.unit_price),
@@ -395,7 +413,7 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     }) as unknown as T[];
   }
 
-  // 14. collected_prices (observações históricas de flyers e fotos)
+  // 15. collected_prices (observações históricas de flyers e fotos)
   if (/FROM\s+argus\.collected_prices/i.test(norm)) {
     if (/AS\s+observed_at/i.test(norm)) {
       return MOCK_COLLECTED_PRICES.map((c) => ({
@@ -407,7 +425,34 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
         source_type: c.source_type
       })) as unknown as T[];
     }
-    return [] as unknown as T[];
+    const prodMap = new Map(MOCK_PRODUCTS.map((p) => [p.id, p]));
+    const storeMap = new Map(MOCK_STORES.map((s) => [s.id, s]));
+    return MOCK_COLLECTED_PRICES.map((c) => {
+      const prod = prodMap.get(c.canonical_product_id);
+      const store = storeMap.get(c.store_id);
+      return {
+        id: c.id,
+        source_kind: c.source_type,
+        store_id: c.store_id,
+        store_name: store?.trading_name ?? c.store_name,
+        store_neighborhood: store?.address ?? 'Jacareí - SP',
+        raw_product_description: `${prod?.raw_alias ?? 'ITEM'} (${c.source_type === 'MARKET_FLYER' ? 'FOLHETO' : 'GONDOLA'})`,
+        canonical_product_id: c.canonical_product_id,
+        canonical_product_name: prod?.name ?? 'Produto',
+        category: prod?.category ?? 'Mercearia',
+        is_essential: prod?.is_essential ?? true,
+        unit_type: prod?.unit_type ?? 'UN',
+        base_unit: prod?.base_unit ?? 'un',
+        package_size_in_base_unit: prod?.standard_package_size ?? 1,
+        standard_package_size: prod?.standard_package_size ?? 1,
+        price: c.package_price,
+        promo_or_club_price: null,
+        normalized_price_per_base_unit: c.normalized_price_per_base_unit,
+        confidence_score: 94,
+        missing_info_flags: [],
+        collected_at: c.collected_at
+      };
+    }) as unknown as T[];
   }
 
   // 15. media_processing_queue
@@ -490,7 +535,7 @@ export async function queryArgus<T extends QueryResultRow = QueryResultRow>(
 
 export async function withArgusTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   if (useMock || !hasValidDatabaseConfig()) {
-    // Stub de PoolClient em memória
+    // Stub de PoolClient em memória (apenas quando não há banco configurado)
     const mockClient = {
       query: async (queryText: string, params?: unknown[]) => {
         const rows = executeMockQuery(queryText, params);
@@ -501,32 +546,61 @@ export async function withArgusTransaction<T>(fn: (client: PoolClient) => Promis
     return fn(mockClient);
   }
 
-  try {
-    const pool = getArgusPool();
-    const client = await pool.connect();
+  const pool = getArgusPool();
+  const maxAttempts = 3;
+  let client: PoolClient | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      await client.query('BEGIN');
-      const result = await fn(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (err) {
-      await client.query('ROLLBACK');
-      logger.error({ err }, '[Argus DB] Transaction rollback');
-      throw err;
-    } finally {
-      client.release();
+      client = await pool.connect();
+      verifiedConnection = true;
+      globalForArgusDb.__argusVerifiedConnection = true;
+      break;
+    } catch (connectErr) {
+      const msg = (connectErr as Error)?.message || '';
+      const isPoolExhausted =
+        msg.includes('EMAXCONNSESSION') ||
+        msg.toLowerCase().includes('max clients reached') ||
+        msg.toLowerCase().includes('too many clients');
+
+      if (isPoolExhausted && attempt < maxAttempts) {
+        await new Promise((res) => setTimeout(res, 200 * attempt));
+        continue;
+      }
+
+      if (!verifiedConnection && !isPoolExhausted) {
+        logger.warn({ connectErr }, '[Argus DB] Conexão direta falhou no transaction — chaveando para mock em memória');
+        useMock = true;
+        globalForArgusDb.__argusUseMock = true;
+        const mockClient = {
+          query: async (queryText: string, params?: unknown[]) => {
+            const rows = executeMockQuery(queryText, params);
+            return { rows, rowCount: rows.length };
+          },
+          release: () => {}
+        } as unknown as PoolClient;
+        return fn(mockClient);
+      }
+
+      throw connectErr;
     }
-  } catch (connectErr) {
-    logger.warn({ connectErr }, '[Argus DB] Conexão direta falhou no transaction — chaveando para mock em memória');
-    useMock = true;
-    const mockClient = {
-      query: async (queryText: string, params?: unknown[]) => {
-        const rows = executeMockQuery(queryText, params);
-        return { rows, rowCount: rows.length };
-      },
-      release: () => {}
-    } as unknown as PoolClient;
-    return fn(mockClient);
+  }
+
+  if (!client) {
+    throw new Error('Não foi possível obter conexão PostgreSQL do pool.');
+  }
+
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    logger.error({ err }, '[Argus DB] Transaction rollback');
+    throw err;
+  } finally {
+    client.release();
   }
 }
 

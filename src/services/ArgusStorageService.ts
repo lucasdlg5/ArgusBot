@@ -1,6 +1,10 @@
 import sharp from 'sharp';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
+import {
+  downloadObjectFromSupabaseStorage,
+  uploadObjectToSupabaseStorage
+} from '../lib/supabase-storage';
 
 export interface CompressedUploadResult {
   uploaded: boolean;
@@ -11,15 +15,14 @@ export interface CompressedUploadResult {
   compressionSavingsPct: number;
   contentType: string;
   signedUrl?: string;
+  uploadError?: string;
 }
 
 /**
  * Serviço de Compressão Ultra-Eficiente e Arquivamento no Supabase Storage (`FotosArgus`).
- * - Usa chamadas diretas à API REST do Supabase Storage (`/storage/v1/object/...`), evitando
- *   dependência de WebSocket (`@supabase/realtime-js`) no Node.js 20.
+ * - Usa SDK oficial + fallback REST compatível com JWT e `sb_secret_*`.
  * - Converte fotos de cupons fiscais, gôndolas e panfletos para WebP com `sharp`.
- * - Arquiva vídeos de corredores de mercado (`video/mp4`, `video/webm`, `video/quicktime`) para
- *   processamento imediato ou reprocessamento posterior via fila resiliente.
+ * - Arquiva vídeos de corredores de mercado (`video/mp4`, `video/webm`, `video/quicktime`).
  */
 export class ArgusStorageService {
   private readonly bucketName = env.SUPABASE_STORAGE_BUCKET || 'FotosArgus';
@@ -32,69 +35,27 @@ export class ArgusStorageService {
     storagePath: string,
     buffer: Buffer,
     contentType: string
-  ): Promise<{ uploaded: boolean; signedUrl?: string }> {
+  ): Promise<{ uploaded: boolean; signedUrl?: string; errorReason?: string }> {
     if (!this.isConfigured()) {
-      return { uploaded: false };
+      return {
+        uploaded: false,
+        errorReason: 'SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurada.'
+      };
     }
-
-    const baseUrl = env.SUPABASE_URL.replace(/\/$/, '');
-    const encodedPath = storagePath
-      .split('/')
-      .map((seg) => encodeURIComponent(seg))
-      .join('/');
-    const uploadUrl = `${baseUrl}/storage/v1/object/${encodeURIComponent(this.bucketName)}/${encodedPath}`;
-
-    try {
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          'Content-Type': contentType,
-          'x-upsert': 'true'
-        },
-        body: new Uint8Array(buffer)
-      });
-
-      if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        logger.warn(
-          { status: res.status, errBody, bucket: this.bucketName, storagePath },
-          '[ArgusStorageService] Aviso no upload REST para o bucket FotosArgus'
-        );
-        return { uploaded: false };
-      }
-
-      // Gera URL assinada temporária (7 dias) via REST
-      let signedUrl: string | undefined;
-      try {
-        const signRes = await fetch(
-          `${baseUrl}/storage/v1/object/sign/${encodeURIComponent(this.bucketName)}/${encodedPath}`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ expiresIn: 7 * 24 * 3600 })
-          }
-        );
-        if (signRes.ok) {
-          const signData = (await signRes.json()) as { signedURL?: string };
-          if (signData.signedURL) {
-            signedUrl = `${baseUrl}/storage/v1${signData.signedURL}`;
-          }
-        }
-      } catch {
-        // URL assinada é opcional
-      }
-
-      return { uploaded: true, signedUrl };
-    } catch (err) {
-      logger.error({ err, storagePath }, '[ArgusStorageService] Erro de rede no upload para FotosArgus');
-      return { uploaded: false };
+    const res = await uploadObjectToSupabaseStorage({
+      bucket: this.bucketName,
+      objectPath: storagePath,
+      body: buffer,
+      contentType,
+      generateSignedUrl: true
+    });
+    if (!res.uploaded && res.errorReason) {
+      logger.warn(
+        { bucket: this.bucketName, storagePath, reason: res.errorReason },
+        '[ArgusStorageService] Falha no upload para o Supabase Storage'
+      );
     }
+    return { uploaded: res.uploaded, signedUrl: res.signedUrl, errorReason: res.errorReason };
   }
 
   /**
@@ -103,27 +64,7 @@ export class ArgusStorageService {
    */
   async downloadFromStorage(storagePath: string): Promise<Buffer | null> {
     if (!this.isConfigured() || !storagePath) return null;
-    const baseUrl = env.SUPABASE_URL.replace(/\/$/, '');
-    const encodedPath = storagePath
-      .split('/')
-      .map((seg) => encodeURIComponent(seg))
-      .join('/');
-    const downloadUrl = `${baseUrl}/storage/v1/object/${encodeURIComponent(this.bucketName)}/${encodedPath}`;
-
-    try {
-      const res = await fetch(downloadUrl, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY
-        }
-      });
-      if (!res.ok) return null;
-      return Buffer.from(await res.arrayBuffer());
-    } catch (err) {
-      logger.warn({ err, storagePath }, '[ArgusStorageService] Falha ao baixar mídia do bucket FotosArgus');
-      return null;
-    }
+    return downloadObjectFromSupabaseStorage(storagePath, this.bucketName);
   }
 
   async compressAndUploadReceiptImage(
@@ -183,7 +124,7 @@ export class ArgusStorageService {
     const cleanKey = (accessKey || `${Date.now()}`).replace(/\D/g, '').slice(-20) || `${Date.now()}`;
     const storagePath = `cupons/${yearMonth}/${safeStoreSlug}_${cleanKey}.${ext}`;
 
-    const { uploaded, signedUrl } = await this.uploadBufferToSupabaseRest(
+    const { uploaded, signedUrl, errorReason } = await this.uploadBufferToSupabaseRest(
       storagePath,
       finalBuffer,
       contentType
@@ -210,7 +151,8 @@ export class ArgusStorageService {
       compressedBytes,
       compressionSavingsPct,
       contentType,
-      signedUrl
+      signedUrl,
+      uploadError: errorReason
     };
   }
 
@@ -283,7 +225,7 @@ export class ArgusStorageService {
         : 0;
 
     const storagePath = `${folder}/${yearMonth}/scan_${cleanId}.${ext}`;
-    const { uploaded, signedUrl } = await this.uploadBufferToSupabaseRest(
+    const { uploaded, signedUrl, errorReason } = await this.uploadBufferToSupabaseRest(
       storagePath,
       finalBuffer,
       contentType
@@ -297,7 +239,8 @@ export class ArgusStorageService {
       compressedBytes,
       compressionSavingsPct,
       contentType,
-      signedUrl
+      signedUrl,
+      uploadError: errorReason
     };
   }
 }

@@ -5,6 +5,8 @@ import { ArgusOptimizerService } from './ArgusOptimizerService';
 import { ArgusRecipeService } from './ArgusRecipeService';
 import { ArgusReconciliationService } from './ArgusReconciliationService';
 import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
+import { ArgusCatalogBiService } from './ArgusCatalogBiService';
+import { uploadObjectToSupabaseStorage } from '../lib/supabase-storage';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 
@@ -18,6 +20,7 @@ export class ArgusDashboardBuilderService {
     const optimizer = new ArgusOptimizerService();
     const recipeService = new ArgusRecipeService();
     const reconciler = new ArgusReconciliationService();
+    const catalogBiService = new ArgusCatalogBiService();
 
     const [
       currentPricesRaw,
@@ -29,7 +32,8 @@ export class ArgusDashboardBuilderService {
       logisticsVerdict,
       reconciliationResult,
       collectedPricesRaw,
-      queueSummaryRaw
+      queueSummaryRaw,
+      catalogBiResult
     ] = await Promise.all([
       queryArgus(
         `SELECT * FROM argus.v_current_product_prices ORDER BY product_name, estimated_package_price ASC`
@@ -78,7 +82,11 @@ export class ArgusDashboardBuilderService {
         `SELECT status, count(*)::int AS total
          FROM argus.media_processing_queue
          GROUP BY status`
-      ).catch(() => [])
+      ).catch(() => []),
+      catalogBiService.getCatalogAndStoreBi().catch(() => ({
+        scannedProducts: [],
+        storesBi: []
+      }))
     ]);
 
     const currentPrices = currentPricesRaw.map((r) => ({
@@ -174,7 +182,9 @@ export class ArgusDashboardBuilderService {
       reconciliation: reconciliationResult.summary,
       openFinanceTransactions: reconciliationResult.openFinanceTransactions,
       collectedPrices: collectedPricesRaw,
-      queueSummary: queueSummaryRaw
+      queueSummary: queueSummaryRaw,
+      scannedProducts: catalogBiResult.scannedProducts,
+      storesBi: catalogBiResult.storesBi
     };
   }
 
@@ -186,6 +196,7 @@ export class ArgusDashboardBuilderService {
   async publishDashboardSnapshot(): Promise<{
     localPath: string;
     supabasePublicUrl: string | null;
+    storageErrorReason?: string;
   }> {
     const payload = await this.buildDashboardPayload();
 
@@ -215,47 +226,35 @@ export class ArgusDashboardBuilderService {
     await fs.writeFile(localPath, jsonString, 'utf8');
 
     let supabasePublicUrl: string | null = null;
+    let storageErrorReason: string | undefined;
+
     if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const baseUrl = env.SUPABASE_URL.replace(/\/+$/, '');
-        const bucket = env.SUPABASE_STORAGE_BUCKET || 'FotosArgus';
-        const objectPath = 'public-bi/dashboard-live.json';
+      const uploadRes = await uploadObjectToSupabaseStorage({
+        bucket: env.SUPABASE_STORAGE_BUCKET || 'FotosArgus',
+        objectPath: 'public-bi/dashboard-live.json',
+        body: jsonString,
+        contentType: 'application/json',
+        cacheControl: 'no-cache, no-store, must-revalidate',
+        generateSignedUrl: false
+      });
 
-        // Garante que o bucket aceite leitura pública do JSON de BI ou faz upload direto via REST
-        const uploadUrl = `${baseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${objectPath}`;
-        const res = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            'Content-Type': 'application/json; charset=utf-8',
-            'x-upsert': 'true',
-            'Cache-Control': 'no-cache, no-store, must-revalidate'
-          },
-          body: jsonString
-        });
-
-        if (res.ok) {
-          supabasePublicUrl = `${baseUrl}/storage/v1/object/public/${encodeURIComponent(bucket)}/${objectPath}`;
-          logger.info(
-            { supabasePublicUrl },
-            '[ArgusDashboardBuilder] Snapshot de BI atualizado no Supabase Storage para o GitHub Pages'
-          );
-        } else {
-          const errTxt = await res.text().catch(() => '');
-          logger.warn(
-            { status: res.status, errTxt },
-            '[ArgusDashboardBuilder] Aviso ao publicar dashboard-live.json no Supabase Storage'
-          );
-        }
-      } catch (err) {
+      if (uploadRes.uploaded && uploadRes.publicUrl) {
+        supabasePublicUrl = uploadRes.publicUrl;
+        logger.info(
+          { supabasePublicUrl },
+          '[ArgusDashboardBuilder] Snapshot de BI atualizado no Supabase Storage para o GitHub Pages'
+        );
+      } else {
+        storageErrorReason = uploadRes.errorReason;
         logger.warn(
-          { err },
-          '[ArgusDashboardBuilder] Falha de rede ao publicar dashboard-live.json no Supabase Storage'
+          { reason: storageErrorReason },
+          '[ArgusDashboardBuilder] Aviso ao publicar dashboard-live.json no Supabase Storage'
         );
       }
+    } else {
+      storageErrorReason = 'SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas.';
     }
 
-    return { localPath, supabasePublicUrl };
+    return { localPath, supabasePublicUrl, storageErrorReason };
   }
 }

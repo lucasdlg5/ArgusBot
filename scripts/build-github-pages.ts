@@ -6,21 +6,37 @@ import { env } from '../src/config/env';
 import { ArgusDashboardBuilderService } from '../src/services/ArgusDashboardBuilderService';
 
 async function ensurePublicStorageBucket() {
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return;
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn(
+      '⚠️ [Storage] SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausente nos secrets deste workflow.'
+    );
+    return;
+  }
   const baseUrl = env.SUPABASE_URL.replace(/\/+$/, '');
   const bucket = env.SUPABASE_STORAGE_BUCKET || 'FotosArgus';
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY.trim();
+  const isJwt = serviceKey.split('.').length === 3 && serviceKey.startsWith('eyJ');
+  const authHeaders: Record<string, string> = isJwt
+    ? { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey }
+    : { apikey: serviceKey };
+
   try {
-    await fetch(`${baseUrl}/storage/v1/bucket/${encodeURIComponent(bucket)}`, {
+    const res = await fetch(`${baseUrl}/storage/v1/bucket/${encodeURIComponent(bucket)}`, {
       method: 'PUT',
       headers: {
-        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        ...authHeaders,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ public: true })
+      body: JSON.stringify({ public: true, allowed_mime_types: null })
     });
-  } catch {
-    // Ignorado caso não aplicável
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.warn(
+        `⚠️ [Storage] Aviso ao configurar bucket '${bucket}' (HTTP ${res.status}): ${body.slice(0, 200)}`
+      );
+    }
+  } catch (err) {
+    console.warn('⚠️ [Storage] Erro de rede ao verificar bucket:', (err as Error).message);
   }
 }
 
@@ -36,14 +52,23 @@ async function main() {
   if (env.DATABASE_URL) {
     try {
       const builder = new ArgusDashboardBuilderService();
-      const { localPath, supabasePublicUrl } = await builder.publishDashboardSnapshot();
+      const { localPath, supabasePublicUrl, storageErrorReason } =
+        await builder.publishDashboardSnapshot();
       console.log(`✅ Snapshot gerado com dados reais do Supabase: ${localPath}`);
       if (supabasePublicUrl) {
         console.log(`☁️  Live Feed publicado no Supabase Storage: ${supabasePublicUrl}`);
+      } else {
+        console.warn(
+          `⚠️ [Storage] Live Feed NÃO publicado no Supabase Storage: ${
+            storageErrorReason || 'motivo não informado'
+          }`
+        );
       }
     } catch (err) {
       console.warn('⚠️ Aviso ao consultar banco durante o build; mantendo snapshot existente:', (err as Error).message);
     }
+  } else {
+    console.warn('⚠️ [Build] DATABASE_URL não definida; mantendo snapshot estático fallback.');
   }
 
   if (!existsSync(snapshotPath)) {
@@ -118,7 +143,9 @@ async function main() {
           },
           openFinanceTransactions: [],
           collectedPrices: [],
-          queueSummary: []
+          queueSummary: [],
+          scannedProducts: [],
+          storesBi: []
         },
         null,
         2

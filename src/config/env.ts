@@ -47,12 +47,22 @@ const envSchema = z.object({
   SUPABASE_URL: z
     .string()
     .default('')
-    .transform((v) => v.trim().replace(/^["']|["']$/g, '')),
+    .transform((v) => {
+      const cleaned = v.trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '');
+      const dashMatch = cleaned.match(/^https?:\/\/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+      if (dashMatch) {
+        return `https://${dashMatch[1]}.supabase.co`;
+      }
+      return cleaned;
+    }),
   SUPABASE_SERVICE_ROLE_KEY: z
     .string()
     .default('')
     .transform((v) => v.trim().replace(/^["']|["']$/g, '')),
-  SUPABASE_STORAGE_BUCKET: z.string().default('FotosArgus'),
+  SUPABASE_STORAGE_BUCKET: z
+    .string()
+    .default('FotosArgus')
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '') || 'FotosArgus'),
   DATABASE_URL: z
     .string()
     .default('')

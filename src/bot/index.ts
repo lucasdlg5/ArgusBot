@@ -359,7 +359,8 @@ export function createArgusBot(): Bot {
           ing.hasRealPrice === false
             ? `~R$ ${ing.cashOutlayCost.toFixed(2)} (estimado)`
             : `R$ ${ing.cashOutlayCost.toFixed(2)} (${ing.bestStoreName})`;
-        lines.push(`  • [${ing.perishabilityRank}º] ${ing.productName} — ${priceTag}`);
+        const safeProd = (ing.productName || 'Ingrediente').replace(/[*_`\[\]]/g, '');
+        lines.push(`  • ${ing.perishabilityRank}º — ${safeProd} — ${priceTag}`);
       }
     }
     lines.push('');
@@ -2037,7 +2038,7 @@ export function createArgusBot(): Bot {
         pendingRecipeUrlCache.set(token, {
           url: detectedUrl,
           chatId: ctx.chat.id,
-          expiresAt: Date.now() + 10 * 60 * 1000
+          expiresAt: Date.now() + 2 * 60 * 60 * 1000
         });
         const kbUrl = new InlineKeyboard()
           .text('🍳 Importar Link como Receita', `import_recipe_url:${token}`)
@@ -2045,7 +2046,7 @@ export function createArgusBot(): Bot {
           .text('❌ Cancelar', `cancel_recipe_url:${token}`);
 
         await ctx.reply(
-          '🔗 Recebi esse link! Quer que eu tente importar os ingredientes e calcular o menor custo como uma **receita**?',
+          `🔗 Recebi esse link (${detectedUrl})! Quer que eu tente importar os ingredientes e calcular o menor custo como uma **receita**?`,
           {
             parse_mode: 'Markdown',
             reply_markup: kbUrl,
@@ -2151,14 +2152,37 @@ export function createArgusBot(): Bot {
 
     if (action === 'import_recipe_url') {
       const pending = pendingRecipeUrlCache.get(key);
-      if (!pending || pending.expiresAt < Date.now() || pending.chatId !== ctx.chat?.id) {
-        pendingRecipeUrlCache.delete(key);
+      let targetUrl =
+        pending && pending.expiresAt >= Date.now() && pending.chatId === ctx.chat?.id
+          ? pending.url
+          : null;
+
+      if (!targetUrl) {
+        const replyMsg = ctx.callbackQuery.message?.reply_to_message;
+        const replyText =
+          (replyMsg && 'text' in replyMsg ? replyMsg.text : undefined) ||
+          (replyMsg && 'caption' in replyMsg ? replyMsg.caption : undefined) ||
+          '';
+        const botPromptText =
+          ctx.callbackQuery.message && 'text' in ctx.callbackQuery.message
+            ? ctx.callbackQuery.message.text || ''
+            : '';
+        targetUrl =
+          conversation.extractFirstUrl(replyText) ||
+          conversation.extractFirstUrl(botPromptText) ||
+          null;
+      }
+
+      pendingRecipeUrlCache.delete(key);
+
+      if (!targetUrl) {
         await ctx
           .answerCallbackQuery({ text: 'Link expirado. Envie a URL novamente.', show_alert: true })
           .catch(() => {});
         return;
       }
-      pendingRecipeUrlCache.delete(key);
+
+      const targetChatId = pending?.chatId ?? ctx.chat?.id;
       await ctx.answerCallbackQuery({ text: 'Lendo link da receita...' }).catch(() => {});
       await ctx
         .editMessageText(
@@ -2168,9 +2192,11 @@ export function createArgusBot(): Bot {
 
       await withTypingIndicator(ctx, async () => {
         try {
-          const extracted = await recipeService.extractRecipeFromUrl(pending.url);
+          const extracted = await recipeService.extractRecipeFromUrl(targetUrl);
           const saved = await recipeService.saveRecipeToDatabase(extracted);
-          awaitingRecipeChats.delete(String(pending.chatId));
+          if (targetChatId) {
+            awaitingRecipeChats.delete(String(targetChatId));
+          }
           await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
           await ctx
             .editMessageText(formatSavedRecipeMessage(saved), { parse_mode: 'Markdown' })
@@ -2610,7 +2636,11 @@ export function createArgusBot(): Bot {
           const compKb = (uploadRes.compressedBytes / 1024).toFixed(1);
           const storageMsg = uploadRes.uploaded
             ? `\n🗄️ Foto salva no bucket: '${uploadRes.bucket}/${uploadRes.storagePath}' (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}% de espaço!)`
-            : `\n🗄️ Foto comprimida (${origKb} KB ➡️ ${compKb} KB | -${uploadRes.compressionSavingsPct}%).`;
+            : `\n⚠️ Foto comprimida (${origKb} KB ➡️ ${compKb} KB), mas não enviada ao bucket '${uploadRes.bucket}': ${
+                'uploadError' in uploadRes && uploadRes.uploadError
+                  ? uploadRes.uploadError.slice(0, 140)
+                  : 'verifique SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no servidor do bot'
+              }.`;
 
           const successText = [
             '✅ SUCESSO NO PROCESSAMENTO E GRAVAÇÃO DA IMAGEM!',

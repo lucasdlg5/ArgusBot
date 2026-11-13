@@ -26,7 +26,8 @@ import {
   Sparkles,
   Scale,
   Receipt,
-  Timer
+  Timer,
+  Package
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -399,6 +400,28 @@ export default function ArgusVisionDashboard() {
                 </button>
               );
             })}
+
+            <Link
+              href="/produtos"
+              className="mt-2 w-full flex items-center justify-between gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2.5 text-left text-xs font-semibold text-sky-300 hover:bg-sky-500/20 transition"
+            >
+              <span className="flex items-center gap-2">
+                <Package className="h-4 w-4 shrink-0" />
+                <span>Produtos Escaneados</span>
+              </span>
+              <span className="text-[10px] text-sky-400">Abrir →</span>
+            </Link>
+
+            <Link
+              href="/mercados"
+              className="mt-2 w-full flex items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-left text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 transition"
+            >
+              <span className="flex items-center gap-2">
+                <Store className="h-4 w-4 shrink-0" />
+                <span>Mercados &amp; B.I.</span>
+              </span>
+              <span className="text-[10px] text-emerald-400">Abrir →</span>
+            </Link>
 
             <Link
               href="/receitas"
@@ -842,11 +865,24 @@ export default function ArgusVisionDashboard() {
                 <thead>
                   <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400">
                     <th className="py-3.5 px-4 font-semibold">Corredor / Categoria</th>
-                    {storeNames.map((st) => (
-                      <th key={st} className="py-3.5 px-4 font-semibold text-white">
-                        🏪 {st}
-                      </th>
-                    ))}
+                    {storeNames.map((st) => {
+                      const storeId = data.heatmap.find((h) => h.store_name === st)?.store_id;
+                      return (
+                        <th key={st} className="py-3.5 px-4 font-semibold text-white">
+                          {storeId ? (
+                            <Link
+                              href={`/mercados?id=${encodeURIComponent(storeId)}`}
+                              className="inline-flex items-center gap-1 hover:text-emerald-300 transition-colors"
+                            >
+                              <span>🏪 {st}</span>
+                              <span className="text-[10px] text-emerald-400 font-normal">B.I. →</span>
+                            </Link>
+                          ) : (
+                            <span>🏪 {st}</span>
+                          )}
+                        </th>
+                      );
+                    })}
                     <th className="py-3.5 px-4 font-semibold">Campeão do Corredor</th>
                   </tr>
                 </thead>

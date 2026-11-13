@@ -969,10 +969,22 @@ export class ArgusRecipeService {
 
     // Agrupa ingredientes repetidos no mesmo canonical_product_id para respeitar PK (recipe_id, canonical_product_id)
     const mergedIngredients = new Map<string, number>();
+    const pendingPerishabilityUpdates: Array<{
+      productId: string;
+      tier: PerishabilityTier;
+      rank: number;
+      reason: string;
+    }> = [];
 
     const recipeId = await withArgusTransaction(async (client) => {
+      const txCatalog = [...catalog];
+      matchedExistingProductsCount = 0;
+      createdNewProductsCount = 0;
+      mergedIngredients.clear();
+      pendingPerishabilityUpdates.length = 0;
+
       for (const ing of extracted.ingredients) {
-        const match = this.findBestCanonicalMatch(ing.name, catalog);
+        const match = this.findBestCanonicalMatch(ing.name, txCatalog);
         let productId: string;
         let qtyToSave = Math.max(0.1, Number(ing.quantityInBaseUnit) || 1);
 
@@ -1006,17 +1018,14 @@ export class ArgusRecipeService {
           productId = prodInsertRes.rows[0].id;
           createdNewProductsCount += 1;
 
-          // Atualiza metadados de perecibilidade caso migration 005 esteja aplicada (best-effort)
-          await client
-            .query(
-              `UPDATE argus.canonical_products
-               SET perishability_tier = $1, perishability_rank = $2, perishability_reason = $3
-               WHERE id = $4`,
-              [perish.tier, perish.rank, perish.reason, productId]
-            )
-            .catch(() => {});
+          pendingPerishabilityUpdates.push({
+            productId,
+            tier: perish.tier,
+            rank: perish.rank,
+            reason: perish.reason
+          });
 
-          catalog.push({
+          txCatalog.push({
             id: productId,
             name: newProdName,
             category: ing.category,
@@ -1052,34 +1061,43 @@ export class ArgusRecipeService {
         );
       }
 
-      const meta = deriveRecipeMetadata({
-        name: cleanName,
-        servings,
-        instructions,
-        ingredients: extracted.ingredients.map((i) => ({
-          name: i.name,
-          category: i.category,
-          baseUnit: i.baseUnit,
-          requiredBaseQty: i.quantityInBaseUnit
-        }))
-      });
-      await client
-        .query(
-          `UPDATE argus.recipes
-           SET prep_time_minutes = $1, difficulty = $2, cuisine_tags = $3, estimated_calories_per_portion = $4
-           WHERE id = $5`,
-          [
-            meta.prepTimeMinutes,
-            meta.difficulty,
-            meta.cuisineTags,
-            meta.estimatedCaloriesPerPortion,
-            savedRecipeId
-          ]
-        )
-        .catch(() => {});
-
       return savedRecipeId;
     });
+
+    // Atualiza metadados opcionais da migration 005 FORA da transação principal
+    // (impede erro 25P02 "current transaction is aborted" caso alguma coluna ainda não exista)
+    for (const upd of pendingPerishabilityUpdates) {
+      await queryArgus(
+        `UPDATE argus.canonical_products
+         SET perishability_tier = $1, perishability_rank = $2, perishability_reason = $3
+         WHERE id = $4`,
+        [upd.tier, upd.rank, upd.reason, upd.productId]
+      ).catch(() => {});
+    }
+
+    const meta = deriveRecipeMetadata({
+      name: cleanName,
+      servings,
+      instructions,
+      ingredients: extracted.ingredients.map((i) => ({
+        name: i.name,
+        category: i.category,
+        baseUnit: i.baseUnit,
+        requiredBaseQty: i.quantityInBaseUnit
+      }))
+    });
+    await queryArgus(
+      `UPDATE argus.recipes
+       SET prep_time_minutes = $1, difficulty = $2, cuisine_tags = $3, estimated_calories_per_portion = $4
+       WHERE id = $5`,
+      [
+        meta.prepTimeMinutes,
+        meta.difficulty,
+        meta.cuisineTags,
+        meta.estimatedCaloriesPerPortion,
+        recipeId
+      ]
+    ).catch(() => {});
 
     const evaluated = await this.evaluateRecipesWithRoutes({ recipeId });
     return {

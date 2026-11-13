@@ -272,5 +272,21 @@ describe('ArgusRecipeService — Cadeia Fria, Custos & Persistência de Receitas
     expect(matchesRecipeSearch(sampleRecipe, 'proteina facil')).toBe(true);
     expect(matchesRecipeSearch(sampleRecipe, 'chocolate sorvete')).toBe(false);
   });
+
+  it('salva e atualiza receita sem duplicar contagem de ingredientes no catálogo', async () => {
+    const parsed = recipeService.parseRecipeTextDeterministic(
+      'Strogonoff Teste Idempotente\nRende 4 porções\nIngredientes:\n- 500g peito de frango\n- 200g creme de leite\n- 100g arroz\nPreparo: refogue o frango, junte creme de leite e sirva com arroz.'
+    );
+
+    const first = await recipeService.saveRecipeToDatabase(parsed);
+    const second = await recipeService.saveRecipeToDatabase(parsed);
+
+    expect(second.recipeId).toBe(first.recipeId);
+    expect(second.matchedExistingProductsCount + second.createdNewProductsCount).toBe(
+      parsed.ingredients.length
+    );
+
+    await queryArgus('DELETE FROM argus.recipes WHERE id = $1', [first.recipeId]);
+  });
 });
 

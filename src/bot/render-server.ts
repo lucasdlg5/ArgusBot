@@ -66,6 +66,15 @@ async function main() {
         dbError = (e as Error).message;
       }
 
+      let storageHost = 'not_set';
+      if (env.SUPABASE_URL) {
+        try {
+          storageHost = new URL(env.SUPABASE_URL).hostname;
+        } catch {
+          storageHost = 'invalid_url_format';
+        }
+      }
+
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(
         JSON.stringify({
@@ -76,6 +85,9 @@ async function main() {
           dbOk,
           dbHost,
           dbError,
+          storageConfigured: Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY),
+          storageHost,
+          storageBucket: env.SUPABASE_STORAGE_BUCKET || 'FotosArgus',
           uptimeSec: Math.round(process.uptime()),
           timestamp: new Date().toISOString()
         })

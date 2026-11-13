@@ -495,3 +495,130 @@ export interface OptimizationVerdict {
   recommendedTransportMode: 'CAR_GAS' | 'UBER';
   argusVerdictText: string;
 }
+
+// =============================================================================
+// CATÁLOGO DE PRODUTOS ESCANEADOS & B.I. INDIVIDUAL POR MERCADO
+// =============================================================================
+
+export type ScannedProductSourceKind =
+  | 'RECEIPT_ITEM'
+  | 'SHELF_PHOTO'
+  | 'MARKET_FLYER'
+  | 'AISLE_VIDEO';
+
+export interface ScannedProductEntry {
+  id: string;
+  observedAt: string;
+  sourceKind: ScannedProductSourceKind;
+  storeId: string | null;
+  storeName: string;
+  storeLocation: string;
+  rawDescription: string;
+  brandName: string;
+  canonicalProductId: string | null;
+  canonicalProductName: string;
+  category: ProductCategory | string;
+  baseUnit: BaseUnit;
+  standardPackageSize: number;
+  isEssential: boolean;
+  quantity: number;
+  unitType: string;
+  unitPrice: number;
+  totalPrice: number;
+  promoPrice: number | null;
+  normalizedPricePerBaseUnit: number;
+  normalizedPackagePrice: number;
+  confidenceScorePct: number;
+  paymentMethod: PaymentMethod | null;
+  missingInfoFlags: string[];
+}
+
+export interface StoreBiProductStat {
+  canonicalProductId: string;
+  productName: string;
+  category: string;
+  baseUnit: BaseUnit;
+  timesPurchased: number;
+  totalQuantityInUnit: number;
+  totalSpent: number;
+  avgUnitPrice: number;
+  avgNormalizedPackagePrice: number;
+  lastPurchasedAt: string;
+  topBrand: string;
+}
+
+export interface StoreBiMonthlyPoint {
+  monthKey: string;
+  monthLabel: string;
+  totalSpent: number;
+  receiptsCount: number;
+  avgTicket: number;
+}
+
+export interface StoreBiWeekdayPoint {
+  weekdayIndex: number;
+  weekdayLabel: string;
+  totalSpent: number;
+  receiptsCount: number;
+  avgSpentPerVisit: number;
+}
+
+export interface StoreBiCategoryPoint {
+  category: string;
+  totalSpent: number;
+  sharePct: number;
+  itemsCount: number;
+  competitivenessIndex: number | null;
+}
+
+export interface StoreBiReceiptSummary {
+  receiptId: string;
+  purchaseDate: string;
+  totalAmount: number;
+  discountAmount: number;
+  paymentMethod: PaymentMethod;
+  reconciled: boolean;
+  itemsCount: number;
+}
+
+export interface StoreBiDetail {
+  storeId: string;
+  tradingName: string;
+  rawName: string;
+  cnpj: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  totalSpentAllTime: number;
+  totalDiscountAllTime: number;
+  receiptsCount: number;
+  itemsPurchasedCount: number;
+  collectedPricesCount: number;
+  avgTicket: number;
+  currentMonthLabel: string;
+  currentMonthSpent: number;
+  currentMonthReceiptsCount: number;
+  previousMonthSpent: number;
+  momSpendDeltaPct: number | null;
+  dailySpendRateHistorical: number;
+  dailySpendRateCurrentMonth: number;
+  activeSpanDays: number;
+  avgDaysBetweenVisits: number | null;
+  visitsPerWeek: number;
+  firstPurchaseAt: string | null;
+  lastPurchaseAt: string | null;
+  mostConsumedProduct: StoreBiProductStat | null;
+  highestSpendProduct: StoreBiProductStat | null;
+  topProducts: StoreBiProductStat[];
+  monthlySeries: StoreBiMonthlyPoint[];
+  weekdaySeries: StoreBiWeekdayPoint[];
+  categoryBreakdown: StoreBiCategoryPoint[];
+  paymentBreakdown: Array<{
+    method: string;
+    totalSpent: number;
+    receiptsCount: number;
+    sharePct: number;
+  }>;
+  recentReceipts: StoreBiReceiptSummary[];
+  overallCompetitivenessIndex: number | null;
+}
