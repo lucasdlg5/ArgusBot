@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: moneta-argus-bot
+    runtime: node
+    plan: free
+    region: ohio
+    branch: main
+    buildCommand: npm install --legacy-peer-deps --no-audit --no-fund
+    startCommand: npm run bot:render
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: SUPABASE_STORAGE_BUCKET
+        value: FotosArgus
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: PUBLIC_DASHBOARD_URL
+        value: https://lucasdlg5.github.io/ArgusBot/
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_DEFAULT_CHAT_ID
+        sync: false
+      - key: TELEGRAM_ALLOWED_USER_IDS
+        sync: false
+      - key: TELEGRAM_ALLOWED_USERNAMES
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: PLUGGY_CLIENT_ID
+        sync: false
+      - key: PLUGGY_CLIENT_SECRET
+        sync: false
+      - key: PLUGGY_ITEM_IDS
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: GOOGLE_PRIVATE_KEY
+        sync: false
+      - key: GOOGLE_SPREADSHEET_ID
+        sync: false
+      - key: USER_SHARE_EMAIL
+        sync: false

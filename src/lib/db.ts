@@ -13,7 +13,11 @@ let supabaseAdmin: SupabaseClient<any, any, any> | null = null;
  */
 export function getArgusPool(): Pool {
   if (!pgPool) {
-    const connectionString = env.DIRECT_URL || env.DATABASE_URL;
+    const isRenderEnv = Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL);
+    // No Render (sem IPv6 de saída), prioriza DATABASE_URL (Supavisor Pooler IPv4) antes de DIRECT_URL
+    const connectionString = isRenderEnv
+      ? env.DATABASE_URL || env.DIRECT_URL
+      : env.DIRECT_URL || env.DATABASE_URL;
     pgPool = new Pool({
       connectionString,
       ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },

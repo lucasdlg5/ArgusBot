@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "bot:dev": "tsx watch src/bot/index.ts",
     "bot:start": "tsx src/bot/index.ts",
+    "bot:render": "tsx src/bot/render-server.ts",
     "setup:env": "tsx scripts/setup-env.ts",
     "setup:resources": "tsx scripts/setup-resources.ts",
     "db:migrate": "tsx scripts/run-migrations.ts",
