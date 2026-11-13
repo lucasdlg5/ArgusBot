@@ -44,11 +44,23 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
 
   // Supabase / PostgreSQL (Schema isolado: argus) & Storage Bucket (FotosArgus)
-  SUPABASE_URL: z.string().default(''),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().default(''),
+  SUPABASE_URL: z
+    .string()
+    .default('')
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '')),
+  SUPABASE_SERVICE_ROLE_KEY: z
+    .string()
+    .default('')
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '')),
   SUPABASE_STORAGE_BUCKET: z.string().default('FotosArgus'),
-  DATABASE_URL: z.string().default(''),
-  DIRECT_URL: z.string().default(''),
+  DATABASE_URL: z
+    .string()
+    .default('')
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '')),
+  DIRECT_URL: z
+    .string()
+    .default('')
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '')),
 
   // URL pública do Dashboard Web no GitHub Pages
   PUBLIC_DASHBOARD_URL: z.string().default('https://lucasdlg5.github.io/ArgusBot/'),
@@ -71,7 +83,7 @@ const envSchema = z.object({
   GOOGLE_PRIVATE_KEY: z
     .string()
     .default('')
-    .transform((v) => v.replace(/\\n/g, '\n')),
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n')),
   GOOGLE_SPREADSHEET_ID: z.string().default(''),
   USER_SHARE_EMAIL: z.string().default(''),
 
