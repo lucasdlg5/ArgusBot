@@ -189,20 +189,14 @@ export class ArgusDashboardBuilderService {
   }
 
   /**
-   * Salva o snapshot estático local (`public/data/dashboard-snapshot.json`) E publica
-   * no Supabase Storage (`FotosArgus/public-bi/dashboard-live.json`) para que o GitHub Pages
-   * consuma os dados atualizados em tempo real sem expor extratos bancários pessoais (PII/Pix)!
+   * Constrói o payload completo do painel já sanitizado (OpSec/LGPD) para consumo público.
    */
-  async publishDashboardSnapshot(): Promise<{
-    localPath: string;
-    supabasePublicUrl: string | null;
-    storageErrorReason?: string;
-  }> {
+  async buildSanitizedPublicPayload() {
     const payload = await this.buildDashboardPayload();
 
-    // Sanitização OpSec/LGPD para Snapshot Público (GitHub Pages):
+    // Sanitização OpSec/LGPD para Snapshot Público (GitHub Pages / API Pública):
     // Remove descrições nominais de Pix/Extrato bancário pessoal (mantém apenas métricas agregadas e preços de mercado)
-    const sanitizedPublicPayload = {
+    return {
       ...payload,
       homeLocation: {
         lat: -23.305,
@@ -217,6 +211,19 @@ export class ArgusDashboardBuilderService {
           description: 'Transação Conciliada de Supermercado (Protegido OpSec)'
         }))
     };
+  }
+
+  /**
+   * Salva o snapshot estático local (`public/data/dashboard-snapshot.json`) E publica
+   * no Supabase Storage (`FotosArgus/public-bi/dashboard-live.json`) para que o GitHub Pages
+   * consuma os dados atualizados em tempo real sem expor extratos bancários pessoais (PII/Pix)!
+   */
+  async publishDashboardSnapshot(): Promise<{
+    localPath: string;
+    supabasePublicUrl: string | null;
+    storageErrorReason?: string;
+  }> {
+    const sanitizedPublicPayload = await this.buildSanitizedPublicPayload();
 
     const jsonString = JSON.stringify(sanitizedPublicPayload, null, 2);
 

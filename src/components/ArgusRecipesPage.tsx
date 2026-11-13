@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   AlertTriangle,
@@ -252,8 +253,6 @@ export default function ArgusRecipesPage() {
         }
 
         const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-        const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
-        const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'FotosArgus';
 
         const applyPayload = (payload: {
           recipesEvaluations?: RecipeCostEvaluation[];
@@ -270,23 +269,11 @@ export default function ArgusRecipesPage() {
           }
         };
 
-        if (supabaseUrl) {
-          try {
-            const liveUrl = `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(
-              bucket
-            )}/public-bi/dashboard-live.json?t=${Date.now()}`;
-            const liveRes = await fetch(liveUrl, { cache: 'no-store' });
-            if (liveRes.ok) {
-              applyPayload(await liveRes.json());
-              return;
-            }
-          } catch {
-            // Segue para snapshot estático
-          }
-        }
-
-        const snapRes = await fetch(`${basePath}/data/dashboard-snapshot.json?t=${Date.now()}`);
-        applyPayload(await snapRes.json());
+        const { data: fallbackPayload } = await fetchPublicDashboardFallback<{
+          recipesEvaluations?: RecipeCostEvaluation[];
+          homeLocation?: { lat: number; lng: number; address: string };
+        }>(basePath);
+        applyPayload(fallbackPayload);
       } catch (err) {
         setErrorMsg((err as Error).message || 'Falha ao carregar receitas.');
       } finally {

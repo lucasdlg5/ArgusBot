@@ -4,10 +4,19 @@ import { webhookCallback } from 'grammy';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { queryArgus } from '../lib/db';
+import { ArgusDashboardBuilderService } from '../services/ArgusDashboardBuilderService';
+import { ArgusRecipeService } from '../services/ArgusRecipeService';
 import { createArgusBot } from './index';
 
 const PORT = Number(process.env.PORT || env.PORT || 3000);
 const WEBHOOK_PATH = '/telegram/webhook';
+
+function applyCorsHeaders(res: http.ServerResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store');
+}
 
 function getPublicBaseUrl(): string {
   const raw =
@@ -24,6 +33,8 @@ async function main() {
   }
 
   const bot = createArgusBot();
+  const dashboardBuilder = new ArgusDashboardBuilderService();
+  const recipeService = new ArgusRecipeService();
   const publicBaseUrl = getPublicBaseUrl();
   const useWebhook =
     Boolean(publicBaseUrl) && process.env.TELEGRAM_BOT_MODE !== 'polling';
@@ -46,6 +57,51 @@ async function main() {
 
   const server = http.createServer(async (req, res) => {
     const urlPath = (req.url || '/').split('?')[0];
+
+    if (req.method === 'OPTIONS' && urlPath.startsWith('/api/')) {
+      applyCorsHeaders(res);
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET' && urlPath === '/api/public-snapshot') {
+      applyCorsHeaders(res);
+      try {
+        const payload = await dashboardBuilder.buildSanitizedPublicPayload();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(payload));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro ao gerar /api/public-snapshot');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && urlPath === '/api/recipes') {
+      applyCorsHeaders(res);
+      try {
+        const recipes = await recipeService.evaluateRecipesWithRoutes();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(
+          JSON.stringify({
+            status: 'ok',
+            recipes,
+            homeLocation: {
+              lat: -23.305,
+              lng: -45.965,
+              address: 'Jacareí / São Paulo - SP (Coordenadas Protegidas OpSec)'
+            }
+          })
+        );
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro ao consultar /api/recipes');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
 
     if (req.method === 'GET' && (urlPath === '/' || urlPath === '/health' || urlPath === '/healthz')) {
       let dbOk = false;

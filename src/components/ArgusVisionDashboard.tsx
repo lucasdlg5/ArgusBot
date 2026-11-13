@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   Eye,
@@ -133,8 +134,6 @@ export default function ArgusVisionDashboard() {
       const isGitHubPages =
         typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-      const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
-      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'FotosArgus';
 
       // Camada 1: Servidor Node.js / Next.js Local (quando não hospedado no github.io)
       if (!isGitHubPages) {
@@ -147,34 +146,15 @@ export default function ArgusVisionDashboard() {
             return;
           }
         } catch {
-          // Segue para Camada 2 (Supabase Cloud) ou Camada 3 (Snapshot Estático)
+          // Segue para Render Live API / Supabase / Snapshot Estático
         }
       }
 
-      // Camada 2: Supabase Storage Live Feed (atualizado em tempo real pelo @MonetaArgusBot e GitHub Actions)
-      if (supabaseUrl) {
-        try {
-          const liveUrl = `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(
-            bucket
-          )}/public-bi/dashboard-live.json?t=${Date.now()}`;
-          const resLive = await fetch(liveUrl, { cache: 'no-store' });
-          if (resLive.ok) {
-            const json = (await resLive.json()) as DashboardPayload;
-            setData(json);
-            setDataSourceLabel('☁️ Supabase Cloud Live (GitHub Pages)');
-            return;
-          }
-        } catch {
-          // Segue para Camada 3
-        }
-      }
-
-      // Camada 3: Snapshot Estático empacotado no deploy do GitHub Pages (public/data/dashboard-snapshot.json)
-      const fallbackUrl = `${basePath}/data/dashboard-snapshot.json?t=${Date.now()}`;
-      const resStatic = await fetch(fallbackUrl, { cache: 'no-store' });
-      const jsonStatic = (await resStatic.json()) as DashboardPayload;
-      setData(jsonStatic);
-      setDataSourceLabel('📦 GitHub Pages Snapshot (Actions CI)');
+      // Camadas 2-4: Render Live API -> Supabase Cloud -> Snapshot Estático
+      const { data: fallbackData, sourceLabel } =
+        await fetchPublicDashboardFallback<DashboardPayload>(basePath);
+      setData(fallbackData);
+      setDataSourceLabel(sourceLabel);
     } finally {
       setLoading(false);
     }

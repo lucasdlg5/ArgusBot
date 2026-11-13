@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -143,30 +144,9 @@ export default function ArgusProductsPage() {
       }
 
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-      const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
-      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'FotosArgus';
-
-      if (supabaseUrl) {
-        try {
-          const liveUrl = `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(
-            bucket
-          )}/public-bi/dashboard-live.json?t=${Date.now()}`;
-          const liveRes = await fetch(liveUrl, { cache: 'no-store' });
-          if (liveRes.ok) {
-            const payload = (await liveRes.json()) as ProductsApiResponse;
-            setProducts(payload.scannedProducts || []);
-            setStores(payload.storesBi || []);
-            return;
-          }
-        } catch {
-          // Segue para snapshot estático
-        }
-      }
-
-      const snapRes = await fetch(`${basePath}/data/dashboard-snapshot.json?t=${Date.now()}`);
-      const snapPayload = (await snapRes.json()) as ProductsApiResponse;
-      setProducts(snapPayload.scannedProducts || []);
-      setStores(snapPayload.storesBi || []);
+      const { data: payload } = await fetchPublicDashboardFallback<ProductsApiResponse>(basePath);
+      setProducts(payload.scannedProducts || []);
+      setStores(payload.storesBi || []);
     } catch (err) {
       setErrorMsg((err as Error).message || 'Falha ao carregar produtos escaneados.');
     } finally {
