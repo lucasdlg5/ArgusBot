@@ -250,16 +250,42 @@ export default function ArgusRecipesPage() {
           }
         }
 
-        // Fallback estático caso seja GitHub Pages
         const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-        const snapRes = await fetch(`${basePath}/data/dashboard-snapshot.json?t=${Date.now()}`);
-        const snapJson = await snapRes.json();
-        const fallbackRecipes = (snapJson.recipesEvaluations || []) as RecipeCostEvaluation[];
-        setRecipes(fallbackRecipes);
-        if (snapJson.homeLocation) setHomeLocation(snapJson.homeLocation);
-        if (fallbackRecipes.length > 0) {
-          setSelectedRecipeId(fallbackRecipes[0].recipeId);
+        const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
+        const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'FotosArgus';
+
+        const applyPayload = (payload: {
+          recipesEvaluations?: RecipeCostEvaluation[];
+          homeLocation?: { lat: number; lng: number; address: string };
+        }) => {
+          const fallbackRecipes = (payload.recipesEvaluations || []) as RecipeCostEvaluation[];
+          setRecipes(fallbackRecipes);
+          if (payload.homeLocation) setHomeLocation(payload.homeLocation);
+          const targetId = preferSelectId || initialIdFromUrl;
+          if (targetId && fallbackRecipes.some((r) => r.recipeId === targetId)) {
+            setSelectedRecipeId(targetId);
+          } else if (fallbackRecipes.length > 0) {
+            setSelectedRecipeId(fallbackRecipes[0].recipeId);
+          }
+        };
+
+        if (supabaseUrl) {
+          try {
+            const liveUrl = `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(
+              bucket
+            )}/public-bi/dashboard-live.json?t=${Date.now()}`;
+            const liveRes = await fetch(liveUrl, { cache: 'no-store' });
+            if (liveRes.ok) {
+              applyPayload(await liveRes.json());
+              return;
+            }
+          } catch {
+            // Segue para snapshot estático
+          }
         }
+
+        const snapRes = await fetch(`${basePath}/data/dashboard-snapshot.json?t=${Date.now()}`);
+        applyPayload(await snapRes.json());
       } catch (err) {
         setErrorMsg((err as Error).message || 'Falha ao carregar receitas.');
       } finally {

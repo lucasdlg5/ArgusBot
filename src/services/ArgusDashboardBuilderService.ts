@@ -60,14 +60,14 @@ export class ArgusDashboardBuilderService {
       queryArgus(
         `SELECT
            id,
-           source_kind,
-           store_name,
-           store_neighborhood,
+           source_type AS source_kind,
+           COALESCE(store_name_detected, 'MERCADO') AS store_name,
+           store_location_detected AS store_neighborhood,
            raw_product_description,
-           price::float8 AS price,
-           promo_or_club_price::float8 AS promo_or_club_price,
+           collected_price::float8 AS price,
+           promo_club_price::float8 AS promo_or_club_price,
            unit_type,
-           confidence_score,
+           confidence_score_pct::float8 AS confidence_score,
            missing_info_flags,
            collected_at::text AS collected_at
          FROM argus.collected_prices

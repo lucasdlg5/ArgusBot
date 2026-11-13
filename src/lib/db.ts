@@ -434,7 +434,7 @@ export function getArgusPool(): Pool {
       ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 3000
+      connectionTimeoutMillis: 10000
     });
   }
   return pgPool;
