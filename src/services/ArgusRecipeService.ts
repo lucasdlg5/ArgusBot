@@ -308,12 +308,26 @@ export class ArgusRecipeService {
     return null;
   }
 
+  private decodeHtmlEntities(input: string): string {
+    if (!input || !input.includes('&')) return input;
+    let out = input;
+    for (let i = 0; i < 2; i++) {
+      if (!out.includes('&')) break;
+      const decoded = cheerio.load(`<span>${out}</span>`)('span').text();
+      if (decoded === out) break;
+      out = decoded;
+    }
+    return out;
+  }
+
   private extractInstructionsFromJsonLd(raw: unknown): string {
     const steps: string[] = [];
     const collect = (node: unknown) => {
       if (!node) return;
       if (typeof node === 'string') {
-        const clean = node.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        const clean = this.decodeHtmlEntities(node.replace(/<[^>]+>/g, ' '))
+          .replace(/\s+/g, ' ')
+          .trim();
         if (clean) steps.push(clean);
         return;
       }
@@ -373,12 +387,18 @@ export class ArgusRecipeService {
             : [];
 
         const ingLines = rawIngredients
-          .map((item) => String(item ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
+          .map((item) =>
+            this.decodeHtmlEntities(String(item ?? '').replace(/<[^>]+>/g, ' '))
+              .replace(/\s+/g, ' ')
+              .trim()
+          )
           .filter((line) => line.length >= 2)
           .slice(0, 40);
 
         if (ingLines.length > 0) {
-          const title = String(recipeNode.name || $('h1').first().text() || 'Receita Importada')
+          const title = this.decodeHtmlEntities(
+            String(recipeNode.name || $('h1').first().text() || 'Receita Importada')
+          )
             .replace(/\s+/g, ' ')
             .trim()
             .slice(0, 120);
@@ -874,15 +894,44 @@ export class ArgusRecipeService {
       standard_package_size: number;
     }>
   ) {
+    const stopwords = new Set([
+      'de',
+      'da',
+      'do',
+      'das',
+      'dos',
+      'em',
+      'no',
+      'na',
+      'nos',
+      'nas',
+      'com',
+      'sem',
+      'para',
+      'por',
+      'ao',
+      'ou',
+      'po'
+    ]);
+    const nonFoodCategories = new Set<ProductCategory>(['Limpeza', 'Higiene']);
+    const nonFoodProductRe =
+      /\b(sabao|sabonete|detergente|amaciante|agua sanitaria|desinfetante|alvejante|esponja|palha de aco|bombril|shampoo|condicionador|pasta de dente|creme dental|papel higienico|cotonete|absorvente|fralda|inseticida|limpador|lustra moveis|saco de lixo)\b/;
+
     const targetNorm = normalizePtText(ingredientName);
-    const targetTokens = targetNorm.split(' ').filter((t) => t.length >= 2);
+    const targetTokens = targetNorm
+      .split(' ')
+      .filter((t) => t.length >= 2 && !stopwords.has(t));
     if (targetTokens.length === 0) return null;
 
     // Bloqueia falsos positivos clássicos de ingredientes distintos
     const forbiddenPairs: Array<[RegExp, RegExp]> = [
       [/\bleite de coco\b|\bleite condensado\b|\bleite em po\b/, /\bleite integral\b/],
       [/\bbatata palha\b|\bbatata doce\b/, /\bbatata monalisa\b/],
-      [/\bchocolate em po\b|\bachocolatado\b/, /\bbarra de chocolate\b/],
+      [/\bchocolate em po\b|\bachocolatado\b/, /\bbarra de chocolate\b|\bchocolate em barra\b/],
+      [/\bchocolate\b|\bachocolatado\b|\bcacau\b/, /\bsabao\b|\bdetergente\b|\bbombom\b|\bwafer\b|\bkitkat\b/],
+      [/\bamido\b|\bmaisena\b|\bmaizena\b/, /\bpao\b|\bpanco\b|\bfarinha\b|\bbiscoito\b|\bbolacha\b/],
+      [/\bagua\b/, /\bsanitaria\b|\bcoco\b|\btonica\b/],
+      [/\bbiscoito\b|\bbolacha\b/, /\bpao\b/],
       [/\bmolho de tomate\b|\bextrato de tomate\b/, /\btomate\b/],
       [/\boleos?\b/, /\bazeite\b/]
     ];
@@ -891,7 +940,10 @@ export class ArgusRecipeService {
     let bestProduct: (typeof catalog)[number] | null = null;
 
     for (const prod of catalog) {
+      if (nonFoodCategories.has(prod.category)) continue;
+
       const prodNorm = normalizePtText(prod.name);
+      if (nonFoodProductRe.test(prodNorm)) continue;
       if (prodNorm === targetNorm) return prod;
 
       let blocked = false;
@@ -907,7 +959,7 @@ export class ArgusRecipeService {
         .replace(/\b(\d+kg|\d+g|\d+ml|\d+l|tipo|extra|virgem|tradicional|lavada|nacional|sem osso|sem sal|brancos|grandes|cartela|caixa|barra|pack)\b/g, '')
         .trim()
         .split(' ')
-        .filter((t) => t.length >= 2);
+        .filter((t) => t.length >= 2 && !stopwords.has(t));
 
       if (prodTokens.length === 0) continue;
 
@@ -928,7 +980,7 @@ export class ArgusRecipeService {
       const recall = overlap / Math.max(prodTokens.length, 1);
       const score = 0.65 * precision + 0.35 * recall;
 
-      if (score > bestScore && score >= 0.55) {
+      if (score > bestScore && score >= 0.6) {
         bestScore = score;
         bestProduct = prod;
       }
