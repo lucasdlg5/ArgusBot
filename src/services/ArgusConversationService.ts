@@ -5,6 +5,10 @@ import { logger } from '../config/logger';
 export type ArgusSuggestedAction =
   | 'PRECO'
   | 'RECEITA'
+  | 'ASK_RECIPE_PRICE'
+  | 'SAVE_RECIPE_TEXT'
+  | 'SAVE_RECIPE_URL'
+  | 'WAIT_RECIPE'
   | 'OTIMIZAR'
   | 'RECONCILIAR'
   | 'DASHBOARD'
@@ -19,6 +23,8 @@ export interface ArgusConversationReply {
   suggestedAction: ArgusSuggestedAction;
   suggestedCommand: string;
   suggestedProductQuery?: string;
+  suggestedRecipeQuery?: string;
+  suggestedRecipeUrl?: string;
   usedAi: boolean;
 }
 
@@ -119,7 +125,8 @@ Sua missão nesta conversa por texto livre no Telegram:
 
 Opções e comandos reais disponíveis no bot:
 - /produto <item> (ou /preco <item>): consulta preço atual e mínima histórica de um item (ex: /produto arroz, /produto frango).
-- /receita: calcula custo proporcional por porção vs. desembolso de caixa das receitas.
+- /receita [nome]: calcula custo proporcional, menor preço possível (compra dividida) e melhor mercado único, com ordem anti-perecíveis.
+- Adicionar receita na conversa: o usuário pode enviar os ingredientes e instruções por texto ou uma foto/print da receita.
 - /otimizar: simula rota OSRM (Mercado Único vs. Compra Dividida; Gasolina vs. Uber).
 - /reconciliar: cruza cupons fiscais com Open Finance (Pluggy) e atualiza a planilha Argus Ledger.
 - /dashboard: mostra resumo executivo de gastos, reduflação e oportunidades.
@@ -127,13 +134,19 @@ Opções e comandos reais disponíveis no bot:
 - /loja <Nome | Bairro>: vincula ou corrige a loja da última foto/vídeo de gôndola (ex: /loja Atacadão | Centro).
 - /seguranca: exibe relatório de bloqueios e auditoria de segurança.
 - /start: menu completo de comandos.
-- Envio direto de mídia: o usuário pode mandar foto/PDF de cupom fiscal, foto de gôndola/flyer ou vídeo do corredor direto no chat.
+- Envio direto de mídia: o usuário pode mandar foto/PDF de cupom fiscal, foto de gôndola/flyer, vídeo do corredor ou foto de receita.
 
 Regras para os campos JSON:
 - replyText: resposta curta em português do Brasil (sem markdown complexo), respondendo de forma básica e terminando com uma orientação clara ou exemplo (ex: "Experimente enviar /produto arroz").
-- suggestedAction: escolha exatamente a opção mais próxima da lista.
-- suggestedCommand: comando ou ação sugerida em formato curto (ex: "/produto arroz", "/receita", "Enviar foto do cupom").
-- suggestedProductQuery: se o usuário mencionou um produto específico de mercado (ex: "arroz", "café", "feijão", "frango"), preencha apenas o nome curto do item; caso contrário deixe string vazia "".`;
+- suggestedAction: escolha exatamente a opção mais próxima:
+  * SAVE_RECIPE_TEXT: quando o usuário enviou ingredientes/quantidades e preparo para adicionar/salvar uma receita no sistema.
+  * WAIT_RECIPE: quando o usuário pede ou pergunta como adicionar/cadastrar uma receita, mas ainda não enviou os ingredientes nem a foto.
+  * ASK_RECIPE_PRICE: quando o usuário pergunta quanto custa fazer uma receita específica ou onde comprar os ingredientes de um prato específico (ex: "quanto custa fazer strogonoff?").
+  * RECEITA: perguntas gerais sobre receitas/marmitas sem pedir adição ou nome de prato específico.
+  * Demais ações conforme o assunto.
+- suggestedCommand: comando ou ação sugerida em formato curto (ex: "/produto arroz", "/receita strogonoff", "Enviar receita por texto ou foto").
+- suggestedProductQuery: nome curto do produto de mercado mencionado (ex: "arroz"), ou "".
+- suggestedRecipeQuery: nome curto da receita/prato mencionado (ex: "strogonoff", "frango grelhado"), ou "".`;
 
 export class ArgusConversationService {
   private readonly ai: GoogleGenAI | null;
@@ -150,6 +163,12 @@ export class ArgusConversationService {
           }
         })
       : null;
+  }
+
+  extractFirstUrl(message: string): string | undefined {
+    const match = message.match(/https?:\/\/[^\s<>"']+/i);
+    if (!match) return undefined;
+    return match[0].replace(/[),.;!?]+$/, '');
   }
 
   /**
@@ -171,6 +190,47 @@ export class ArgusConversationService {
 
     if (tokens.length === 0) return undefined;
     return tokens.slice(0, 3).join(' ');
+  }
+
+  extractRecipeQueryCandidate(message: string): string | undefined {
+    const norm = message
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[?!.,;:"'()[\]{}]/g, ' ')
+      .replace(/^\/\S+\s*/, '')
+      .trim();
+
+    if (!norm) return undefined;
+
+    const recipeStopwords = new Set([
+      ...PRODUCT_STOPWORDS,
+      'fazer',
+      'preparo',
+      'preparar',
+      'cozinhar',
+      'receita',
+      'receitas',
+      'prato',
+      'ingredientes',
+      'ingrediente',
+      'lugar',
+      'tudo',
+      'unico',
+      'menor',
+      'melhor',
+      'possivel',
+      'comprar',
+      'marmita',
+      'marmitas'
+    ]);
+
+    const tokens = norm
+      .split(/\s+/)
+      .filter((t) => t.length >= 2 && !recipeStopwords.has(t));
+
+    if (tokens.length === 0) return undefined;
+    return tokens.slice(0, 4).join(' ');
   }
 
   private pushHistory(chatKey: string, userText: string, modelText: string) {
@@ -281,12 +341,88 @@ export class ArgusConversationService {
       };
     }
 
-    // 4. Receitas / Marmitas
+    // 4. Receitas: URL de receita, adicionar receita por texto, pedir para adicionar receita ou consultar preço
+    const detectedUrl = this.extractFirstUrl(msg);
+    if (detectedUrl) {
+      const lowerUrl = detectedUrl.toLowerCase();
+      const isKnownRecipeDomain =
+        /(tudogostoso|panelinha|receitas\.globo|cybercook|tastemade|allrecipes|cookpad|guiadacozinha|tudoreceitas|receiteria|receitasedelicias|anamariabraga)/i.test(
+          lowerUrl
+        ) || /\/receitas?\b/i.test(lowerUrl);
+      const hasRecipeIntentText =
+        /(receita|ingredientes?|adicion|cadastr|salv|import|quanto\s+custa|fazer|preparo)/i.test(
+          norm
+        );
+
+      if (isKnownRecipeDomain || hasRecipeIntentText) {
+        return {
+          replyText:
+            '🔗 Link de receita identificado! Estou acessando a página com segurança para extrair os ingredientes e calcular os preços.',
+          suggestedAction: 'SAVE_RECIPE_URL',
+          suggestedCommand: '/receita',
+          suggestedRecipeUrl: detectedUrl,
+          usedAi: false
+        };
+      }
+    }
+
+    const measurementMatches = msg.match(
+      /\b\d+[\d.,/]*\s*(kg|quilos?|g|gr|gramas?|ml|l|lt|litros?|x[ií]caras?|colher(?:es)?|unidades?|un|ovos?|latas?|caixinhas?)\b/gi
+    );
+    const hasRecipeSubmissionStructure =
+      (measurementMatches && measurementMatches.length >= 2) ||
+      (/\b(ingredientes?|modo de preparo|preparo)\b/i.test(norm) && msg.length >= 35) ||
+      (/(adicion|cadastr|salv|coloc)[a-z]*\s+(no\s+sistema\s+)?(a|uma|essa|esta)?\s*receita/i.test(norm) &&
+        Boolean(measurementMatches && measurementMatches.length >= 1));
+
+    if (hasRecipeSubmissionStructure) {
+      return {
+        replyText:
+          '🍳 Receita detectada! Estou extraindo os ingredientes, salvando no banco e calculando o menor preço nos mercados...',
+        suggestedAction: 'SAVE_RECIPE_TEXT',
+        suggestedCommand: '/receita',
+        usedAi: false
+      };
+    }
+
+    if (
+      /(adicion|cadastr|salv|inser|inclu|registr|coloc|cri)[a-z]*\s+(uma\s+|nova\s+|no\s+sistema\s+)?receita/.test(
+        norm
+      ) ||
+      /(como\s+(adiciono|cadastro|salvo)\s+(uma\s+)?receita|nova receita)/.test(norm)
+    ) {
+      return {
+        replyText:
+          '🍲 Claro! Para adicionar uma receita, envie aqui mesmo os ingredientes com quantidades e o modo de preparo por escrito, OU mande uma foto/print da receita.\n\n👉 Assim que enviar, eu cadastro no banco e já calculo onde sai mais barato comprar!',
+        suggestedAction: 'WAIT_RECIPE',
+        suggestedCommand: 'Enviar receita por texto ou foto',
+        usedAi: false
+      };
+    }
+
+    const asksRecipeCost =
+      /(quanto\s+(custa|fica|sai|gasta)\s+(para\s+|pra\s+)?fazer|preco\s+(para\s+|pra\s+)?fazer|preco\s+da\s+receita|onde\s+comprar\s+(os\s+ingredientes|tudo\s+para)|menor\s+preco\s+(para\s+|pra\s+)?fazer)/.test(
+        norm
+      ) || /\b(strogonoff|pure|lasanha|feijoada|bolo|panqueca|frango grelhado)\b/.test(norm);
+
+    if (asksRecipeCost) {
+      const recipeCandidate = this.extractRecipeQueryCandidate(msg);
+      if (recipeCandidate) {
+        return {
+          replyText:
+            `🍲 Vou consultar os preços atualizados para "${recipeCandidate}" e comparar o menor preço dividido vs. melhor mercado único.\n\n👉 Você também pode usar direto: /receita ${recipeCandidate}`,
+          suggestedAction: 'ASK_RECIPE_PRICE',
+          suggestedCommand: `/receita ${recipeCandidate}`,
+          suggestedRecipeQuery: recipeCandidate,
+          usedAi: false
+        };
+      }
+    }
+
     if (/(receita|marmita|porcao|porcoes|cozinhar|prato|ingrediente|strogonoff|almoco|janta)/.test(norm)) {
       return {
         replyText:
-          'Consigo calcular na hora o custo proporcional por porção e o gasto de caixa das suas receitas.\n\n' +
-          '👉 Envie /receita para abrir o comparativo completo.',
+          'Consigo calcular o menor preço possível, o melhor mercado único e a ordem ideal (não perecíveis antes dos congelados) das suas receitas.\n\n👉 Envie /receita para abrir o comparativo ou peça para adicionar uma nova receita!',
         suggestedAction: 'RECEITA',
         suggestedCommand: '/receita',
         usedAi: false
@@ -469,6 +605,10 @@ export class ArgusConversationService {
                     enum: [
                       'PRECO',
                       'RECEITA',
+                      'ASK_RECIPE_PRICE',
+                      'SAVE_RECIPE_TEXT',
+                      'SAVE_RECIPE_URL',
+                      'WAIT_RECIPE',
                       'OTIMIZAR',
                       'RECONCILIAR',
                       'DASHBOARD',
@@ -487,6 +627,11 @@ export class ArgusConversationService {
                     type: Type.STRING,
                     description:
                       'Termo curto do produto se o usuário perguntou sobre um item específico (ex: arroz), senão string vazia.'
+                  },
+                  suggestedRecipeQuery: {
+                    type: Type.STRING,
+                    description:
+                      'Nome curto da receita/prato se o usuário perguntou quanto custa fazer uma receita (ex: strogonoff), senão string vazia.'
                   }
                 },
                 required: ['replyText', 'suggestedAction', 'suggestedCommand']
@@ -507,12 +652,17 @@ export class ArgusConversationService {
           .trim()
           .replace(/^\/\S+\s*/, '')
           .slice(0, 40);
+        const cleanRecipe = (parsed.suggestedRecipeQuery ?? '')
+          .trim()
+          .replace(/^\/\S+\s*/, '')
+          .slice(0, 60);
 
         const result: ArgusConversationReply = {
           replyText: parsed.replyText.trim().slice(0, 700),
           suggestedAction: parsed.suggestedAction,
           suggestedCommand: (parsed.suggestedCommand || '/produto arroz').trim().slice(0, 60),
           suggestedProductQuery: cleanProduct || ruleFallback.suggestedProductQuery,
+          suggestedRecipeQuery: cleanRecipe || ruleFallback.suggestedRecipeQuery,
           usedAi: true
         };
 

@@ -9,6 +9,7 @@ import {
   MOCK_RECIPE_INGREDIENTS,
   MOCK_RECEIPTS,
   MOCK_RECEIPT_ITEMS,
+  MOCK_COLLECTED_PRICES,
   getMockCurrentProductPrices,
   getMockStoreCategoryHeatmap,
   getMockPersonalInflationAndShrinkflation,
@@ -126,13 +127,50 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     }
     return MOCK_STORES.map((s) => ({
       id: s.id,
+      cnpj: s.cnpj,
+      raw_name: s.raw_name,
       trading_name: s.trading_name,
+      address: s.address,
       latitude: String(s.latitude),
       longitude: String(s.longitude)
     })) as unknown as T[];
   }
 
-  // 7. canonical_products
+  // 7. canonical_products (INSERT/UPSERT + SELECT)
+  if (/INSERT\s+INTO\s+argus\.canonical_products/i.test(norm)) {
+    const name = String(params?.[0] ?? '').trim();
+    const category = (params?.[1] ?? 'Mercearia') as (typeof MOCK_PRODUCTS)[number]['category'];
+    const baseUnit = (params?.[2] ?? 'g') as (typeof MOCK_PRODUCTS)[number]['base_unit'];
+    const stdPkg = Number(params?.[3] ?? 1000) || 1000;
+    const isEssential = params?.[4] !== undefined ? Boolean(params[4]) : true;
+
+    const existing = MOCK_PRODUCTS.find(
+      (p) => p.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existing) {
+      return [{ id: existing.id }] as unknown as T[];
+    }
+
+    const newId = `prod-custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    MOCK_PRODUCTS.push({
+      id: newId,
+      name,
+      category,
+      base_unit: baseUnit,
+      standard_package_size: stdPkg,
+      is_essential: isEssential,
+      raw_alias: name.toUpperCase(),
+      seen_package_size: stdPkg,
+      unit_type: baseUnit === 'ml' ? 'LT' : baseUnit === 'un' ? 'UN' : 'KG',
+      has_price_observations: false,
+      prices: {
+        neSupermercado: [0, 0, 0],
+        mercadoSouza: [0, 0, 0]
+      }
+    });
+    return [{ id: newId }] as unknown as T[];
+  }
+
   if (/FROM\s+argus\.canonical_products/i.test(norm)) {
     let prods = MOCK_PRODUCTS;
     if (/is_essential\s*=\s*TRUE/i.test(norm)) {
@@ -140,6 +178,13 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     }
     if (/category\s*<>\s*'Combustível'/i.test(norm)) {
       prods = prods.filter((p) => p.category !== 'Combustível');
+    }
+    if (/LOWER\(name\)\s*=\s*LOWER\(\$1\)/i.test(norm) && params?.[0]) {
+      const target = String(params[0]).toLowerCase();
+      prods = prods.filter((p) => p.name.toLowerCase() === target);
+    } else if (/name\s+ILIKE\s+\$1/i.test(norm) && params?.[0]) {
+      const needle = String(params[0]).replace(/%/g, '').toLowerCase();
+      prods = prods.filter((p) => p.name.toLowerCase().includes(needle));
     }
     return prods.map((p) => ({
       id: p.id,
@@ -151,9 +196,48 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     })) as unknown as T[];
   }
 
-  // 8. recipes
+  // 8. recipes (INSERT/UPSERT + DELETE + SELECT)
+  if (/INSERT\s+INTO\s+argus\.recipes/i.test(norm)) {
+    const name = String(params?.[0] ?? '').trim();
+    const servings = Math.max(1, Math.round(Number(params?.[1] ?? 4)));
+    const instructions = String(params?.[2] ?? '').trim();
+
+    const existing = MOCK_RECIPES.find((r) => r.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      existing.name = name;
+      existing.servings = servings;
+      existing.instructions = instructions;
+      return [{ id: existing.id }] as unknown as T[];
+    }
+    const newId = `recipe-custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    MOCK_RECIPES.push({ id: newId, name, servings, instructions });
+    return [{ id: newId }] as unknown as T[];
+  }
+
+  if (/DELETE\s+FROM\s+argus\.recipes/i.test(norm)) {
+    const recipeId = String(params?.[0] ?? '');
+    const idx = MOCK_RECIPES.findIndex((r) => r.id === recipeId);
+    if (idx >= 0) {
+      MOCK_RECIPES.splice(idx, 1);
+    }
+    for (let i = MOCK_RECIPE_INGREDIENTS.length - 1; i >= 0; i--) {
+      if (MOCK_RECIPE_INGREDIENTS[i].recipe_id === recipeId) {
+        MOCK_RECIPE_INGREDIENTS.splice(i, 1);
+      }
+    }
+    return [] as unknown as T[];
+  }
+
   if (/FROM\s+argus\.recipes/i.test(norm)) {
-    return MOCK_RECIPES.map((r) => ({
+    let list = [...MOCK_RECIPES];
+    if (/WHERE\s+id\s*=\s*\$1/i.test(norm) && params?.[0]) {
+      list = list.filter((r) => r.id === params[0]);
+    } else if (/WHERE\s+name\s+ILIKE\s+\$1/i.test(norm) && params?.[0]) {
+      const needle = String(params[0]).replace(/%/g, '').toLowerCase();
+      list = list.filter((r) => r.name.toLowerCase().includes(needle));
+    }
+    list.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    return list.map((r) => ({
       id: r.id,
       name: r.name,
       yield_portions: r.servings,
@@ -162,7 +246,36 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     })) as unknown as T[];
   }
 
-  // 9. recipe_ingredients
+  // 9. recipe_ingredients (DELETE + INSERT + SELECT)
+  if (/DELETE\s+FROM\s+argus\.recipe_ingredients/i.test(norm)) {
+    const recipeId = String(params?.[0] ?? '');
+    for (let i = MOCK_RECIPE_INGREDIENTS.length - 1; i >= 0; i--) {
+      if (MOCK_RECIPE_INGREDIENTS[i].recipe_id === recipeId) {
+        MOCK_RECIPE_INGREDIENTS.splice(i, 1);
+      }
+    }
+    return [] as unknown as T[];
+  }
+
+  if (/INSERT\s+INTO\s+argus\.recipe_ingredients/i.test(norm)) {
+    const recipeId = String(params?.[0] ?? '');
+    const canonicalProductId = String(params?.[1] ?? '');
+    const qty = Number(params?.[2] ?? 0);
+    const existing = MOCK_RECIPE_INGREDIENTS.find(
+      (i) => i.recipe_id === recipeId && i.canonical_product_id === canonicalProductId
+    );
+    if (existing) {
+      existing.quantity_in_base_unit = qty;
+    } else {
+      MOCK_RECIPE_INGREDIENTS.push({
+        recipe_id: recipeId,
+        canonical_product_id: canonicalProductId,
+        quantity_in_base_unit: qty
+      });
+    }
+    return [] as unknown as T[];
+  }
+
   if (/FROM\s+argus\.recipe_ingredients\s+ri\s+JOIN\s+argus\.canonical_products\s+cp/i.test(norm)) {
     const recipeId = params?.[0];
     const ings = MOCK_RECIPE_INGREDIENTS.filter((i) => !recipeId || i.recipe_id === recipeId);
@@ -171,7 +284,9 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
       const p = prodMap.get(i.canonical_product_id);
       return {
         id: p?.id ?? i.canonical_product_id,
+        canonical_product_id: p?.id ?? i.canonical_product_id,
         name: p?.name ?? '',
+        product_name: p?.name ?? '',
         category: p?.category ?? 'Mercearia',
         base_unit: p?.base_unit ?? 'g',
         standard_package_size: String(p?.standard_package_size ?? 1000),
@@ -230,7 +345,28 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     return [] as unknown as T[];
   }
 
-  // 13. receipt_items list
+  // 13. historical item observations across receipt_items + collected_prices
+  if (/AS\s+observed_at/i.test(norm) && /FROM\s+argus\.receipt_items/i.test(norm)) {
+    const prodMap = new Map(MOCK_PRODUCTS.map((p) => [p.id, p]));
+    const recMap = new Map(MOCK_RECEIPTS.map((r) => [r.id, r]));
+    const nowIso = new Date().toISOString();
+    return MOCK_RECEIPT_ITEMS.map((it) => {
+      const rec = recMap.get(it.receipt_id);
+      const prod = prodMap.get(it.canonical_product_id);
+      const stdPkg = Number(prod?.standard_package_size ?? 1);
+      const basePrice = Number(it.normalized_price_per_base_unit);
+      return {
+        canonical_product_id: it.canonical_product_id,
+        store_name: rec?.store_name ?? 'NE SUPERMERCADO',
+        observed_at: rec?.purchase_date ?? nowIso,
+        base_price: basePrice,
+        package_price: Number((basePrice * stdPkg).toFixed(2)),
+        source_type: 'CUPOM_FISCAL'
+      };
+    }) as unknown as T[];
+  }
+
+  // 14. receipt_items list
   if (/FROM\s+argus\.receipt_items/i.test(norm)) {
     const prodMap = new Map(MOCK_PRODUCTS.map((p) => [p.id, p]));
     const recMap = new Map(MOCK_RECEIPTS.map((r) => [r.id, r]));
@@ -253,8 +389,18 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     }) as unknown as T[];
   }
 
-  // 14. collected_prices
+  // 14. collected_prices (observações históricas de flyers e fotos)
   if (/FROM\s+argus\.collected_prices/i.test(norm)) {
+    if (/AS\s+observed_at/i.test(norm)) {
+      return MOCK_COLLECTED_PRICES.map((c) => ({
+        canonical_product_id: c.canonical_product_id,
+        store_name: c.store_name,
+        observed_at: c.collected_at,
+        base_price: c.normalized_price_per_base_unit,
+        package_price: c.package_price,
+        source_type: c.source_type
+      })) as unknown as T[];
+    }
     return [] as unknown as T[];
   }
 

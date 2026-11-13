@@ -30,4 +30,42 @@ describe('ArgusOptimizerService — Motor de Receitas e Logística (Carro vs. Ub
     expect(verdict.splitStoreBest.routeLegs.length).toBe(3); // Casa -> M1 -> M2 -> Casa
     expect(verdict.argusVerdictText).toContain('VEREDITO ARGUS');
   });
+
+  it('deve comparar historicamente o custo da mesma receita entre Mercado Souza e NE Supermercado', async () => {
+    const evaluations = await optimizer.evaluateRecipeCosts();
+    const strogonoff = evaluations.find((r) => r.recipeName.includes('Strogonoff'));
+    expect(strogonoff).toBeDefined();
+
+    const cmp = strogonoff!.historicalStoreComparison;
+    expect(cmp).toBeDefined();
+    expect(cmp!.mercadoSouza.storeName).toBe('Mercado Souza');
+    expect(cmp!.neSupermercado.storeName).toBe('NE Supermercado');
+    expect(cmp!.mercadoSouza.totalObservationsCount).toBeGreaterThan(0);
+    expect(cmp!.neSupermercado.totalObservationsCount).toBeGreaterThan(0);
+    expect(cmp!.items.length).toBe(strogonoff!.ingredientsBreakdown.length);
+    expect(cmp!.timeline.length).toBe(6);
+
+    for (let i = 1; i < cmp!.timeline.length; i++) {
+      expect(cmp!.timeline[i].sortKey > cmp!.timeline[i - 1].sortKey).toBe(true);
+    }
+    for (const pt of cmp!.timeline) {
+      expect(pt.mercadoSouzaCash).toBeGreaterThan(0);
+      expect(pt.neSupermercadoCash).toBeGreaterThan(0);
+      expect(pt.mercadoSouzaProportional).toBeGreaterThan(0);
+      expect(pt.neSupermercadoProportional).toBeGreaterThan(0);
+    }
+
+    const expectedDelta = Math.abs(
+      cmp!.mercadoSouza.weightedCashCost - cmp!.neSupermercado.weightedCashCost
+    );
+    expect(cmp!.savingsWeightedCash).toBeCloseTo(expectedDelta, 1);
+
+    if (expectedDelta > 0.05) {
+      const expectedWinner =
+        cmp!.mercadoSouza.weightedCashCost < cmp!.neSupermercado.weightedCashCost
+          ? 'MERCADO_SOUZA'
+          : 'NE_SUPERMERCADO';
+      expect(cmp!.winnerWeightedCash).toBe(expectedWinner);
+    }
+  });
 });

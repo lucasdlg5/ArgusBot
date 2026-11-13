@@ -186,26 +186,264 @@ export interface ReconciliationSummary {
 // LOGÍSTICA, RECEITAS & OTIMIZADOR (GASOLINA vs. UBER)
 // =============================================================================
 
+export type PerishabilityTier =
+  | 'NON_PERISHABLE'
+  | 'SEMI_PERISHABLE'
+  | 'REFRIGERATED'
+  | 'FROZEN_OR_DELICATE';
+
+export interface PerishabilityClassification {
+  tier: PerishabilityTier;
+  rank: 1 | 2 | 3 | 4; // 1 = comprar primeiro (não perecível), 4 = comprar por último (carnes/congelados/delicados)
+  label: string;
+  shoppingOrderHint: string;
+  reason: string;
+}
+
+export type RecipeDifficulty = 'Fácil' | 'Média' | 'Elaborada';
+
+export interface RecipeIngredientBreakdownItem {
+  productId: string;
+  productName: string;
+  category?: ProductCategory;
+  baseUnit: BaseUnit;
+  requiredBaseQty: number;
+  standardPackageSize: number;
+  packagesNeeded: number;
+  surplusBaseQty: number;
+  surplusPct: number;
+  leftoverValue: number;
+  bestStoreId?: string;
+  bestStoreName: string;
+  bestUnitPrice?: number;
+  bestPackagePrice?: number;
+  proportionalCost: number;
+  cashOutlayCost: number;
+  hasRealPrice?: boolean;
+  perishabilityTier: PerishabilityTier;
+  perishabilityRank: 1 | 2 | 3 | 4;
+  perishabilityLabel: string;
+  perishabilityReason: string;
+}
+
+export interface SimilarRecipeSuggestion {
+  recipeId: string;
+  recipeName: string;
+  sharedIngredients: string[];
+  sharedCount: number;
+  similarityPct: number;
+  lowestPossibleCashCost: number;
+  proportionalCostPerPortion: number;
+  servings: number;
+  prepTimeMinutes: number;
+  difficulty: RecipeDifficulty;
+  additionalOutlayEstimate: number;
+}
+
+export interface RecipeStoreQuote {
+  storeId: string;
+  storeName: string;
+  address: string;
+  lat: number;
+  lng: number;
+  totalCashCost: number;
+  totalProportionalCost: number;
+  matchedIngredientsCount: number;
+  totalIngredientsCount: number;
+  coveragePct: number;
+  missingIngredients: string[];
+  estimatedMissingCost: number;
+  items: Array<{
+    productId: string;
+    productName: string;
+    category: ProductCategory;
+    packagesNeeded: number;
+    packagePrice: number;
+    proportionalCost: number;
+    cashOutlayCost: number;
+    hasRealPrice: boolean;
+    perishabilityTier: PerishabilityTier;
+    perishabilityRank: 1 | 2 | 3 | 4;
+  }>;
+}
+
+export interface RecipeRouteStop {
+  stopOrder: number;
+  storeId: string;
+  storeName: string;
+  address: string;
+  lat: number;
+  lng: number;
+  maxPerishabilityRank: 1 | 2 | 3 | 4;
+  avgPerishabilityRank: number;
+  coldChainStageLabel: string;
+  coldChainReason: string;
+  subtotalCashCost: number;
+  subtotalProportionalCost: number;
+  items: Array<{
+    productId: string;
+    productName: string;
+    category: ProductCategory;
+    baseUnit: BaseUnit;
+    requiredBaseQty: number;
+    packagesNeeded: number;
+    packagePrice: number;
+    cashOutlayCost: number;
+    proportionalCost: number;
+    perishabilityTier: PerishabilityTier;
+    perishabilityRank: 1 | 2 | 3 | 4;
+    perishabilityLabel: string;
+    perishabilityReason: string;
+    hasRealPrice: boolean;
+  }>;
+}
+
+export interface RecipeRouteAnalysis {
+  singleStoreBestId: string | null;
+  singleStoreBestName: string;
+  singleStoreScenario: LogisticsScenario | null;
+  splitStoreScenario: LogisticsScenario | null;
+  splitStoreOrder: RecipeRouteStop[];
+  isMultiStoreSplitRecommended: boolean;
+  splitSavingsAmount: number;
+  netSplitSavingsWithGas: number;
+  recommendedPurchaseOption: 'SINGLE_STORE' | 'SPLIT_STORES';
+  coldChainProtectedMinutes: number;
+  coldChainScore: number;
+  coldChainSummary: string;
+}
+
+export interface StoreIngredientPricePoint {
+  observedAt: string;
+  packagePrice: number;
+  basePrice: number;
+  sourceType: string;
+}
+
+export interface StoreIngredientHistorySummary {
+  storeName: string;
+  hasRealHistory: boolean;
+  observationsCount: number;
+  latestPackagePrice: number;
+  weightedPackagePrice: number;
+  avgHistoricalPackagePrice: number;
+  minHistoricalPackagePrice: number;
+  maxHistoricalPackagePrice: number;
+  latestProportionalCost: number;
+  weightedProportionalCost: number;
+  avgProportionalCost: number;
+  minProportionalCost: number;
+  maxProportionalCost: number;
+  latestCashCost: number;
+  weightedCashCost: number;
+  avgCashCost: number;
+  minCashCost: number;
+  maxCashCost: number;
+  lastSeenAt: string | null;
+  pricePoints: StoreIngredientPricePoint[];
+}
+
+export interface RecipeStorePairComparisonItem {
+  productId: string;
+  productName: string;
+  category: ProductCategory;
+  baseUnit: BaseUnit;
+  requiredBaseQty: number;
+  standardPackageSize: number;
+  packagesNeeded: number;
+  mercadoSouza: StoreIngredientHistorySummary;
+  neSupermercado: StoreIngredientHistorySummary;
+  cheaperStoreWeighted: 'MERCADO_SOUZA' | 'NE_SUPERMERCADO' | 'TIE' | 'INSUFFICIENT_DATA';
+  weightedCashDiff: number; // positivo = NE mais barato; negativo = Mercado Souza mais barato
+  weightedProportionalDiff: number;
+}
+
+export interface RecipeStoreHistoryTotals {
+  storeName: string;
+  matchedIngredientsCount: number;
+  totalIngredientsCount: number;
+  coveragePct: number;
+  totalObservationsCount: number;
+  lastObservedAt: string | null;
+  weightedCashCost: number;
+  weightedProportionalCost: number;
+  avgHistoricalCashCost: number;
+  avgHistoricalProportionalCost: number;
+  minHistoricalCashCost: number;
+  minHistoricalProportionalCost: number;
+  maxHistoricalCashCost: number;
+  maxHistoricalProportionalCost: number;
+  latestCashCost: number;
+  latestProportionalCost: number;
+}
+
+export interface RecipeTimelineComparisonPoint {
+  periodLabel: string;
+  sortKey: string;
+  mercadoSouzaCash: number;
+  neSupermercadoCash: number;
+  mercadoSouzaProportional: number;
+  neSupermercadoProportional: number;
+  mercadoSouzaRealItems: number;
+  neSupermercadoRealItems: number;
+}
+
+export interface RecipeTwoStoreComparison {
+  mercadoSouza: RecipeStoreHistoryTotals;
+  neSupermercado: RecipeStoreHistoryTotals;
+  commonOnly: {
+    sharedIngredientsCount: number;
+    mercadoSouzaWeightedCash: number;
+    neSupermercadoWeightedCash: number;
+    mercadoSouzaWeightedProportional: number;
+    neSupermercadoWeightedProportional: number;
+    mercadoSouzaAvgCash: number;
+    neSupermercadoAvgCash: number;
+    mercadoSouzaMinCash: number;
+    neSupermercadoMinCash: number;
+  };
+  winnerWeightedCash: 'MERCADO_SOUZA' | 'NE_SUPERMERCADO' | 'TIE';
+  savingsWeightedCash: number;
+  savingsWeightedPct: number;
+  winnerWeightedProportional: 'MERCADO_SOUZA' | 'NE_SUPERMERCADO' | 'TIE';
+  savingsWeightedProportional: number;
+  items: RecipeStorePairComparisonItem[];
+  timeline: RecipeTimelineComparisonPoint[];
+}
+
 export interface RecipeCostEvaluation {
   recipeId: string;
   recipeName: string;
   servings: number;
   requestedPortions: number;
+  instructions: string;
+  instructionSteps: string[];
+  prepTimeMinutes: number;
+  difficulty: RecipeDifficulty;
+  cuisineTags: string[];
+  estimatedCaloriesPerPortion: number;
   proportionalTotalCost: number;
   proportionalCostPerPortion: number;
   cashOutlayTotalCost: number;
+  totalLeftoverPantryValue: number;
+  pantryUtilizationPct: number;
+  bestSingleStoreId: string | null;
   bestSingleStoreName: string;
-  ingredientsBreakdown: Array<{
-    productId: string;
-    productName: string;
-    baseUnit: BaseUnit;
-    requiredBaseQty: number;
-    standardPackageSize: number;
-    packagesNeeded: number;
-    bestStoreName: string;
-    proportionalCost: number;
-    cashOutlayCost: number;
-  }>;
+  bestSingleStoreAddress: string;
+  bestSingleStoreCashCost: number;
+  bestSingleStoreProportionalCost: number;
+  bestSingleStoreCoveragePct: number;
+  lowestPossibleProportionalCost: number;
+  lowestPossibleCashCost: number;
+  lowestPossibleStoresCount: number;
+  priceCoverageCount: number;
+  totalIngredientsCount: number;
+  coldChainSummary: string;
+  storeQuotes: RecipeStoreQuote[];
+  ingredientsBreakdown: RecipeIngredientBreakdownItem[];
+  similarRecipes?: SimilarRecipeSuggestion[];
+  routeAnalysis?: RecipeRouteAnalysis;
+  historicalStoreComparison?: RecipeTwoStoreComparison;
 }
 
 export interface RouteLegGeometry {

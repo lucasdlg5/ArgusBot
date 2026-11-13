@@ -17,6 +17,7 @@
     "setup:env": "tsx scripts/setup-env.ts",
     "setup:resources": "tsx scripts/setup-resources.ts",
     "db:migrate": "tsx scripts/run-migrations.ts",
+    "db:normalize-stores": "tsx scripts/normalize-stores.ts",
     "db:seed-demo": "tsx scripts/seed-demo.ts",
     "db:clear-demo": "tsx scripts/clear-demo.ts",
     "test": "vitest run"
@@ -33,6 +34,7 @@
     "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.475.0",
+    "motion": "^14.13.0",
     "next": "^15.2.0",
     "pg": "^8.13.3",
     "pino": "^9.7.0",

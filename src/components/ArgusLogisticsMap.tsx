@@ -99,30 +99,34 @@ export default function ArgusLogisticsMap({
         </CircleMarker>
 
         {/* Marcadores dos Mercados Visitados */}
-        {currentScenario.storesVisited.map((st, idx) => (
-          <CircleMarker
-            key={st.storeId}
-            center={[st.lat, st.lng]}
-            radius={10}
-            pathOptions={{
-              color: idx === 0 ? '#f59e0b' : '#38bdf8',
-              fillColor: idx === 0 ? '#f59e0b' : '#38bdf8',
-              fillOpacity: 0.9,
-              weight: 3
-            }}
-          >
-            <Popup>
-              <div className="text-xs text-slate-900">
-                <strong className="block text-sm">
-                  🛒 Parada {idx + 1}: {st.storeName}
-                </strong>
-                <span>Itens comprados: {st.itemsCount}</span>
-                <br />
-                <span>Subtotal: R$ {st.subtotalProducts.toFixed(2)}</span>
-              </div>
-            </Popup>
-          </CircleMarker>
-        ))}
+        {currentScenario.storesVisited.map((st, idx) => {
+          const stopColors = ['#f59e0b', '#38bdf8', '#a855f7', '#fb7185'];
+          const stopColor = stopColors[idx % stopColors.length];
+          return (
+            <CircleMarker
+              key={`${st.storeId}-${idx}`}
+              center={[st.lat, st.lng]}
+              radius={10}
+              pathOptions={{
+                color: stopColor,
+                fillColor: stopColor,
+                fillOpacity: 0.9,
+                weight: 3
+              }}
+            >
+              <Popup>
+                <div className="text-xs text-slate-900">
+                  <strong className="block text-sm">
+                    🛒 Parada {idx + 1}: {st.storeName}
+                  </strong>
+                  <span>Itens comprados: {st.itemsCount}</span>
+                  <br />
+                  <span>Subtotal: R$ {st.subtotalProducts.toFixed(2)}</span>
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
       </MapContainer>
 
       {/* Legenda flutuante sobre o mapa */}
@@ -131,18 +135,19 @@ export default function ArgusLogisticsMap({
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
           Casa
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-          Mercado 1
-        </span>
-        {activeMode === 'SPLIT_STORES' && (
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
-            Mercado 2
-          </span>
-        )}
-        <span className="text-slate-400">
-          • Rota Real OSRM: <strong className="text-emerald-400">{currentScenario.totalDistanceKm} km</strong> ({currentScenario.totalDurationMin} min)
+        {currentScenario.storesVisited.map((st, idx) => {
+          const dotClasses = ['bg-amber-500', 'bg-sky-400', 'bg-purple-500', 'bg-rose-400'];
+          return (
+            <span key={`legend-${st.storeId}-${idx}`} className="flex items-center gap-1.5">
+              <span className={`h-2.5 w-2.5 rounded-full ${dotClasses[idx % dotClasses.length]}`} />
+              {currentScenario.storesVisited.length > 1
+                ? `${idx + 1}º ${st.storeName.replace(/^\d+º\s*/, '')}`
+                : st.storeName.replace(/^\d+º\s*/, '')}
+            </span>
+          );
+        })}
+        <span className="text-slate-400 tabular-nums">
+          • Rota OSRM: <strong className="text-emerald-400">{currentScenario.totalDistanceKm} km</strong> ({currentScenario.totalDurationMin} min)
         </span>
       </div>
     </div>

@@ -4,9 +4,11 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { queryArgus, withArgusTransaction } from '../lib/db';
+import { classifyAndNormalizeStoreName } from '../lib/store-normalization';
 import { ArgusStorageService } from './ArgusStorageService';
 import { ArgusReceiptProcessor, type ExtractedReceiptData } from './ArgusReceiptProcessor';
 import { ArgusReconciliationService } from './ArgusReconciliationService';
+import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
 import type { ReceiptUnitType } from '../types/argus';
 
 export type MediaScanKind = 'RECEIPT_PHOTO' | 'SHELF_PHOTO' | 'MARKET_FLYER' | 'AISLE_VIDEO';
@@ -87,6 +89,7 @@ export class ArgusPriceScannerService {
   private readonly storage = new ArgusStorageService();
   private readonly receiptProcessor = new ArgusReceiptProcessor();
   private readonly reconciler = new ArgusReconciliationService();
+  private readonly storeNormalizer = new ArgusStoreNormalizationService();
 
   constructor() {
     this.ai = env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: env.GEMINI_API_KEY }) : null;
@@ -518,7 +521,8 @@ export class ArgusPriceScannerService {
             ? captionStoreMatch[1].trim()
             : null;
 
-      const storeNameLabel = rawStoreName || 'Loja Não Identificada';
+      const normalizedStore = rawStoreName ? classifyAndNormalizeStoreName(rawStoreName) : null;
+      let storeNameLabel = normalizedStore ? normalizedStore.canonicalName : 'Loja Não Identificada';
       const rawLocation =
         extraction.storeLocationDetected &&
         !/^(null|undefined|n\/a|none|desconhecido|nao identificado)$/i.test(
@@ -527,26 +531,26 @@ export class ArgusPriceScannerService {
           ? extraction.storeLocationDetected.trim()
           : null;
 
-      // Se o nome da loja foi identificado, garante vínculo em `argus.stores` para alimentar as views de preços!
+      // Se o nome da loja foi identificado, garante vínculo canônico em `argus.stores` e `argus.store_aliases`
       let storeId: string | null = null;
-      if (rawStoreName) {
-        const syntheticCnpj = this.receiptProcessor.normalizeStoreCnpj(undefined, rawStoreName);
-        const stRows = await queryArgus<{ id: string }>(
-          `INSERT INTO argus.stores (cnpj, raw_name, trading_name, address, latitude, longitude)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (cnpj) DO UPDATE SET
-             trading_name = EXCLUDED.trading_name
-           RETURNING id`,
-          [
-            syntheticCnpj,
-            rawStoreName,
-            rawStoreName,
-            rawLocation || 'Localização pendente (Coleta de Gôndola/Flyer)',
-            env.HOME_LAT - 0.01,
-            env.HOME_LNG - 0.01
-          ]
+      if (rawStoreName && normalizedStore && !normalizedStore.isGenericPlaceholder) {
+        const canonicalStore = await this.storeNormalizer.resolveOrUpsertCanonicalStore(
+          {
+            query: async <R extends Record<string, any>>(qText: string, qParams?: unknown[]) => {
+              const rows = await queryArgus<R>(qText, qParams);
+              return { rows };
+            }
+          },
+          {
+            rawName: rawStoreName,
+            tradingName: rawStoreName,
+            address: rawLocation || 'Localização pendente (Coleta de Gôndola/Flyer)',
+            latitude: env.HOME_LAT - 0.01,
+            longitude: env.HOME_LNG - 0.01
+          }
         );
-        storeId = stRows[0]?.id ?? null;
+        storeId = canonicalStore.storeId;
+        storeNameLabel = canonicalStore.canonicalTradingName;
       }
 
       const processedItems: ProcessedPriceScanItem[] = [];
@@ -844,28 +848,19 @@ export class ArgusPriceScannerService {
     storeName: string,
     storeLocation?: string
   ): Promise<{ updatedItemsCount: number; newConfidencePct: number }> {
-    const cleanStore = storeName.trim();
+    const rawStore = storeName.trim();
     const cleanLoc = storeLocation?.trim() || null;
-    const syntheticCnpj = this.receiptProcessor.normalizeStoreCnpj(undefined, cleanStore);
 
     return withArgusTransaction(async (client) => {
-      const stRes = await client.query<{ id: string }>(
-        `INSERT INTO argus.stores (cnpj, raw_name, trading_name, address, latitude, longitude)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (cnpj) DO UPDATE SET
-           trading_name = EXCLUDED.trading_name,
-           address = COALESCE($4, argus.stores.address)
-         RETURNING id`,
-        [
-          syntheticCnpj,
-          cleanStore,
-          cleanStore,
-          cleanLoc || 'Endereço confirmado pelo auditor',
-          env.HOME_LAT - 0.01,
-          env.HOME_LNG - 0.01
-        ]
-      );
-      const storeId = stRes.rows[0].id;
+      const canonicalStore = await this.storeNormalizer.resolveOrUpsertCanonicalStore(client, {
+        rawName: rawStore,
+        tradingName: rawStore,
+        address: cleanLoc || 'Endereço confirmado pelo auditor',
+        latitude: env.HOME_LAT - 0.01,
+        longitude: env.HOME_LNG - 0.01
+      });
+      const storeId = canonicalStore.storeId;
+      const cleanStore = canonicalStore.canonicalTradingName;
 
       // Eleva o score de confiabilidade (+25% se estava sem loja, +15% se informou local)
       const boost = cleanLoc ? 35 : 22;

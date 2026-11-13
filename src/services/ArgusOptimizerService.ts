@@ -1,12 +1,23 @@
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { queryArgus } from '../lib/db';
+import { classifyIngredientPerishability } from '../lib/perishability';
+import { deriveRecipeMetadata } from '../lib/recipe-intelligence';
+import { classifyStoreForCurrentSweep, CANONICAL_STORE_NE, CANONICAL_STORE_SOUZA } from '../lib/store-normalization';
 import type {
   BaseUnit,
   LogisticsScenario,
   OptimizationVerdict,
+  ProductCategory,
   RecipeCostEvaluation,
-  RouteLegGeometry
+  RecipeStoreHistoryTotals,
+  RecipeStorePairComparisonItem,
+  RecipeStoreQuote,
+  RecipeTimelineComparisonPoint,
+  RecipeTwoStoreComparison,
+  RouteLegGeometry,
+  StoreIngredientHistorySummary,
+  StoreIngredientPricePoint
 } from '../types/argus';
 
 export interface ShoppingListItemInput {
@@ -151,34 +162,113 @@ export class ArgusOptimizerService {
   }
 
   /**
-   * 3. Avalia o Duplo Custo de Receitas (Proporcional por Porção vs. Desembolso de Caixa em Embalagens Fechadas)
+   * 3. Avalia o Duplo Custo de Receitas (Proporcional por Porção vs. Desembolso de Caixa em Embalagens Fechadas),
+   * compara o Menor Preço Possível (dividido entre mercados) vs. Melhor Mercado Único (com cobertura real),
+   * e classifica todos os ingredientes na cadeia fria (não perecíveis 1º -> perecíveis/congelados por último).
    */
   async evaluateRecipeCosts(
     recipeId?: string,
     requestedPortionsOverride?: number
   ): Promise<RecipeCostEvaluation[]> {
-    const recipes = await queryArgus<{
-      id: string;
-      name: string;
-      servings: number;
-      instructions: string;
-    }>(
-      recipeId
-        ? `SELECT id, name, servings, instructions FROM argus.recipes WHERE id = $1`
-        : `SELECT id, name, servings, instructions FROM argus.recipes ORDER BY name ASC`,
-      recipeId ? [recipeId] : []
-    );
+    const [recipes, priceRows, stores, receiptHistoryRows, collectedHistoryRows] = await Promise.all([
+      queryArgus<{
+        id: string;
+        name: string;
+        servings: number;
+        instructions: string;
+      }>(
+        recipeId
+          ? `SELECT id, name, servings, instructions FROM argus.recipes WHERE id = $1`
+          : `SELECT id, name, servings, instructions FROM argus.recipes ORDER BY name ASC`,
+        recipeId ? [recipeId] : []
+      ),
+      queryArgus<{
+        canonical_product_id: string;
+        product_name: string;
+        category: ProductCategory;
+        base_unit: BaseUnit;
+        standard_package_size: string;
+        store_id: string;
+        store_name: string;
+        estimated_base_price: string;
+        estimated_package_price: string;
+      }>(`SELECT * FROM argus.v_current_product_prices`),
+      queryArgus<{
+        id: string;
+        trading_name: string;
+        address?: string;
+        latitude: string;
+        longitude: string;
+      }>(
+        `SELECT id, trading_name, address, latitude, longitude FROM argus.stores ORDER BY trading_name ASC`
+      ),
+      queryArgus<{
+        canonical_product_id: string;
+        store_name: string;
+        observed_at: string;
+        base_price: number;
+        package_price: number;
+        source_type: string;
+      }>(
+        `SELECT
+           ri.canonical_product_id,
+           s.trading_name AS store_name,
+           r.purchase_date::text AS observed_at,
+           ri.normalized_price_per_base_unit::float8 AS base_price,
+           (ri.normalized_price_per_base_unit * cp.standard_package_size)::float8 AS package_price,
+           'CUPOM_FISCAL'::text AS source_type
+         FROM argus.receipt_items ri
+         JOIN argus.receipts r ON r.id = ri.receipt_id
+         JOIN argus.stores s ON s.id = r.store_id
+         JOIN argus.canonical_products cp ON cp.id = ri.canonical_product_id
+         WHERE ri.normalized_price_per_base_unit > 0
+         ORDER BY r.purchase_date ASC`
+      ).catch(() => []),
+      queryArgus<{
+        canonical_product_id: string;
+        store_name: string;
+        observed_at: string;
+        base_price: number;
+        package_price: number;
+        source_type: string;
+      }>(
+        `SELECT
+           cp_obs.canonical_product_id,
+           COALESCE(s.trading_name, cp_obs.store_name_detected) AS store_name,
+           cp_obs.collected_at::text AS observed_at,
+           cp_obs.normalized_price_per_base_unit::float8 AS base_price,
+           (cp_obs.normalized_price_per_base_unit * cp.standard_package_size)::float8 AS package_price,
+           cp_obs.source_type::text AS source_type
+         FROM argus.collected_prices cp_obs
+         LEFT JOIN argus.stores s ON s.id = cp_obs.store_id
+         JOIN argus.canonical_products cp ON cp.id = cp_obs.canonical_product_id
+         WHERE cp_obs.canonical_product_id IS NOT NULL
+           AND cp_obs.normalized_price_per_base_unit > 0
+         ORDER BY cp_obs.collected_at ASC`
+      ).catch(() => [])
+    ]);
 
-    const priceRows = await queryArgus<{
-      canonical_product_id: string;
-      product_name: string;
-      base_unit: BaseUnit;
-      standard_package_size: string;
-      store_id: string;
-      store_name: string;
-      estimated_base_price: string;
-      estimated_package_price: string;
-    }>(`SELECT * FROM argus.v_current_product_prices`);
+    // Agrupa observações históricas por (canonical_product_id :: CANONICAL_STORE)
+    const historyByProductAndStore = new Map<string, StoreIngredientPricePoint[]>();
+    const allObservations = [...receiptHistoryRows, ...collectedHistoryRows];
+    for (const obs of allObservations) {
+      const normalizedStore = classifyStoreForCurrentSweep(obs.store_name).canonicalName;
+      if (normalizedStore !== CANONICAL_STORE_SOUZA && normalizedStore !== CANONICAL_STORE_NE) {
+        continue;
+      }
+      const key = `${obs.canonical_product_id}::${normalizedStore}`;
+      const list = historyByProductAndStore.get(key) ?? [];
+      list.push({
+        observedAt: new Date(obs.observed_at).toISOString(),
+        packagePrice: Number(Number(obs.package_price).toFixed(2)),
+        basePrice: Number(Number(obs.base_price).toFixed(6)),
+        sourceType: String(obs.source_type || 'CUPOM_FISCAL')
+      });
+      historyByProductAndStore.set(key, list);
+    }
+    for (const list of historyByProductAndStore.values()) {
+      list.sort((a, b) => new Date(a.observedAt).getTime() - new Date(b.observedAt).getTime());
+    }
 
     const evaluations: RecipeCostEvaluation[] = [];
 
@@ -187,6 +277,7 @@ export class ArgusOptimizerService {
         canonical_product_id: string;
         quantity_in_base_unit: string;
         product_name: string;
+        category: ProductCategory;
         base_unit: BaseUnit;
         standard_package_size: string;
       }>(
@@ -194,6 +285,7 @@ export class ArgusOptimizerService {
            ri.canonical_product_id,
            ri.quantity_in_base_unit,
            cp.name AS product_name,
+           cp.category,
            cp.base_unit,
            cp.standard_package_size
          FROM argus.recipe_ingredients ri
@@ -203,39 +295,127 @@ export class ArgusOptimizerService {
       );
 
       const requestedPortions = requestedPortionsOverride ?? recipe.servings;
-      const scaleFactor = requestedPortions / recipe.servings;
+      const scaleFactor = requestedPortions / Math.max(1, recipe.servings);
 
       let proportionalTotalCost = 0;
       let cashOutlayTotalCost = 0;
-      const storeTotals = new Map<string, number>();
+      let priceCoverageCount = 0;
       const breakdown: RecipeCostEvaluation['ingredientsBreakdown'] = [];
+      const splitStoresUsed = new Set<string>();
+
+      const storeBuckets = new Map<
+        string,
+        {
+          storeId: string;
+          storeName: string;
+          address: string;
+          lat: number;
+          lng: number;
+          totalCashCost: number;
+          totalProportionalCost: number;
+          matchedIngredientsCount: number;
+          missingIngredients: string[];
+          estimatedMissingCost: number;
+          items: RecipeStoreQuote['items'];
+        }
+      >();
+
+      for (const st of stores) {
+        storeBuckets.set(st.id, {
+          storeId: st.id,
+          storeName: st.trading_name,
+          address: st.address || st.trading_name,
+          lat: Number(st.latitude),
+          lng: Number(st.longitude),
+          totalCashCost: 0,
+          totalProportionalCost: 0,
+          matchedIngredientsCount: 0,
+          missingIngredients: [],
+          estimatedMissingCost: 0,
+          items: []
+        });
+      }
 
       for (const ing of ingredients) {
         const requiredBaseQty = Number(ing.quantity_in_base_unit) * scaleFactor;
-        const stdPkgSize = Number(ing.standard_package_size);
-        const packagesNeeded = Math.ceil(requiredBaseQty / stdPkgSize);
+        const stdPkgSize = Math.max(1, Number(ing.standard_package_size));
+        const packagesNeeded = Math.max(1, Math.ceil(requiredBaseQty / stdPkgSize));
+        const perish = classifyIngredientPerishability(ing.product_name, ing.category);
 
         const productStorePrices = priceRows
           .filter((p) => p.canonical_product_id === ing.canonical_product_id)
           .sort((a, b) => Number(a.estimated_base_price) - Number(b.estimated_base_price));
 
-        const bestPriceRow = productStorePrices[0];
-        const basePrice = bestPriceRow ? Number(bestPriceRow.estimated_base_price) : 0.02;
-        const pkgPrice = bestPriceRow
-          ? Number(bestPriceRow.estimated_package_price)
-          : basePrice * stdPkgSize;
-        const bestStoreName = bestPriceRow?.store_name ?? 'Média de Mercado';
-
-        for (const pRow of productStorePrices) {
-          const prev = storeTotals.get(pRow.store_name) ?? 0;
-          storeTotals.set(
-            pRow.store_name,
-            prev + packagesNeeded * Number(pRow.estimated_package_price)
-          );
+        const hasAnyRealPrice = productStorePrices.length > 0;
+        if (hasAnyRealPrice) {
+          priceCoverageCount += 1;
         }
 
-        const propCost = Number((requiredBaseQty * basePrice).toFixed(2));
-        const cashCost = Number((packagesNeeded * pkgPrice).toFixed(2));
+        const fallbackBasePrice =
+          ing.base_unit === 'un' ? 0.85 : ing.category === 'Carnes' ? 0.032 : 0.015;
+        const bestPriceRow = productStorePrices[0];
+        const bestBasePrice = bestPriceRow
+          ? Number(bestPriceRow.estimated_base_price)
+          : fallbackBasePrice;
+        const bestPkgPrice = bestPriceRow
+          ? Number(bestPriceRow.estimated_package_price)
+          : Number((fallbackBasePrice * stdPkgSize).toFixed(2));
+        const bestStoreId = bestPriceRow?.store_id;
+        const bestStoreName = bestPriceRow?.store_name ?? 'Sem leitura no banco (Estimado)';
+
+        if (bestStoreId) {
+          splitStoresUsed.add(bestStoreId);
+        }
+
+        const avgBasePrice = hasAnyRealPrice
+          ? productStorePrices.reduce((s, r) => s + Number(r.estimated_base_price), 0) /
+            productStorePrices.length
+          : fallbackBasePrice;
+        const avgPkgPrice = hasAnyRealPrice
+          ? productStorePrices.reduce((s, r) => s + Number(r.estimated_package_price), 0) /
+            productStorePrices.length
+          : bestPkgPrice;
+
+        // Atualiza cotação de cada loja individualmente
+        for (const st of stores) {
+          const bucket = storeBuckets.get(st.id)!;
+          const storeRow = productStorePrices.find((p) => p.store_id === st.id);
+
+          const stBasePrice = storeRow ? Number(storeRow.estimated_base_price) : avgBasePrice;
+          const stPkgPrice = storeRow ? Number(storeRow.estimated_package_price) : avgPkgPrice;
+          const stProp = Number((requiredBaseQty * stBasePrice).toFixed(2));
+          const stCash = Number((packagesNeeded * stPkgPrice).toFixed(2));
+
+          if (storeRow) {
+            bucket.matchedIngredientsCount += 1;
+          } else {
+            bucket.missingIngredients.push(ing.product_name);
+            bucket.estimatedMissingCost = Number((bucket.estimatedMissingCost + stCash).toFixed(2));
+          }
+
+          bucket.totalProportionalCost = Number((bucket.totalProportionalCost + stProp).toFixed(2));
+          bucket.totalCashCost = Number((bucket.totalCashCost + stCash).toFixed(2));
+          bucket.items.push({
+            productId: ing.canonical_product_id,
+            productName: ing.product_name,
+            category: ing.category || 'Mercearia',
+            packagesNeeded,
+            packagePrice: Number(stPkgPrice.toFixed(2)),
+            proportionalCost: stProp,
+            cashOutlayCost: stCash,
+            hasRealPrice: Boolean(storeRow),
+            perishabilityTier: perish.tier,
+            perishabilityRank: perish.rank
+          });
+        }
+
+        const propCost = Number((requiredBaseQty * bestBasePrice).toFixed(2));
+        const cashCost = Number((packagesNeeded * bestPkgPrice).toFixed(2));
+        const totalBoughtQty = packagesNeeded * stdPkgSize;
+        const surplusBaseQty = Math.max(0, Number((totalBoughtQty - requiredBaseQty).toFixed(1)));
+        const surplusPct =
+          totalBoughtQty > 0 ? Math.min(99, Math.round((surplusBaseQty / totalBoughtQty) * 100)) : 0;
+        const leftoverValue = Math.max(0, Number((cashCost - propCost).toFixed(2)));
 
         proportionalTotalCost += propCost;
         cashOutlayTotalCost += cashCost;
@@ -243,39 +423,534 @@ export class ArgusOptimizerService {
         breakdown.push({
           productId: ing.canonical_product_id,
           productName: ing.product_name,
+          category: ing.category || 'Mercearia',
           baseUnit: ing.base_unit,
           requiredBaseQty: Number(requiredBaseQty.toFixed(1)),
           standardPackageSize: stdPkgSize,
           packagesNeeded,
+          surplusBaseQty,
+          surplusPct,
+          leftoverValue,
+          bestStoreId,
           bestStoreName,
+          bestUnitPrice: Number(bestBasePrice.toFixed(4)),
+          bestPackagePrice: Number(bestPkgPrice.toFixed(2)),
           proportionalCost: propCost,
-          cashOutlayCost: cashCost
+          cashOutlayCost: cashCost,
+          hasRealPrice: hasAnyRealPrice,
+          perishabilityTier: perish.tier,
+          perishabilityRank: perish.rank,
+          perishabilityLabel: perish.label,
+          perishabilityReason: perish.reason
         });
       }
 
-      let bestSingleStoreName = 'Atacadão';
-      let minStoreTotal = Infinity;
-      for (const [stName, tot] of storeTotals.entries()) {
-        if (tot < minStoreTotal) {
-          minStoreTotal = tot;
-          bestSingleStoreName = stName;
-        }
-      }
+      // Ordena ingredientes na ordem ideal de compra: 1 (Não Perecível) -> 4 (Carnes/Congelados/Delicados)
+      breakdown.sort((a, b) => a.perishabilityRank - b.perishabilityRank);
+
+      const totalIngredientsCount = breakdown.length;
+      const storeQuotes: RecipeStoreQuote[] = Array.from(storeBuckets.values())
+        .map((b) => ({
+          storeId: b.storeId,
+          storeName: b.storeName,
+          address: b.address,
+          lat: b.lat,
+          lng: b.lng,
+          totalCashCost: Number(b.totalCashCost.toFixed(2)),
+          totalProportionalCost: Number(b.totalProportionalCost.toFixed(2)),
+          matchedIngredientsCount: b.matchedIngredientsCount,
+          totalIngredientsCount,
+          coveragePct:
+            totalIngredientsCount > 0
+              ? Number(((b.matchedIngredientsCount / totalIngredientsCount) * 100).toFixed(1))
+              : 0,
+          missingIngredients: b.missingIngredients,
+          estimatedMissingCost: b.estimatedMissingCost,
+          items: b.items.sort((a, b) => a.perishabilityRank - b.perishabilityRank)
+        }))
+        .sort((a, b) => {
+          if (b.matchedIngredientsCount !== a.matchedIngredientsCount) {
+            return b.matchedIngredientsCount - a.matchedIngredientsCount;
+          }
+          return a.totalCashCost - b.totalCashCost;
+        });
+
+      const bestSingle = storeQuotes[0] ?? null;
+      const bestSingleStoreName = bestSingle?.storeName ?? CANONICAL_STORE_NE;
+      const firstDry = breakdown.filter((i) => i.perishabilityRank === 1).map((i) => i.productName.split('(')[0].trim());
+      const lastCold = breakdown.filter((i) => i.perishabilityRank >= 3).map((i) => i.productName.split('(')[0].trim());
+      const coldChainSummary =
+        firstDry.length > 0 && lastCold.length > 0
+          ? `Pegue primeiro os não perecíveis (${firstDry.slice(0, 3).join(', ')}) e deixe refrigerados/carnes/congelados por último (${lastCold.slice(0, 3).join(', ')}) para manter o frescor.`
+          : 'Ordene o trajeto priorizando itens de despensa antes de refrigerados, carnes e congelados.';
+
+      const meta = deriveRecipeMetadata({
+        name: recipe.name,
+        servings: requestedPortions,
+        instructions: recipe.instructions,
+        ingredients: breakdown.map((b) => ({
+          name: b.productName,
+          category: b.category || 'Mercearia',
+          baseUnit: b.baseUnit,
+          requiredBaseQty: b.requiredBaseQty
+        }))
+      });
+      const roundedCash = Number(cashOutlayTotalCost.toFixed(2));
+      const roundedProp = Number(proportionalTotalCost.toFixed(2));
+      const totalLeftoverPantryValue = Math.max(0, Number((roundedCash - roundedProp).toFixed(2)));
+      const pantryUtilizationPct =
+        roundedCash > 0 ? Math.min(100, Math.round((roundedProp / roundedCash) * 100)) : 100;
+
+      const historicalStoreComparison = this.buildTwoStoreHistoricalComparison({
+        breakdown,
+        priceRows,
+        historyByProductAndStore
+      });
 
       evaluations.push({
         recipeId: recipe.id,
         recipeName: recipe.name,
         servings: recipe.servings,
         requestedPortions,
-        proportionalTotalCost: Number(proportionalTotalCost.toFixed(2)),
-        proportionalCostPerPortion: Number((proportionalTotalCost / requestedPortions).toFixed(2)),
-        cashOutlayTotalCost: Number(cashOutlayTotalCost.toFixed(2)),
+        instructions: recipe.instructions,
+        instructionSteps: meta.instructionSteps,
+        prepTimeMinutes: meta.prepTimeMinutes,
+        difficulty: meta.difficulty,
+        cuisineTags: meta.cuisineTags,
+        estimatedCaloriesPerPortion: meta.estimatedCaloriesPerPortion,
+        proportionalTotalCost: roundedProp,
+        proportionalCostPerPortion: Number(
+          (proportionalTotalCost / Math.max(1, requestedPortions)).toFixed(2)
+        ),
+        cashOutlayTotalCost: roundedCash,
+        totalLeftoverPantryValue,
+        pantryUtilizationPct,
+        bestSingleStoreId: bestSingle?.storeId ?? null,
         bestSingleStoreName,
-        ingredientsBreakdown: breakdown
+        bestSingleStoreAddress: bestSingle?.address ?? '',
+        bestSingleStoreCashCost: bestSingle?.totalCashCost ?? roundedCash,
+        bestSingleStoreProportionalCost: bestSingle?.totalProportionalCost ?? roundedProp,
+        bestSingleStoreCoveragePct: bestSingle?.coveragePct ?? 0,
+        lowestPossibleProportionalCost: roundedProp,
+        lowestPossibleCashCost: roundedCash,
+        lowestPossibleStoresCount: Math.max(1, splitStoresUsed.size),
+        priceCoverageCount,
+        totalIngredientsCount,
+        coldChainSummary,
+        storeQuotes,
+        ingredientsBreakdown: breakdown,
+        historicalStoreComparison
       });
     }
 
     return evaluations;
+  }
+
+  private buildTwoStoreHistoricalComparison(params: {
+    breakdown: RecipeCostEvaluation['ingredientsBreakdown'];
+    priceRows: Array<{
+      canonical_product_id: string;
+      store_name: string;
+      estimated_base_price: string;
+      estimated_package_price: string;
+      last_seen_at?: string;
+      observations_count?: string;
+    }>;
+    historyByProductAndStore: Map<string, StoreIngredientPricePoint[]>;
+  }): RecipeTwoStoreComparison {
+    const { breakdown, priceRows, historyByProductAndStore } = params;
+
+    const buildStoreSummary = (
+      storeLabel: string,
+      canonicalKey: string,
+      ing: RecipeCostEvaluation['ingredientsBreakdown'][number],
+      fallbackBasePrice: number,
+      fallbackPkgPrice: number
+    ): StoreIngredientHistorySummary => {
+      const points = historyByProductAndStore.get(`${ing.productId}::${canonicalKey}`) ?? [];
+      const currentRow = priceRows.find(
+        (r) =>
+          r.canonical_product_id === ing.productId &&
+          classifyStoreForCurrentSweep(r.store_name).canonicalName === canonicalKey
+      );
+
+      // Se existir linha em v_current_product_prices mas nenhuma observação direta, cria ponto sintético da leitura atual
+      const effectivePoints: StoreIngredientPricePoint[] =
+        points.length > 0
+          ? points
+          : currentRow
+            ? [
+                {
+                  observedAt: currentRow.last_seen_at || new Date().toISOString(),
+                  packagePrice: Number(Number(currentRow.estimated_package_price).toFixed(2)),
+                  basePrice: Number(Number(currentRow.estimated_base_price).toFixed(6)),
+                  sourceType: 'HISTORICO'
+                }
+              ]
+            : [];
+
+      const hasRealHistory = effectivePoints.length > 0;
+      if (!hasRealHistory) {
+        const estProp = Number((ing.requiredBaseQty * fallbackBasePrice).toFixed(2));
+        const estCash = Number((ing.packagesNeeded * fallbackPkgPrice).toFixed(2));
+        return {
+          storeName: storeLabel,
+          hasRealHistory: false,
+          observationsCount: 0,
+          latestPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+          weightedPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+          avgHistoricalPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+          minHistoricalPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+          maxHistoricalPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+          latestProportionalCost: estProp,
+          weightedProportionalCost: estProp,
+          avgProportionalCost: estProp,
+          minProportionalCost: estProp,
+          maxProportionalCost: estProp,
+          latestCashCost: estCash,
+          weightedCashCost: estCash,
+          avgCashCost: estCash,
+          minCashCost: estCash,
+          maxCashCost: estCash,
+          lastSeenAt: null,
+          pricePoints: []
+        };
+      }
+
+      const latestPt = effectivePoints[effectivePoints.length - 1];
+      const prevThree = effectivePoints.slice(Math.max(0, effectivePoints.length - 4), effectivePoints.length - 1);
+      const prevAvgBase =
+        prevThree.length > 0
+          ? prevThree.reduce((sum, pt) => sum + pt.basePrice, 0) / prevThree.length
+          : latestPt.basePrice;
+
+      const weightedBase = currentRow
+        ? Number(currentRow.estimated_base_price)
+        : 0.7 * latestPt.basePrice + 0.3 * prevAvgBase;
+      const weightedPkg = currentRow
+        ? Number(currentRow.estimated_package_price)
+        : weightedBase * ing.standardPackageSize;
+
+      const avgBase = effectivePoints.reduce((s, p) => s + p.basePrice, 0) / effectivePoints.length;
+      const avgPkg = effectivePoints.reduce((s, p) => s + p.packagePrice, 0) / effectivePoints.length;
+
+      let minPt = effectivePoints[0];
+      let maxPt = effectivePoints[0];
+      for (const pt of effectivePoints) {
+        if (pt.basePrice < minPt.basePrice) minPt = pt;
+        if (pt.basePrice > maxPt.basePrice) maxPt = pt;
+      }
+
+      const calcProp = (base: number) => Number((ing.requiredBaseQty * base).toFixed(2));
+      const calcCash = (pkg: number) => Number((ing.packagesNeeded * pkg).toFixed(2));
+
+      return {
+        storeName: storeLabel,
+        hasRealHistory: true,
+        observationsCount: effectivePoints.length,
+        latestPackagePrice: Number(latestPt.packagePrice.toFixed(2)),
+        weightedPackagePrice: Number(weightedPkg.toFixed(2)),
+        avgHistoricalPackagePrice: Number(avgPkg.toFixed(2)),
+        minHistoricalPackagePrice: Number(minPt.packagePrice.toFixed(2)),
+        maxHistoricalPackagePrice: Number(maxPt.packagePrice.toFixed(2)),
+        latestProportionalCost: calcProp(latestPt.basePrice),
+        weightedProportionalCost: calcProp(weightedBase),
+        avgProportionalCost: calcProp(avgBase),
+        minProportionalCost: calcProp(minPt.basePrice),
+        maxProportionalCost: calcProp(maxPt.basePrice),
+        latestCashCost: calcCash(latestPt.packagePrice),
+        weightedCashCost: calcCash(weightedPkg),
+        avgCashCost: calcCash(avgPkg),
+        minCashCost: calcCash(minPt.packagePrice),
+        maxCashCost: calcCash(maxPt.packagePrice),
+        lastSeenAt: latestPt.observedAt,
+        pricePoints: effectivePoints
+      };
+    };
+
+    const items: RecipeStorePairComparisonItem[] = breakdown.map((ing) => {
+      const fallbackBase =
+        ing.bestUnitPrice ??
+        (ing.baseUnit === 'un' ? 0.85 : ing.category === 'Carnes' ? 0.032 : 0.015);
+      const fallbackPkg = ing.bestPackagePrice ?? Number((fallbackBase * ing.standardPackageSize).toFixed(2));
+
+      const souza = buildStoreSummary(
+        'Mercado Souza',
+        CANONICAL_STORE_SOUZA,
+        ing,
+        fallbackBase,
+        fallbackPkg
+      );
+      const ne = buildStoreSummary(
+        'NE Supermercado',
+        CANONICAL_STORE_NE,
+        ing,
+        fallbackBase,
+        fallbackPkg
+      );
+
+      let cheaperStoreWeighted: RecipeStorePairComparisonItem['cheaperStoreWeighted'] =
+        'INSUFFICIENT_DATA';
+      if (souza.hasRealHistory && ne.hasRealHistory) {
+        if (Math.abs(souza.weightedCashCost - ne.weightedCashCost) <= 0.05) {
+          cheaperStoreWeighted = 'TIE';
+        } else if (souza.weightedCashCost < ne.weightedCashCost) {
+          cheaperStoreWeighted = 'MERCADO_SOUZA';
+        } else {
+          cheaperStoreWeighted = 'NE_SUPERMERCADO';
+        }
+      }
+
+      return {
+        productId: ing.productId,
+        productName: ing.productName,
+        category: ing.category || 'Mercearia',
+        baseUnit: ing.baseUnit,
+        requiredBaseQty: ing.requiredBaseQty,
+        standardPackageSize: ing.standardPackageSize,
+        packagesNeeded: ing.packagesNeeded,
+        mercadoSouza: souza,
+        neSupermercado: ne,
+        cheaperStoreWeighted,
+        weightedCashDiff: Number((souza.weightedCashCost - ne.weightedCashCost).toFixed(2)),
+        weightedProportionalDiff: Number(
+          (souza.weightedProportionalCost - ne.weightedProportionalCost).toFixed(2)
+        )
+      };
+    });
+
+    const accumulateStore = (
+      storeName: string,
+      pick: (it: RecipeStorePairComparisonItem) => StoreIngredientHistorySummary
+    ): RecipeStoreHistoryTotals => {
+      let matched = 0;
+      let totalObs = 0;
+      let lastObservedAt: string | null = null;
+      let weightedCash = 0;
+      let weightedProp = 0;
+      let avgCash = 0;
+      let avgProp = 0;
+      let minCash = 0;
+      let minProp = 0;
+      let maxCash = 0;
+      let maxProp = 0;
+      let latestCash = 0;
+      let latestProp = 0;
+
+      for (const it of items) {
+        const s = pick(it);
+        if (s.hasRealHistory) matched += 1;
+        totalObs += s.observationsCount;
+        if (s.lastSeenAt && (!lastObservedAt || s.lastSeenAt > lastObservedAt)) {
+          lastObservedAt = s.lastSeenAt;
+        }
+        weightedCash += s.weightedCashCost;
+        weightedProp += s.weightedProportionalCost;
+        avgCash += s.avgCashCost;
+        avgProp += s.avgProportionalCost;
+        minCash += s.minCashCost;
+        minProp += s.minProportionalCost;
+        maxCash += s.maxCashCost;
+        maxProp += s.maxProportionalCost;
+        latestCash += s.latestCashCost;
+        latestProp += s.latestProportionalCost;
+      }
+
+      const total = items.length;
+      return {
+        storeName,
+        matchedIngredientsCount: matched,
+        totalIngredientsCount: total,
+        coveragePct: total > 0 ? Number(((matched / total) * 100).toFixed(1)) : 0,
+        totalObservationsCount: totalObs,
+        lastObservedAt,
+        weightedCashCost: Number(weightedCash.toFixed(2)),
+        weightedProportionalCost: Number(weightedProp.toFixed(2)),
+        avgHistoricalCashCost: Number(avgCash.toFixed(2)),
+        avgHistoricalProportionalCost: Number(avgProp.toFixed(2)),
+        minHistoricalCashCost: Number(minCash.toFixed(2)),
+        minHistoricalProportionalCost: Number(minProp.toFixed(2)),
+        maxHistoricalCashCost: Number(maxCash.toFixed(2)),
+        maxHistoricalProportionalCost: Number(maxProp.toFixed(2)),
+        latestCashCost: Number(latestCash.toFixed(2)),
+        latestProportionalCost: Number(latestProp.toFixed(2))
+      };
+    };
+
+    const mercadoSouzaTotals = accumulateStore('Mercado Souza', (it) => it.mercadoSouza);
+    const neSupermercadoTotals = accumulateStore('NE Supermercado', (it) => it.neSupermercado);
+
+    const sharedItems = items.filter(
+      (it) => it.mercadoSouza.hasRealHistory && it.neSupermercado.hasRealHistory
+    );
+
+    const commonOnly = {
+      sharedIngredientsCount: sharedItems.length,
+      mercadoSouzaWeightedCash: Number(
+        sharedItems.reduce((s, it) => s + it.mercadoSouza.weightedCashCost, 0).toFixed(2)
+      ),
+      neSupermercadoWeightedCash: Number(
+        sharedItems.reduce((s, it) => s + it.neSupermercado.weightedCashCost, 0).toFixed(2)
+      ),
+      mercadoSouzaWeightedProportional: Number(
+        sharedItems.reduce((s, it) => s + it.mercadoSouza.weightedProportionalCost, 0).toFixed(2)
+      ),
+      neSupermercadoWeightedProportional: Number(
+        sharedItems.reduce((s, it) => s + it.neSupermercado.weightedProportionalCost, 0).toFixed(2)
+      ),
+      mercadoSouzaAvgCash: Number(
+        sharedItems.reduce((s, it) => s + it.mercadoSouza.avgCashCost, 0).toFixed(2)
+      ),
+      neSupermercadoAvgCash: Number(
+        sharedItems.reduce((s, it) => s + it.neSupermercado.avgCashCost, 0).toFixed(2)
+      ),
+      mercadoSouzaMinCash: Number(
+        sharedItems.reduce((s, it) => s + it.mercadoSouza.minCashCost, 0).toFixed(2)
+      ),
+      neSupermercadoMinCash: Number(
+        sharedItems.reduce((s, it) => s + it.neSupermercado.minCashCost, 0).toFixed(2)
+      )
+    };
+
+    const cashDiff = Number(
+      (mercadoSouzaTotals.weightedCashCost - neSupermercadoTotals.weightedCashCost).toFixed(2)
+    );
+    const winnerWeightedCash: RecipeTwoStoreComparison['winnerWeightedCash'] =
+      Math.abs(cashDiff) <= 0.05
+        ? 'TIE'
+        : cashDiff > 0
+          ? 'NE_SUPERMERCADO'
+          : 'MERCADO_SOUZA';
+    const savingsWeightedCash = Number(Math.abs(cashDiff).toFixed(2));
+    const maxCash = Math.max(
+      mercadoSouzaTotals.weightedCashCost,
+      neSupermercadoTotals.weightedCashCost
+    );
+    const savingsWeightedPct =
+      maxCash > 0 ? Number(((savingsWeightedCash / maxCash) * 100).toFixed(1)) : 0;
+
+    const propDiff = Number(
+      (
+        mercadoSouzaTotals.weightedProportionalCost -
+        neSupermercadoTotals.weightedProportionalCost
+      ).toFixed(2)
+    );
+    const winnerWeightedProportional: RecipeTwoStoreComparison['winnerWeightedProportional'] =
+      Math.abs(propDiff) <= 0.05
+        ? 'TIE'
+        : propDiff > 0
+          ? 'NE_SUPERMERCADO'
+          : 'MERCADO_SOUZA';
+    const savingsWeightedProportional = Number(Math.abs(propDiff).toFixed(2));
+
+    // Constrói linha do tempo histórica dos últimos 6 meses (Jan..Dez/AA) para ambos os mercados
+    const allDates: string[] = [];
+    for (const it of items) {
+      for (const pt of it.mercadoSouza.pricePoints) allDates.push(pt.observedAt);
+      for (const pt of it.neSupermercado.pricePoints) allDates.push(pt.observedAt);
+    }
+
+    const ptMonths = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const anchorDate =
+      allDates.length > 0
+        ? new Date(
+            Math.max(
+              Date.now(),
+              ...allDates.map((d) => new Date(d).getTime()).filter((t) => !Number.isNaN(t))
+            )
+          )
+        : new Date();
+    const anchorYear = anchorDate.getUTCFullYear();
+    const anchorMonth = anchorDate.getUTCMonth(); // 0..11
+
+    const rollingSixMonthsKeys: string[] = [];
+    for (let offset = 5; offset >= 0; offset--) {
+      const dt = new Date(Date.UTC(anchorYear, anchorMonth - offset, 15));
+      const y = dt.getUTCFullYear();
+      const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+      rollingSixMonthsKeys.push(`${y}-${m}`);
+    }
+
+    const toMonthKey = (iso: string) => iso.slice(0, 7);
+    const toMonthLabel = (ymKey: string) => {
+      const [yStr, mStr] = ymKey.split('-');
+      const mIdx = Math.max(0, Math.min(11, Number(mStr) - 1));
+      return `${ptMonths[mIdx]}/${yStr.slice(-2)}`;
+    };
+
+    const hasObsInRollingSix = allDates.some((d) => {
+      const mk = toMonthKey(d);
+      return mk >= rollingSixMonthsKeys[0] && mk <= rollingSixMonthsKeys[rollingSixMonthsKeys.length - 1];
+    });
+
+    const periodKeys = hasObsInRollingSix
+      ? rollingSixMonthsKeys
+      : Array.from(new Set(allDates.map(toMonthKey))).sort().slice(-6);
+
+    const timeline: RecipeTimelineComparisonPoint[] = periodKeys.map((pKey) => {
+      let souzaCash = 0;
+      let neCash = 0;
+      let souzaProp = 0;
+      let neProp = 0;
+      let souzaRealItems = 0;
+      let neRealItems = 0;
+
+      for (const it of items) {
+        const souzaPts = it.mercadoSouza.pricePoints.filter((p) => toMonthKey(p.observedAt) <= pKey);
+        if (souzaPts.length > 0) {
+          const latest = souzaPts[souzaPts.length - 1];
+          souzaCash += it.packagesNeeded * latest.packagePrice;
+          souzaProp += it.requiredBaseQty * latest.basePrice;
+          souzaRealItems += 1;
+        } else {
+          const first = it.mercadoSouza.pricePoints[0];
+          souzaCash += first ? it.packagesNeeded * first.packagePrice : it.mercadoSouza.weightedCashCost;
+          souzaProp += first
+            ? it.requiredBaseQty * first.basePrice
+            : it.mercadoSouza.weightedProportionalCost;
+        }
+
+        const nePts = it.neSupermercado.pricePoints.filter((p) => toMonthKey(p.observedAt) <= pKey);
+        if (nePts.length > 0) {
+          const latest = nePts[nePts.length - 1];
+          neCash += it.packagesNeeded * latest.packagePrice;
+          neProp += it.requiredBaseQty * latest.basePrice;
+          neRealItems += 1;
+        } else {
+          const first = it.neSupermercado.pricePoints[0];
+          neCash += first
+            ? it.packagesNeeded * first.packagePrice
+            : it.neSupermercado.weightedCashCost;
+          neProp += first
+            ? it.requiredBaseQty * first.basePrice
+            : it.neSupermercado.weightedProportionalCost;
+        }
+      }
+
+      return {
+        periodLabel: toMonthLabel(pKey),
+        sortKey: pKey,
+        mercadoSouzaCash: Number(souzaCash.toFixed(2)),
+        neSupermercadoCash: Number(neCash.toFixed(2)),
+        mercadoSouzaProportional: Number(souzaProp.toFixed(2)),
+        neSupermercadoProportional: Number(neProp.toFixed(2)),
+        mercadoSouzaRealItems: souzaRealItems,
+        neSupermercadoRealItems: neRealItems
+      };
+    });
+
+    return {
+      mercadoSouza: mercadoSouzaTotals,
+      neSupermercado: neSupermercadoTotals,
+      commonOnly,
+      winnerWeightedCash,
+      savingsWeightedCash,
+      savingsWeightedPct,
+      winnerWeightedProportional,
+      savingsWeightedProportional,
+      items,
+      timeline
+    };
   }
 
   /**

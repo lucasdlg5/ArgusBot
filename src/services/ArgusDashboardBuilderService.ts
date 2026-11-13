@@ -2,7 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { queryArgus } from '../lib/db';
 import { ArgusOptimizerService } from './ArgusOptimizerService';
+import { ArgusRecipeService } from './ArgusRecipeService';
 import { ArgusReconciliationService } from './ArgusReconciliationService';
+import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 
@@ -11,7 +13,10 @@ export class ArgusDashboardBuilderService {
    * Constrói o payload completo do Argus Vision BI a partir do schema `argus` no Supabase PostgreSQL.
    */
   async buildDashboardPayload(options?: { runFullReconciliation?: boolean }) {
+    await new ArgusStoreNormalizationService().ensureInitialNeMigrationApplied();
+
     const optimizer = new ArgusOptimizerService();
+    const recipeService = new ArgusRecipeService();
     const reconciler = new ArgusReconciliationService();
 
     const [
@@ -47,7 +52,7 @@ export class ArgusDashboardBuilderService {
          GROUP BY DATE_TRUNC('month', r.purchase_date), cp.name
          ORDER BY DATE_TRUNC('month', r.purchase_date) ASC`
       ),
-      optimizer.evaluateRecipeCosts(),
+      recipeService.evaluateRecipesWithRoutes(),
       optimizer.optimizeShoppingTrip(),
       options?.runFullReconciliation !== false
         ? reconciler.reconcileAndSyncSheets()

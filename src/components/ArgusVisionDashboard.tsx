@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   Eye,
   ShieldCheck,
@@ -16,11 +18,15 @@ import {
   Send,
   RefreshCw,
   CheckCircle2,
+  ChevronDown,
   Flame,
+  Gauge,
+  Snowflake,
   Store,
   Sparkles,
   Scale,
-  Receipt
+  Receipt,
+  Timer
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -47,6 +53,7 @@ import type {
   TrueSpendingBreakdownView,
   OpenFinanceTransaction
 } from '@/types/argus';
+import RecipeStoreComparisonCard from './RecipeStoreComparisonCard';
 
 const ArgusLogisticsMap = dynamic(() => import('./ArgusLogisticsMap'), {
   ssr: false,
@@ -111,6 +118,7 @@ export default function ArgusVisionDashboard() {
   const [dataSourceLabel, setDataSourceLabel] = useState<string>('API Local');
   const [activeTab, setActiveTab] = useState<'ALL' | 'M1' | 'M2' | 'M3' | 'M4'>('ALL');
   const [selectedRecipeIdx, setSelectedRecipeIdx] = useState<number>(0);
+  const [expandedDashRecipeId, setExpandedDashRecipeId] = useState<string | null>(null);
   const [portionMultiplier, setPortionMultiplier] = useState<number>(1);
   const [activeMapRouteMode, setActiveMapRouteMode] = useState<'SINGLE_STORE' | 'SPLIT_STORES'>(
     'SPLIT_STORES'
@@ -391,6 +399,17 @@ export default function ArgusVisionDashboard() {
                 </button>
               );
             })}
+
+            <Link
+              href="/receitas"
+              className="mt-2 w-full flex items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-left text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition"
+            >
+              <span className="flex items-center gap-2">
+                <Utensils className="h-4 w-4 shrink-0" />
+                <span>Receitas &amp; Cadeia Fria</span>
+              </span>
+              <span className="text-[10px] text-amber-400">Abrir →</span>
+            </Link>
           </div>
 
           {/* Persona Card do Bot */}
@@ -955,8 +974,197 @@ export default function ArgusVisionDashboard() {
                         </button>
                       ))}
                     </div>
+
+                    <Link
+                      href={`/receitas?id=${activeRecipe.recipeId}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition"
+                    >
+                      <Navigation className="h-3.5 w-3.5" />
+                      <span>Abrir Receitas &amp; Mapa OSRM</span>
+                    </Link>
                   </div>
                 </div>
+
+                {/* CARDS INTERATIVOS EXPANSÍVEIS DE RECEITAS (FRAMER MOTION) */}
+                {data.recipesEvaluations.length > 0 && (
+                  <LayoutGroup id="dashboard-recipes-cards">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+                      {data.recipesEvaluations.map((rec, idx) => {
+                        const isSelected = selectedRecipeIdx === idx;
+                        const isExpanded = expandedDashRecipeId === rec.recipeId;
+                        const diffBadgeClass =
+                          rec.difficulty === 'Fácil'
+                            ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                            : rec.difficulty === 'Média'
+                              ? 'border-amber-500/40 bg-amber-500/15 text-amber-300'
+                              : 'border-rose-500/40 bg-rose-500/15 text-rose-300';
+                        const diffLevel =
+                          rec.difficulty === 'Fácil' ? 1 : rec.difficulty === 'Média' ? 2 : 3;
+                        const diffBarClass =
+                          rec.difficulty === 'Fácil'
+                            ? 'bg-emerald-400'
+                            : rec.difficulty === 'Média'
+                              ? 'bg-amber-400'
+                              : 'bg-rose-400';
+
+                        return (
+                          <motion.div
+                            key={rec.recipeId}
+                            layout
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                              opacity: { duration: 0.2, delay: Math.min(idx * 0.04, 0.2) },
+                              layout: { type: 'spring', stiffness: 360, damping: 30 }
+                            }}
+                            whileHover={{ y: -2 }}
+                            className={`rounded-xl border transition-colors ${
+                              isSelected || isExpanded
+                                ? 'border-emerald-500/60 bg-emerald-950/20 shadow-lg shadow-emerald-950/20'
+                                : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              aria-expanded={isExpanded}
+                              onClick={() => {
+                                setSelectedRecipeIdx(idx);
+                                setExpandedDashRecipeId((prev) =>
+                                  prev === rec.recipeId ? null : rec.recipeId
+                                );
+                              }}
+                              className="w-full text-left p-3.5 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-bold text-white leading-snug">
+                                  {rec.recipeName}
+                                </p>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-xs font-bold text-emerald-400 tabular-nums">
+                                    R$ {rec.proportionalCostPerPortion.toFixed(2)}/porção
+                                  </span>
+                                  <motion.span
+                                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                                    transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+                                    className={`inline-flex h-5 w-5 items-center justify-center rounded border ${
+                                      isExpanded
+                                        ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                                        : 'border-slate-800 bg-slate-900 text-slate-400'
+                                    }`}
+                                  >
+                                    <ChevronDown className="h-3.5 w-3.5" />
+                                  </motion.span>
+                                </div>
+                              </div>
+
+                              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-400 tabular-nums">
+                                <span>{rec.servings} porções</span>
+                                <span aria-hidden="true">·</span>
+                                <span className="truncate max-w-[140px]">
+                                  {rec.bestSingleStoreName}
+                                </span>
+                                <span aria-hidden="true">·</span>
+                                <span className="text-amber-300/90">
+                                  Caixa R$ {rec.lowestPossibleCashCost.toFixed(2)}
+                                </span>
+                              </div>
+                            </button>
+
+                            <AnimatePresence initial={false}>
+                              {isExpanded && (
+                                <motion.div
+                                  key={`dash-exp-${rec.recipeId}`}
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{
+                                    height: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+                                    opacity: { duration: 0.18 }
+                                  }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="px-3.5 pb-3.5 pt-2.5 border-t border-slate-800/80 space-y-2.5 text-[11px]">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="rounded-lg border border-slate-800/90 bg-slate-950/80 p-2">
+                                        <span className="text-slate-400 flex items-center gap-1">
+                                          <Timer className="h-3 w-3 text-emerald-400" />
+                                          Tempo de Preparo
+                                        </span>
+                                        <p className="mt-0.5 font-semibold text-white tabular-nums">
+                                          {rec.prepTimeMinutes} min
+                                        </p>
+                                      </div>
+
+                                      <div className="rounded-lg border border-slate-800/90 bg-slate-950/80 p-2">
+                                        <span className="text-slate-400 flex items-center gap-1">
+                                          <Gauge className="h-3 w-3 text-amber-400" />
+                                          Dificuldade
+                                        </span>
+                                        <div className="mt-0.5 flex items-center justify-between gap-1.5">
+                                          <span
+                                            className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border ${diffBadgeClass}`}
+                                          >
+                                            {rec.difficulty}
+                                          </span>
+                                          <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+                                            {[1, 2, 3].map((step) => (
+                                              <span
+                                                key={step}
+                                                className={`h-1.5 w-2.5 rounded-sm ${
+                                                  step <= diffLevel ? diffBarClass : 'bg-slate-800'
+                                                }`}
+                                              />
+                                            ))}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="rounded-lg border border-slate-800/90 bg-slate-950/80 p-2">
+                                        <span className="text-slate-400 flex items-center gap-1">
+                                          <Flame className="h-3 w-3 text-orange-400" />
+                                          Energia
+                                        </span>
+                                        <p className="mt-0.5 font-semibold text-white tabular-nums">
+                                          ~{rec.estimatedCaloriesPerPortion} kcal/porção
+                                        </p>
+                                      </div>
+
+                                      <div className="rounded-lg border border-slate-800/90 bg-slate-950/80 p-2">
+                                        <span className="text-slate-400 flex items-center gap-1">
+                                          <Snowflake className="h-3 w-3 text-sky-400" />
+                                          Cadeia Fria
+                                        </span>
+                                        <p className="mt-0.5 font-semibold text-white tabular-nums">
+                                          {rec.routeAnalysis?.coldChainScore ?? 94}/100 frescor
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                                      <span className="text-slate-400 truncate">
+                                        {rec.ingredientsBreakdown
+                                          .slice(0, 3)
+                                          .map((i) => i.productName)
+                                          .join(', ')}
+                                      </span>
+                                      <Link
+                                        href={`/receitas?id=${rec.recipeId}`}
+                                        className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 font-semibold shrink-0"
+                                      >
+                                        <Navigation className="h-3 w-3" />
+                                        <span>Detalhes</span>
+                                      </Link>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </LayoutGroup>
+                )}
 
                 {/* KPIs do Duplo Custo da Receita */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1040,6 +1248,13 @@ export default function ArgusVisionDashboard() {
                   </table>
                 </div>
               </div>
+            )}
+
+            {activeRecipe && (
+              <RecipeStoreComparisonCard
+                recipe={activeRecipe}
+                portionMultiplier={portionMultiplier}
+              />
             )}
 
             {/* SIMULADOR VISUAL: MAPA OSRM + GRÁFICO EMPILHADO + VEREDITO ARGUS */}

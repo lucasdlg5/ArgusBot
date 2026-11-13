@@ -22,6 +22,11 @@ import {
   ArgusConversationService,
   type ArgusSuggestedAction
 } from '../services/ArgusConversationService';
+import {
+  ArgusRecipeService,
+  type SavedRecipeResult
+} from '../services/ArgusRecipeService';
+import type { RecipeCostEvaluation } from '../types/argus';
 
 interface PendingReceiptSession {
   extracted: ExtractedReceiptData;
@@ -35,6 +40,11 @@ interface PendingReceiptSession {
 
 const pendingReceiptsCache = new Map<string, PendingReceiptSession>();
 const inFlightImageHashes = new Set<string>();
+const awaitingRecipeChats = new Map<string, number>();
+const pendingRecipeUrlCache = new Map<
+  string,
+  { url: string; chatId: number; expiresAt: number }
+>();
 
 export function createArgusBot(): Bot {
   const token = env.TELEGRAM_BOT_TOKEN || '0000000000:AAH_ARGUS_PLACEHOLDER_TOKEN_FOR_BUILD';
@@ -49,6 +59,7 @@ export function createArgusBot(): Bot {
   const priceScanner = new ArgusPriceScannerService();
   const dashboardBuilder = new ArgusDashboardBuilderService();
   const conversation = new ArgusConversationService();
+  const recipeService = new ArgusRecipeService();
   let lastPriceScanJobId: string | null = null;
 
   bot.catch(async (err) => {
@@ -268,42 +279,147 @@ export function createArgusBot(): Bot {
 
   bot.command(['preco', 'produto', 'precos', 'produtos'], async (ctx) => handlePreco(ctx));
 
-  // 3. /receita — Duplo Custo de Receitas (Proporcional vs. Desembolso de Caixa)
-  async function handleReceita(ctx: {
-    api: Bot['api'];
-    chat?: { id: number };
-    reply: any;
-    replyWithSticker?: (sticker: string) => Promise<unknown>;
-  }) {
-    const evaluations = await optimizer.evaluateRecipeCosts();
+  function formatRecipeEvaluationLines(rec: RecipeCostEvaluation): string[] {
+    const out: string[] = [];
+    out.push(
+      `🍲 *${rec.recipeName}* (${rec.servings} porções · ${rec.prepTimeMinutes} min · ${rec.difficulty})`
+    );
+    out.push(
+      `  • 💰 *Menor Preço Possível (Compra Dividida):* *R$ ${rec.lowestPossibleCashCost.toFixed(
+        2
+      )}* em embalagens fechadas (Uso proporcional: *R$ ${rec.lowestPossibleProportionalCost.toFixed(
+        2
+      )}* | R$ ${rec.proportionalCostPerPortion.toFixed(2)}/porção)`
+    );
+    out.push(
+      `  • 🏪 *Melhor Mercado Único (Tudo em 1 Lugar):* *${rec.bestSingleStoreName}* — *R$ ${rec.bestSingleStoreCashCost.toFixed(
+        2
+      )}* (${rec.bestSingleStoreCoveragePct}% cobertura)`
+    );
+
+    if (rec.totalLeftoverPantryValue > 0.5) {
+      out.push(
+        `  • 📦 *Aproveitamento & Despensa:* ${rec.pantryUtilizationPct}% usado no prato (~R$ ${rec.totalLeftoverPantryValue.toFixed(
+          2
+        )} ficam em sobras fechadas p/ próximas receitas)`
+      );
+    }
+
+    if (rec.routeAnalysis && rec.routeAnalysis.splitStoreOrder.length > 1) {
+      out.push(
+        `  • 🧊 *Ordem Anti-Perecíveis (${rec.routeAnalysis.coldChainProtectedMinutes} min protegidos):*`
+      );
+      for (const stop of rec.routeAnalysis.splitStoreOrder) {
+        const itemsShort = stop.items
+          .slice(0, 3)
+          .map((i) => i.productName.split('(')[0].trim())
+          .join(', ');
+        out.push(
+          `    ${stop.stopOrder}º *${stop.storeName}* (${stop.coldChainStageLabel.replace(/^Etapa \d+ • |^Etapa Final • /, '')}): ${itemsShort}`
+        );
+      }
+    } else {
+      out.push(`  • 🧊 *Ordem de Compra:* ${rec.coldChainSummary}`);
+    }
+
+    if (rec.similarRecipes && rec.similarRecipes.length > 0) {
+      const topSim = rec.similarRecipes[0];
+      out.push(
+        `  • 🔁 *Receita Similar (Reaproveita ${topSim.sharedCount} itens):* ${topSim.recipeName} (~+R$ ${topSim.additionalOutlayEstimate.toFixed(
+          2
+        )} extras)`
+      );
+    }
+    return out;
+  }
+
+  function formatSavedRecipeMessage(saved: SavedRecipeResult): string {
+    const methodLabel =
+      saved.extractionMethod === 'JSON_LD'
+        ? 'Link (schema.org/JSON-LD)'
+        : saved.extractionMethod === 'MICRODATA'
+          ? 'Link (Microdata)'
+          : saved.extractionMethod === 'HTML_AI' || saved.extractionMethod === 'HTML_HEURISTIC'
+            ? 'Link (Página Web)'
+            : saved.extractionMethod === 'IMAGE'
+              ? 'Imagem / Vision'
+              : 'Texto';
+
     const lines = [
-      '👁️ *LABORATÓRIO DE RECEITAS ARGUS — CUSTO POR GRAMA vs. CAIXA*',
+      `✅ *RECEITA SALVA NO BANCO ARGUS: ${saved.recipeName}*`,
+      `• 🍽️ Rendimento: *${saved.servings} porções* | Ingredientes: *${saved.evaluation?.totalIngredientsCount ?? 0}* (${saved.matchedExistingProductsCount} já no catálogo, ${saved.createdNewProductsCount} novos) | Origem: *${methodLabel}*`,
+      ''
+    ];
+    if (saved.evaluation) {
+      lines.push(...formatRecipeEvaluationLines(saved.evaluation));
+      lines.push('');
+      lines.push('📋 *Ranking de Perecibilidade (Ordem de Compra):*');
+      for (const ing of saved.evaluation.ingredientsBreakdown.slice(0, 8)) {
+        const priceTag =
+          ing.hasRealPrice === false
+            ? `~R$ ${ing.cashOutlayCost.toFixed(2)} (estimado)`
+            : `R$ ${ing.cashOutlayCost.toFixed(2)} (${ing.bestStoreName})`;
+        lines.push(`  • [${ing.perishabilityRank}º] ${ing.productName} — ${priceTag}`);
+      }
+    }
+    lines.push('');
+    lines.push('🌐 _Consulte no painel web em `/receitas` para ver o mapa e a rota OSRM completa!_');
+    return lines.join('\n');
+  }
+
+  // 3. /receita [nome] — Menor Preço Possível, Melhor Mercado Único e Ordem Anti-Perecíveis
+  async function handleReceita(
+    ctx: {
+      api: Bot['api'];
+      chat?: { id: number };
+      reply: any;
+      replyWithSticker?: (sticker: string) => Promise<unknown>;
+      match?: unknown;
+    },
+    overrideQuery?: string
+  ) {
+    const query = (
+      overrideQuery ?? (typeof ctx.match === 'string' ? ctx.match : '')
+    ).trim();
+    const evaluations = await recipeService.evaluateRecipesWithRoutes(
+      query ? { nameQuery: query } : undefined
+    );
+    const lines = [
+      query
+        ? `👁️ *CONSULTA DE RECEITA ARGUS ("${query}")*`
+        : '👁️ *LABORATÓRIO DE RECEITAS ARGUS — PREÇOS & CADEIA FRIA*',
       ''
     ];
 
     if (evaluations.length === 0) {
       lines.push(
-        'ℹ️ _Nenhuma receita cadastrada após a limpeza dos dados fictícios. À medida que seus cupons reais entrarem no banco, suas receitas usarão exclusivamente os preços reais das suas compras._'
+        query
+          ? `ℹ️ _Não encontrei receita com "${query}". Você pode adicionar enviando os ingredientes e preparo por texto ou foto aqui no chat!_`
+          : 'ℹ️ _Nenhuma receita cadastrada ainda. Envie uma receita por texto ou foto aqui no chat para cadastrar e calcular os custos!_'
       );
     }
 
     for (const rec of evaluations) {
-      lines.push(`🍲 *${rec.recipeName}* (${rec.servings} porções/marmitas)`);
-      lines.push(
-        `  • 🎯 *Custo Proporcional por Marmita:* *R$ ${rec.proportionalCostPerPortion.toFixed(
-          2
-        )}* (Total usado: R$ ${rec.proportionalTotalCost.toFixed(2)})`
-      );
-      lines.push(
-        `  • 🛒 *Desembolso no Caixa (Embalagens Fechadas):* *R$ ${rec.cashOutlayTotalCost.toFixed(
-          2
-        )}*`
-      );
-      lines.push(`  • 🏆 *Melhor Mercado Único:* ${rec.bestSingleStoreName}`);
+      lines.push(...formatRecipeEvaluationLines(rec));
       lines.push('');
     }
 
-    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+    const publicUrl = env.PUBLIC_DASHBOARD_URL.trim();
+    const kb = new InlineKeyboard();
+    const firstSimilar = evaluations[0]?.similarRecipes?.[0];
+    if (firstSimilar) {
+      const safeKey = firstSimilar.recipeName.slice(0, 34).trim();
+      kb.text(`🔁 Ver similar: ${safeKey}`, `quick_receita:${safeKey}`).row();
+    }
+    if (publicUrl && /^https?:\/\//i.test(publicUrl) && !publicUrl.includes('localhost')) {
+      const recipesUrl = `${publicUrl.replace(/\/+$/, '')}/receitas`;
+      kb.url('🗺️ Ver Receitas & Mapa no Painel', recipesUrl);
+    }
+
+    await ctx.reply(lines.join('\n'), {
+      parse_mode: 'Markdown',
+      ...(kb.inline_keyboard.length > 0 ? { reply_markup: kb } : {})
+    });
     await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
   }
 
@@ -946,16 +1062,26 @@ export function createArgusBot(): Bot {
     const caption = (ctx.message?.caption || '').trim();
     const docMime = ctx.message?.document?.mime_type || '';
     const isVideoDocument = docMime.startsWith('video/');
+    const chatKey = String(ctx.chat.id);
+    const awaitingExpiry = awaitingRecipeChats.get(chatKey) || 0;
+    const isAwaitingRecipe = awaitingExpiry > Date.now();
+    const isExplicitRecipeCaption =
+      /\b(receita|ingredientes?|modo de preparo|adicionar receita|salvar receita|cadastrar receita)\b/i.test(
+        caption
+      );
     const isExplicitPriceScanCaption =
+      !isExplicitRecipeCaption &&
       /\b(g[oô]ndola|prateleira|panfleto|flyer|encarte|corredor|etiqueta|oferta|coleta|mercado\s*:|loja\s*:)/i.test(
         caption
       );
 
     // Responde SEMPRE marcando (reply_parameters) a foto/documento enviado pelo usuário
     const statusMsg = await ctx.reply(
-      isVideoDocument || isExplicitPriceScanCaption
-        ? '⏳ [1/3] Baixando mídia de preços (Gôndola / Panfleto / Vídeo) e preparando arquivamento no bucket FotosArgus...'
-        : '⏳ [1/3] Baixando imagem e executando verificação anti-duplicidade (Camada 1)...',
+      isAwaitingRecipe || isExplicitRecipeCaption
+        ? '🍳 [1/2] Baixando imagem da receita e lendo ingredientes e preparo...'
+        : isVideoDocument || isExplicitPriceScanCaption
+          ? '⏳ [1/3] Baixando mídia de preços (Gôndola / Panfleto / Vídeo) e preparando arquivamento no bucket FotosArgus...'
+          : '⏳ [1/3] Baixando imagem e executando verificação anti-duplicidade (Camada 1)...',
       replyOpts
     );
 
@@ -1019,6 +1145,32 @@ export function createArgusBot(): Bot {
               downloadedMimeType = mimeType;
               downloadedFileId = telegramFileId;
               downloadedFileUniqueId = telegramFileUniqueId;
+
+              // ROTA 0: Imagem de Receita (quando usuário pediu para adicionar receita ou usou legenda de receita)
+              if (!isVideoDocument && (isAwaitingRecipe || isExplicitRecipeCaption)) {
+                await updateStatus(
+                  '🧠 [2/2] Extraindo ingredientes e instruções via Gemini Vision, salvando no banco e calculando menor preço...'
+                );
+                const extractedRecipe = await recipeService.extractRecipeFromImage(
+                  buffer,
+                  mimeType,
+                  caption
+                );
+                if (extractedRecipe.isRecipe === false || extractedRecipe.ingredients.length === 0) {
+                  await updateStatus(
+                    '⚠️ Não identifiquei uma receita legível nessa imagem. Envie outra foto com os ingredientes ou escreva por texto aqui no chat!'
+                  );
+                  await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+                  return;
+                }
+                const savedRecipe = await recipeService.saveRecipeToDatabase(extractedRecipe);
+                awaitingRecipeChats.delete(chatKey);
+                await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+
+                await updateStatus(formatSavedRecipeMessage(savedRecipe));
+                await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
+                return;
+              }
 
               // ROTA A: Documento de Vídeo OU Foto com legenda explícita de Gôndola/Panfleto/Corredor
               if (isVideoDocument || isExplicitPriceScanCaption) {
@@ -1177,8 +1329,19 @@ export function createArgusBot(): Bot {
                 }
               }
 
-              // Camada de Qualidade da Imagem: avisa o usuário se não estiver legível
+              // Camada de Qualidade da Imagem: antes de desistir, verifica se a foto sem legenda é uma receita culinária
               if (multiResult.imageQuality === 'UNREADABLE' || multiResult.documents.length === 0) {
+                const autoRecipe = await recipeService
+                  .extractRecipeFromImage(buffer, mimeType, caption)
+                  .catch(() => null);
+                if (autoRecipe && autoRecipe.isRecipe && autoRecipe.ingredients.length > 0) {
+                  const savedAuto = await recipeService.saveRecipeToDatabase(autoRecipe);
+                  await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+                  await updateStatus(formatSavedRecipeMessage(savedAuto));
+                  await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
+                  return;
+                }
+
                 const reasonLine = multiResult.qualityReason
                   ? `\n• Motivo: ${multiResult.qualityReason}`
                   : '';
@@ -1716,10 +1879,12 @@ export function createArgusBot(): Bot {
 
   function buildContextualKeyboard(
     action: ArgusSuggestedAction,
-    productQuery?: string
+    productQuery?: string,
+    recipeQuery?: string
   ): InlineKeyboard {
     const kb = new InlineKeyboard();
     const cleanQuery = (productQuery || '').trim();
+    const cleanRecipe = (recipeQuery || '').trim();
 
     switch (action) {
       case 'PRECO':
@@ -1730,8 +1895,18 @@ export function createArgusBot(): Bot {
         }
         kb.text('💰 Preços da Cesta', 'quick:preco');
         break;
+      case 'ASK_RECIPE_PRICE':
+      case 'SAVE_RECIPE_TEXT':
       case 'RECEITA':
-        kb.text('🍲 Custos de Receitas', 'quick:receita').text('💰 Preços da Cesta', 'quick:preco');
+        if (cleanRecipe) {
+          kb.text(`🍲 Ver "${cleanRecipe}"`, `quick_receita:${cleanRecipe.slice(0, 40)}`);
+        } else {
+          kb.text('🍲 Custos de Receitas', 'quick:receita');
+        }
+        kb.text('🚗 Simular Rota', 'quick:otimizar');
+        break;
+      case 'WAIT_RECIPE':
+        kb.text('🍲 Ver Receitas Salvas', 'quick:receita').text('💰 Preços da Cesta', 'quick:preco');
         break;
       case 'OTIMIZAR':
         kb.text('🚗 Simular Rota', 'quick:otimizar').text('💰 Preços da Cesta', 'quick:preco');
@@ -1760,23 +1935,178 @@ export function createArgusBot(): Bot {
     return kb;
   }
 
-  // Conversa natural com o bot (responde perguntas básicas de forma concisa e guia para opções/comandos próximos)
+  // Conversa natural com o bot (responde perguntas básicas de forma concisa, cadastra receitas e consulta custos)
   bot.on('message:text', async (ctx) => {
     const text = (ctx.message.text || '').trim();
     if (!text) return;
 
+    const chatKey = String(ctx.chat?.id ?? 'default');
+    const replyOpts = ctx.message?.message_id
+      ? { reply_parameters: { message_id: ctx.message.message_id } }
+      : {};
+
     await withTypingIndicator(ctx, async () => {
+      const awaitingExpiry = awaitingRecipeChats.get(chatKey) || 0;
+      const isAwaitingRecipe = awaitingExpiry > Date.now();
+      const isCancelingRecipe = /^(cancelar|deixa|esquece|nao quero|não quero|voltar)$/i.test(text);
+
+      if (isAwaitingRecipe && isCancelingRecipe) {
+        awaitingRecipeChats.delete(chatKey);
+        await ctx.reply(
+          'Combinado! Cancelei a espera da receita. Se quiser consultar algo, tente `/produto arroz` ou `/receita`.',
+          replyOpts
+        );
+        return;
+      }
+
       const convReply = await conversation.replyToMessage(text, ctx.chat?.id);
+      const detectedUrl = conversation.extractFirstUrl(text);
+
+      // Fluxo 0: URL enviada diretamente na conversa
+      if (detectedUrl) {
+        // 0A: URL de Cupom Fiscal SEFAZ
+        if (processor.isGenuineSefazQrUrl(detectedUrl)) {
+          const statusMsg = await ctx.reply(
+            '🧾 Link da SEFAZ detectado! Consultando portal da Fazenda e registrando nota...',
+            replyOpts
+          );
+          try {
+            const scraped = await processor.scrapeSefazReceipt(detectedUrl);
+            if (!scraped) {
+              await ctx.api.editMessageText(
+                ctx.chat.id,
+                statusMsg.message_id,
+                '⚠️ Não consegui extrair os itens deste link SEFAZ. Tente enviar a foto do cupom!'
+              );
+              return;
+            }
+            const ingested = await processor.ingestReceipt(scraped);
+            await reconciler.reconcileAndSyncSheets().catch(() => {});
+            await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMsg.message_id,
+              ingested.alreadyExisted
+                ? `🛡️ Nota fiscal já registrada (${scraped.storeTradingName} — R$ ${scraped.totalAmount.toFixed(2)}).`
+                : `🧾 Nota fiscal salva via link SEFAZ! ${scraped.storeTradingName} — R$ ${scraped.totalAmount.toFixed(2)} (${scraped.items.length} itens).`
+            );
+            return;
+          } catch (sefazErr) {
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMsg.message_id,
+              `⚠️ Erro ao consultar link SEFAZ: ${(sefazErr as Error).message}`
+            );
+            return;
+          }
+        }
+
+        // 0B: Link de Receita (com intenção explícita, domínio conhecido ou aguardando receita)
+        if (isAwaitingRecipe || convReply.suggestedAction === 'SAVE_RECIPE_URL') {
+          const statusMsg = await ctx.reply(
+            '🔗 [1/2] Validando link com segurança, lendo ingredientes da receita e calculando menor preço...',
+            replyOpts
+          );
+          try {
+            const extracted = await recipeService.extractRecipeFromUrl(detectedUrl);
+            const saved = await recipeService.saveRecipeToDatabase(extracted);
+            awaitingRecipeChats.delete(chatKey);
+            await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMsg.message_id,
+              formatSavedRecipeMessage(saved),
+              { parse_mode: 'Markdown' }
+            );
+            await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
+            return;
+          } catch (urlErr) {
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMsg.message_id,
+              `⚠️ ${(urlErr as Error).message}\n\n💡 Se preferir, cole o texto dos ingredientes + preparo ou mande um print da receita!`
+            );
+            await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+            return;
+          }
+        }
+
+        // 0C: URL ambígua (usuário mandou só um link sem dizer que é receita) -> confirma em 1 toque
+        const token = Math.random().toString(36).slice(2, 10);
+        pendingRecipeUrlCache.set(token, {
+          url: detectedUrl,
+          chatId: ctx.chat.id,
+          expiresAt: Date.now() + 10 * 60 * 1000
+        });
+        const kbUrl = new InlineKeyboard()
+          .text('🍳 Importar Link como Receita', `import_recipe_url:${token}`)
+          .row()
+          .text('❌ Cancelar', `cancel_recipe_url:${token}`);
+
+        await ctx.reply(
+          '🔗 Recebi esse link! Quer que eu tente importar os ingredientes e calcular o menor custo como uma **receita**?',
+          {
+            parse_mode: 'Markdown',
+            reply_markup: kbUrl,
+            ...replyOpts
+          }
+        );
+        return;
+      }
+
+      // Fluxo 1: Adicionar receita por escrito (direto na conversa ou após o bot pedir a receita)
+      const shouldIngestRecipeFromText =
+        convReply.suggestedAction === 'SAVE_RECIPE_TEXT' ||
+        (isAwaitingRecipe && !text.startsWith('/') && text.length >= 15);
+
+      if (shouldIngestRecipeFromText) {
+        try {
+          const extracted = await recipeService.extractRecipeFromText(text);
+          const saved = await recipeService.saveRecipeToDatabase(extracted);
+          awaitingRecipeChats.delete(chatKey);
+          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+
+          await ctx.reply(formatSavedRecipeMessage(saved), {
+            parse_mode: 'Markdown',
+            ...replyOpts
+          });
+          await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
+          return;
+        } catch (recipeErr) {
+          if (isAwaitingRecipe) {
+            await ctx.reply(
+              `⚠️ ${(recipeErr as Error).message}\n\nEnvie os ingredientes com quantidades e preparo (ou mande uma foto da receita), ou digite "cancelar".`,
+              replyOpts
+            );
+            return;
+          }
+        }
+      }
+
+      // Fluxo 2: Usuário pediu para adicionar receita sem enviar os dados ainda
+      if (convReply.suggestedAction === 'WAIT_RECIPE') {
+        awaitingRecipeChats.set(chatKey, Date.now() + 10 * 60 * 1000);
+        const kb = buildContextualKeyboard('WAIT_RECIPE');
+        await ctx.reply(convReply.replyText, { reply_markup: kb, ...replyOpts });
+        return;
+      }
+
+      // Fluxo 3: Pergunta natural sobre o preço para fazer uma receita específica
+      if (convReply.suggestedAction === 'ASK_RECIPE_PRICE' && convReply.suggestedRecipeQuery) {
+        await handleReceita(ctx, convReply.suggestedRecipeQuery);
+        return;
+      }
+
       const kb = buildContextualKeyboard(
         convReply.suggestedAction,
-        convReply.suggestedProductQuery
+        convReply.suggestedProductQuery,
+        convReply.suggestedRecipeQuery
       );
 
       await ctx.reply(convReply.replyText, {
         reply_markup: kb,
-        ...(ctx.message?.message_id
-          ? { reply_parameters: { message_id: ctx.message.message_id } }
-          : {})
+        ...replyOpts
       });
     });
   });
@@ -1808,6 +2138,63 @@ export function createArgusBot(): Bot {
       await withTypingIndicator(ctx, async () => {
         await handlePreco(ctx, key);
       });
+      return;
+    }
+
+    if (action === 'quick_receita') {
+      await ctx.answerCallbackQuery({ text: `Consultando receita "${key}"...` }).catch(() => {});
+      await withTypingIndicator(ctx, async () => {
+        await handleReceita(ctx, key);
+      });
+      return;
+    }
+
+    if (action === 'import_recipe_url') {
+      const pending = pendingRecipeUrlCache.get(key);
+      if (!pending || pending.expiresAt < Date.now() || pending.chatId !== ctx.chat?.id) {
+        pendingRecipeUrlCache.delete(key);
+        await ctx
+          .answerCallbackQuery({ text: 'Link expirado. Envie a URL novamente.', show_alert: true })
+          .catch(() => {});
+        return;
+      }
+      pendingRecipeUrlCache.delete(key);
+      await ctx.answerCallbackQuery({ text: 'Lendo link da receita...' }).catch(() => {});
+      await ctx
+        .editMessageText(
+          '🔗 [1/2] Validando link com segurança, lendo ingredientes da receita e calculando menor preço...'
+        )
+        .catch(() => {});
+
+      await withTypingIndicator(ctx, async () => {
+        try {
+          const extracted = await recipeService.extractRecipeFromUrl(pending.url);
+          const saved = await recipeService.saveRecipeToDatabase(extracted);
+          awaitingRecipeChats.delete(String(pending.chatId));
+          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+          await ctx
+            .editMessageText(formatSavedRecipeMessage(saved), { parse_mode: 'Markdown' })
+            .catch(async () => {
+              await ctx.reply(formatSavedRecipeMessage(saved), { parse_mode: 'Markdown' });
+            });
+          await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
+        } catch (urlErr) {
+          const msg = `⚠️ ${(urlErr as Error).message}\n\n💡 Se preferir, cole o texto dos ingredientes ou envie um print da receita!`;
+          await ctx.editMessageText(msg).catch(async () => {
+            await ctx.reply(msg);
+          });
+          await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
+        }
+      });
+      return;
+    }
+
+    if (action === 'cancel_recipe_url') {
+      pendingRecipeUrlCache.delete(key);
+      await ctx.answerCallbackQuery({ text: 'Cancelado' }).catch(() => {});
+      await ctx
+        .editMessageText('Ok, ignorei esse link. Se precisar de preços, tente `/produto arroz`!')
+        .catch(() => {});
       return;
     }
 

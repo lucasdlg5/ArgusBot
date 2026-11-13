@@ -6,6 +6,8 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { queryArgus, withArgusTransaction } from '../lib/db';
+import { classifyAndNormalizeStoreName } from '../lib/store-normalization';
+import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
 import type {
   BaseUnit,
   PaymentMethod,
@@ -108,6 +110,7 @@ export interface NormalizedItemInfo {
 
 export class ArgusReceiptProcessor {
   private readonly ai: GoogleGenAI | null;
+  private readonly storeNormalizer = new ArgusStoreNormalizationService();
 
   constructor() {
     this.ai = env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: env.GEMINI_API_KEY }) : null;
@@ -239,7 +242,8 @@ export class ArgusReceiptProcessor {
     raw: ExtractedReceiptData,
     hashes?: { imageSha256?: string; normalizedImageSha256?: string }
   ): ExtractedReceiptData {
-    const storeTradingName = (raw.storeTradingName || raw.storeRawName || 'Mercado Identificado').trim();
+    const rawTrading = (raw.storeTradingName || raw.storeRawName || 'Mercado Identificado').trim();
+    const storeTradingName = classifyAndNormalizeStoreName(rawTrading).canonicalName;
     const storeCnpj = this.normalizeStoreCnpj(raw.storeCnpj, storeTradingName);
     const purchaseDate = this.normalizeReceiptDate(raw.purchaseDate);
     const totalAmount = Number(Number(raw.totalAmount || 0).toFixed(2));
@@ -1274,23 +1278,16 @@ REGRAS ESTRITAS:
     const shrinkflationAlerts: string[] = [];
 
     return withArgusTransaction(async (client) => {
-      // 1. Garante que a loja exista
-      const storeRes = await client.query<{ id: string }>(
-        `INSERT INTO argus.stores (cnpj, raw_name, trading_name, address, latitude, longitude)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (cnpj) DO UPDATE SET
-           trading_name = EXCLUDED.trading_name
-         RETURNING id`,
-        [
-          data.storeCnpj,
-          data.storeRawName,
-          data.storeTradingName,
-          data.storeAddress,
-          env.HOME_LAT - 0.012,
-          env.HOME_LNG - 0.015
-        ]
-      );
-      const storeId = storeRes.rows[0].id;
+      // 1. Garante que a loja exista de forma canônica (respeitando store_aliases e variantes)
+      const canonicalStore = await this.storeNormalizer.resolveOrUpsertCanonicalStore(client, {
+        cnpj: data.storeCnpj,
+        rawName: data.storeRawName,
+        tradingName: data.storeTradingName,
+        address: data.storeAddress,
+        latitude: env.HOME_LAT - 0.012,
+        longitude: env.HOME_LNG - 0.015
+      });
+      const storeId = canonicalStore.storeId;
 
       // 2. Insere o cabeçalho do cupom (incluindo colunas multicamada de deduplicação + bucket FotosArgus)
       const receiptRes = await client.query<{ id: string }>(

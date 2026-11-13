@@ -48,4 +48,40 @@ describe('ArgusConversationService — Conversa natural e guia de comandos', () 
     const bot = createArgusBot();
     expect(bot).toBeDefined();
   });
+
+  it('detecta intenção de adicionar receita (WAIT_RECIPE), salvar receita por texto (SAVE_RECIPE_TEXT) e consultar custo de receita específica (ASK_RECIPE_PRICE)', () => {
+    const waitRes = service.buildRuleBasedReply('Quero adicionar uma receita');
+    expect(waitRes.suggestedAction).toBe('WAIT_RECIPE');
+    expect(waitRes.replyText.toLowerCase()).toContain('ingredientes');
+
+    const saveRes = service.buildRuleBasedReply(
+      'Adicione esta receita: Omelete Simples\nIngredientes:\n- 3 ovos\n- 50g queijo mussarela\nModo de preparo: bata os ovos e grelhe.'
+    );
+    expect(saveRes.suggestedAction).toBe('SAVE_RECIPE_TEXT');
+
+    const askPriceRes = service.buildRuleBasedReply('Quanto custa fazer strogonoff?');
+    expect(askPriceRes.suggestedAction).toBe('ASK_RECIPE_PRICE');
+    expect(askPriceRes.suggestedRecipeQuery).toContain('strogonoff');
+  });
+
+  it('extrai primeira URL limpando pontuação final e detecta SAVE_RECIPE_URL em links de receita', () => {
+    const cleanUrl = service.extractFirstUrl(
+      'Olha esse bolo (https://www.tudogostoso.com.br/receita/23-bolo-de-cenoura.html)!'
+    );
+    expect(cleanUrl).toBe('https://www.tudogostoso.com.br/receita/23-bolo-de-cenoura.html');
+
+    const culinaryReply = service.buildRuleBasedReply(
+      'https://www.tudogostoso.com.br/receita/23-bolo-de-cenoura.html'
+    );
+    expect(culinaryReply.suggestedAction).toBe('SAVE_RECIPE_URL');
+    expect(culinaryReply.suggestedRecipeUrl).toBe(
+      'https://www.tudogostoso.com.br/receita/23-bolo-de-cenoura.html'
+    );
+
+    const intentReply = service.buildRuleBasedReply(
+      'adiciona essa receita https://exemplo.com/bolo'
+    );
+    expect(intentReply.suggestedAction).toBe('SAVE_RECIPE_URL');
+    expect(intentReply.suggestedRecipeUrl).toBe('https://exemplo.com/bolo');
+  });
 });
