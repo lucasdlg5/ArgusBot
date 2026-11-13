@@ -3,7 +3,11 @@ import { Bot, InlineKeyboard } from 'grammy';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { queryArgus } from '../lib/db';
-import { ArgusReceiptProcessor, type ExtractedReceiptData } from '../services/ArgusReceiptProcessor';
+import {
+  ArgusReceiptProcessor,
+  type ExtractedReceiptData,
+  type MultiDocumentExtractionResult
+} from '../services/ArgusReceiptProcessor';
 import { ArgusOptimizerService } from '../services/ArgusOptimizerService';
 import { ArgusReconciliationService } from '../services/ArgusReconciliationService';
 import { ArgusSecurityService } from '../services/ArgusSecurityService';
@@ -1083,18 +1087,29 @@ export function createArgusBot(): Bot {
               inFlightImageHashes.add(imageSha256);
               inFlightImageHashes.add(normalizedImageSha256);
 
-              let extracted: ExtractedReceiptData | null = null;
+              let multiResult: MultiDocumentExtractionResult | null = null;
               const qrData = await processor.decodeQrCodeFromImage(buffer);
               if (qrData && processor.isGenuineSefazQrUrl(qrData)) {
                 await updateStatus('🔍 [2/3] QR Code SEFAZ detectado! Consultando portal da Fazenda...');
-                extracted = await processor.scrapeSefazReceipt(qrData);
+                const scraped = await processor.scrapeSefazReceipt(qrData);
+                if (scraped) {
+                  multiResult = {
+                    imageQuality: 'GOOD',
+                    qualityReason: 'QR Code SEFAZ lido com sucesso',
+                    documentsCount: 1,
+                    documents: [scraped]
+                  };
+                }
               }
-              if (!extracted) {
+              if (!multiResult) {
                 await updateStatus(
-                  '🧠 [2/3] Classificando documento (Cupom Fiscal vs. Flyer/Panfleto/Gôndola) e extraindo itens via Gemini Vision...'
+                  '🧠 [2/3] Analisando qualidade, quantidade de notas e classificando documento via Gemini Vision...'
                 );
                 try {
-                  extracted = await processor.extractReceiptViaGeminiVision(buffer, mimeType);
+                  multiResult = await processor.extractMultipleReceiptsViaGeminiVision(
+                    buffer,
+                    mimeType
+                  );
                 } catch (receiptErr) {
                   // Se falhou por erro de rede/IA ou não é cupom, salva no bucket FotosArgus e agenda reprocessamento em 1 hora!
                   logger.warn(
@@ -1134,199 +1149,251 @@ export function createArgusBot(): Bot {
                 }
               }
 
-              // Avalia o Classificador Multicritério (Cor/Saturação RGB + QR Code + Layout + Colunas + Total impresso)
-              const verdict = await processor.evaluateDocumentClassification(
-                extracted,
-                buffer,
-                qrData
-              );
-
-              logger.info(
-                {
-                  decision: verdict.decision,
-                  category: verdict.category,
-                  confidencePct: verdict.confidencePct,
-                  receiptScore: verdict.receiptScore,
-                  flyerScore: verdict.flyerScore,
-                  colorSaturation: verdict.colorSaturationScore
-                },
-                '[ArgusBot] Veredito do Classificador Cupom Fiscal vs. Flyer/Gôndola'
-              );
-
-              // DECISÃO AUTÔNOMA:
-              // Escolhe automaticamente entre Flyer/Gôndola ou Nota Fiscal e JÁ SALVA no banco,
-              // exibindo botões de correção/rollback caso tenha escolhido errado.
-              const shouldRouteAsFlyerOrShelf =
-                verdict.decision === 'DEFINITE_FLYER_OR_SHELF' ||
-                (verdict.decision === 'UNCERTAIN_ASK_USER' &&
-                  verdict.flyerScore > verdict.receiptScore);
-
-              if (shouldRouteAsFlyerOrShelf) {
-                const kindLabel =
-                  verdict.category === 'MARKET_FLYER'
-                    ? 'Panfleto / Flyer'
-                    : 'Etiqueta de Gôndola';
-                await updateStatus(`📰 Salvando como ${kindLabel}...`);
-
-                const scanOutcome = await priceScanner.ingestAndProcessPriceScanMedia({
-                  mediaBuffer: buffer,
-                  mimeType,
-                  initialMediaKind:
-                    verdict.category === 'MARKET_FLYER' ? 'MARKET_FLYER' : 'SHELF_PHOTO',
-                  telegramChatId: ctx.chat.id,
-                  telegramMessageId: originalMessageId,
-                  telegramFileId,
-                  telegramFileUniqueId,
-                  userCaption: caption
-                });
-
-                if (scanOutcome.status === 'SUCCEEDED') {
-                  lastPriceScanJobId = scanOutcome.queueJobId;
-                  if (scanOutcome.items.length > 0) {
-                    await reconciler.reconcileAndSyncSheets().catch(() => {});
-                    await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
-                  }
-                }
-
-                const kbScan =
-                  scanOutcome.status === 'QUEUED_RETRY'
-                    ? new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now')
-                    : scanOutcome.status === 'SUCCEEDED'
-                      ? new InlineKeyboard()
-                          .text('🧾 Não é Flyer — Mudar p/ Nota', `switch_to_receipt:${scanOutcome.queueJobId}`)
-                          .row()
-                          .text('🗑️ Desfazer Coleta', `rollback_scan:${scanOutcome.queueJobId}`)
-                      : undefined;
-
-                const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
-                await updateStatus(formatPriceScanOutcomeMessage(scanOutcome, elapsedSec), kbScan);
-                await stickers.sendEmotionalSticker(
-                  ctx,
-                  scanOutcome.status === 'SUCCEEDED' ? 'DETECTIVE' : 'SHOCK_ALERT'
-                );
-                return;
-              }
-
-              // ROTA CUPOM FISCAL (Commit Automático + Rollback disponível)
-              extracted = processor.finalizeReceiptIdentifiers(extracted, {
-                imageSha256,
-                normalizedImageSha256
-              });
-
-              const pendingContentDup = checkPendingQueueDuplicate(
-                imageSha256,
-                normalizedImageSha256,
-                extracted
-              );
-              if (pendingContentDup.isDuplicate) {
-                await updateStatus(`🛡️ DUPLICIDADE EVITADA\n${pendingContentDup.reason}`);
-                await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
-                return;
-              }
-
-              const postOcrDup = await processor.checkPostOcrDuplicateLayers(extracted);
-              if (postOcrDup.isDuplicate) {
-                const dtStr = postOcrDup.existingPurchaseDate
-                  ? new Date(postOcrDup.existingPurchaseDate).toLocaleDateString('pt-BR')
-                  : '-';
+              // Camada de Qualidade da Imagem: avisa o usuário se não estiver legível
+              if (multiResult.imageQuality === 'UNREADABLE' || multiResult.documents.length === 0) {
+                const reasonLine = multiResult.qualityReason
+                  ? `\n• Motivo: ${multiResult.qualityReason}`
+                  : '';
                 await updateStatus(
                   [
-                    '🛡️ NOTA FISCAL JÁ REGISTRADA',
-                    `🏪 ${postOcrDup.existingStoreName} — R$ ${(postOcrDup.existingTotalAmount || 0).toFixed(2)} (${dtStr})`,
-                    `• ${postOcrDup.reason}`
+                    '⚠️ QUALIDADE DA IMAGEM INSUFICIENTE',
+                    `Não consegui ler os dados com segurança para evitar erros no banco.${reasonLine}`,
+                    '💡 Tire outra foto com mais luz, foco nítido e sem cortes.'
                   ].join('\n')
                 );
                 await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
                 return;
               }
 
-              await updateStatus('💾 [3/3] Salvando Nota Fiscal e conciliando...');
-
-              const uploadRes = await storage.compressAndUploadReceiptImage(
-                buffer,
-                extracted.accessKey,
-                extracted.storeTradingName,
-                mimeType
-              );
-              extracted.storageBucket = uploadRes.bucket;
-              extracted.storagePath = uploadRes.storagePath;
-              extracted.originalSizeBytes = uploadRes.originalBytes;
-              extracted.compressedSizeBytes = uploadRes.compressedBytes;
-
-              const ingestRes = await processor.ingestReceipt(extracted);
-              if (ingestRes.alreadyExisted) {
+              const totalDocs = multiResult.documents.length;
+              const isMulti = totalDocs > 1;
+              if (isMulti) {
                 await updateStatus(
-                  `🛡️ Nota já registrada (${ingestRes.duplicateReason || 'Duplicidade'}).`
+                  `📑 ${totalDocs} NOTAS FISCAIS DETECTADAS NA MESMA FOTO!\nProcessando cada uma individualmente...`
                 );
-                await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
-                return;
               }
 
-              // Registra referência para permitir Rollback / Reclassificação mesmo após reinício
-              await queryArgus(
-                `INSERT INTO argus.media_processing_queue (
-                   telegram_chat_id, telegram_message_id, telegram_file_id, telegram_file_unique_id,
-                   media_kind, mime_type, user_caption, storage_bucket, storage_path,
-                   media_sha256, status, store_name_detected, items_extracted_count,
-                   result_summary, processed_at
-                 ) VALUES ($1, $2, $3, $4, 'RECEIPT_PHOTO', $5, $6, $7, $8, $9, 'SUCCEEDED', $10, $11, $12::jsonb, NOW())`,
-                [
-                  ctx.chat.id,
-                  originalMessageId || null,
-                  telegramFileId || null,
-                  telegramFileUniqueId || null,
-                  mimeType,
-                  caption || null,
-                  uploadRes.bucket,
-                  uploadRes.storagePath,
+              const sendDocResult = async (text: string, kb?: InlineKeyboard) => {
+                if (!isMulti) {
+                  await updateStatus(text, kb);
+                } else {
+                  await ctx.reply(text, {
+                    ...(replyOpts || {}),
+                    ...(kb ? { reply_markup: kb } : {})
+                  });
+                }
+              };
+
+              let anySaved = false;
+              let lastSticker: 'FOOD_CHEF' | 'DETECTIVE' | 'SKEPTICAL' | 'SHOCK_ALERT' = 'SKEPTICAL';
+
+              for (let i = 0; i < totalDocs; i++) {
+                const rawDoc = multiResult.documents[i];
+                const prefix = isMulti ? `[Nota ${i + 1}/${totalDocs}] ` : '';
+
+                // Avalia o Classificador Multicritério (Cor/Saturação RGB + QR Code + Layout + Colunas + Total impresso)
+                const verdict = await processor.evaluateDocumentClassification(
+                  rawDoc,
+                  buffer,
+                  i === 0 ? qrData : null
+                );
+
+                logger.info(
+                  {
+                    docIndex: i + 1,
+                    totalDocs,
+                    decision: verdict.decision,
+                    category: verdict.category,
+                    confidencePct: verdict.confidencePct,
+                    receiptScore: verdict.receiptScore,
+                    flyerScore: verdict.flyerScore,
+                    colorSaturation: verdict.colorSaturationScore
+                  },
+                  '[ArgusBot] Veredito do Classificador Cupom Fiscal vs. Flyer/Gôndola'
+                );
+
+                // DECISÃO AUTÔNOMA:
+                // Escolhe automaticamente entre Flyer/Gôndola ou Nota Fiscal e JÁ SALVA no banco,
+                // exibindo botões de correção/rollback caso tenha escolhido errado.
+                const shouldRouteAsFlyerOrShelf =
+                  verdict.decision === 'DEFINITE_FLYER_OR_SHELF' ||
+                  (verdict.decision === 'UNCERTAIN_ASK_USER' &&
+                    verdict.flyerScore > verdict.receiptScore);
+
+                if (shouldRouteAsFlyerOrShelf) {
+                  const kindLabel =
+                    verdict.category === 'MARKET_FLYER'
+                      ? 'Panfleto / Flyer'
+                      : 'Etiqueta de Gôndola';
+                  if (!isMulti) {
+                    await updateStatus(`📰 Salvando como ${kindLabel}...`);
+                  }
+
+                  const scanOutcome = await priceScanner.ingestAndProcessPriceScanMedia({
+                    mediaBuffer: buffer,
+                    mimeType,
+                    initialMediaKind:
+                      verdict.category === 'MARKET_FLYER' ? 'MARKET_FLYER' : 'SHELF_PHOTO',
+                    telegramChatId: ctx.chat.id,
+                    telegramMessageId: originalMessageId,
+                    telegramFileId,
+                    telegramFileUniqueId,
+                    userCaption: caption
+                  });
+
+                  if (scanOutcome.status === 'SUCCEEDED') {
+                    lastPriceScanJobId = scanOutcome.queueJobId;
+                    if (scanOutcome.items.length > 0) {
+                      anySaved = true;
+                    }
+                    lastSticker = 'DETECTIVE';
+                  } else {
+                    lastSticker = 'SHOCK_ALERT';
+                  }
+
+                  const kbScan =
+                    scanOutcome.status === 'QUEUED_RETRY'
+                      ? new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now')
+                      : scanOutcome.status === 'SUCCEEDED'
+                        ? new InlineKeyboard()
+                            .text('🧾 Não é Flyer — Mudar p/ Nota', `switch_to_receipt:${scanOutcome.queueJobId}`)
+                            .row()
+                            .text('🗑️ Desfazer Coleta', `rollback_scan:${scanOutcome.queueJobId}`)
+                        : undefined;
+
+                  const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
+                  await sendDocResult(
+                    `${prefix}${formatPriceScanOutcomeMessage(scanOutcome, elapsedSec)}`,
+                    kbScan
+                  );
+                  continue;
+                }
+
+                // ROTA CUPOM FISCAL (Commit Automático + Rollback disponível)
+                const extracted = processor.finalizeReceiptIdentifiers(rawDoc, {
                   imageSha256,
+                  normalizedImageSha256
+                });
+
+                const pendingContentDup = checkPendingQueueDuplicate(
+                  imageSha256,
+                  normalizedImageSha256,
+                  extracted
+                );
+                if (pendingContentDup.isDuplicate) {
+                  await sendDocResult(`${prefix}🛡️ DUPLICIDADE EVITADA\n${pendingContentDup.reason}`);
+                  continue;
+                }
+
+                const postOcrDup = await processor.checkPostOcrDuplicateLayers(extracted);
+                if (postOcrDup.isDuplicate) {
+                  const dtStr = postOcrDup.existingPurchaseDate
+                    ? new Date(postOcrDup.existingPurchaseDate).toLocaleDateString('pt-BR')
+                    : '-';
+                  await sendDocResult(
+                    [
+                      `${prefix}🛡️ NOTA FISCAL JÁ REGISTRADA`,
+                      `🏪 ${postOcrDup.existingStoreName} — R$ ${(postOcrDup.existingTotalAmount || 0).toFixed(2)} (${dtStr})`,
+                      `• ${postOcrDup.reason}`
+                    ].join('\n')
+                  );
+                  continue;
+                }
+
+                if (!isMulti) {
+                  await updateStatus('💾 [3/3] Salvando Nota Fiscal e conciliando...');
+                }
+
+                const uploadRes = await storage.compressAndUploadReceiptImage(
+                  buffer,
+                  extracted.accessKey,
                   extracted.storeTradingName,
-                  extracted.items.length,
-                  JSON.stringify({ receiptId: ingestRes.receiptId })
-                ]
-              ).catch(() => {});
+                  mimeType
+                );
+                extracted.storageBucket = uploadRes.bucket;
+                extracted.storagePath = uploadRes.storagePath;
+                extracted.originalSizeBytes = uploadRes.originalBytes;
+                extracted.compressedSizeBytes = uploadRes.compressedBytes;
 
-              await reconciler.reconcileAndSyncSheets().catch(() => {});
-              await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+                const ingestRes = await processor.ingestReceipt(extracted);
+                if (ingestRes.alreadyExisted) {
+                  await sendDocResult(
+                    `${prefix}🛡️ Nota já registrada (${ingestRes.duplicateReason || 'Duplicidade'}).`
+                  );
+                  continue;
+                }
 
-              const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
-              const topItemsPreview = extracted.items
-                .slice(0, 5)
-                .map(
-                  (it) =>
-                    `• ${it.rawDescription} (${it.quantity} ${it.unitType}) — R$ ${it.totalPrice.toFixed(2)}`
-                )
-                .join('\n');
-              const moreItems =
-                extracted.items.length > 5
-                  ? `\n... +${extracted.items.length - 5} itens`
-                  : '';
+                // Registra referência para permitir Rollback / Reclassificação mesmo após reinício
+                await queryArgus(
+                  `INSERT INTO argus.media_processing_queue (
+                     telegram_chat_id, telegram_message_id, telegram_file_id, telegram_file_unique_id,
+                     media_kind, mime_type, user_caption, storage_bucket, storage_path,
+                     media_sha256, status, store_name_detected, items_extracted_count,
+                     result_summary, processed_at
+                   ) VALUES ($1, $2, $3, $4, 'RECEIPT_PHOTO', $5, $6, $7, $8, $9, 'SUCCEEDED', $10, $11, $12::jsonb, NOW())`,
+                  [
+                    ctx.chat.id,
+                    originalMessageId || null,
+                    telegramFileId || null,
+                    telegramFileUniqueId || null,
+                    mimeType,
+                    caption || null,
+                    uploadRes.bucket,
+                    uploadRes.storagePath,
+                    imageSha256,
+                    extracted.storeTradingName,
+                    extracted.items.length,
+                    JSON.stringify({ receiptId: ingestRes.receiptId })
+                  ]
+                ).catch(() => {});
 
-              const shrinkLine =
-                ingestRes.shrinkflationAlerts.length > 0
-                  ? `\n🚨 Reduflação: ${ingestRes.shrinkflationAlerts[0]}`
-                  : '';
+                anySaved = true;
+                lastSticker = 'FOOD_CHEF';
 
-              const uncertainNote =
-                verdict.decision === 'UNCERTAIN_ASK_USER'
-                  ? `\n⚠️ Classificação incerta (${verdict.confidencePct}%) — se for Flyer, clique abaixo.`
-                  : '';
+                const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
+                const topItemsPreview = extracted.items
+                  .slice(0, 5)
+                  .map(
+                    (it) =>
+                      `• ${it.rawDescription} (${it.quantity} ${it.unitType}) — R$ ${it.totalPrice.toFixed(2)}`
+                  )
+                  .join('\n');
+                const moreItems =
+                  extracted.items.length > 5
+                    ? `\n... +${extracted.items.length - 5} itens`
+                    : '';
 
-              const receiptMsg = [
-                `🧾 NOTA FISCAL SALVA — ${extracted.storeTradingName}`,
-                `💰 Total: R$ ${extracted.totalAmount.toFixed(2)} | 💳 ${extracted.paymentMethod}`,
-                `📦 ${extracted.items.length} itens | ⏱️ ${elapsedSec}s${shrinkLine}${uncertainNote}`,
-                '',
-                topItemsPreview + moreItems
-              ].join('\n');
+                const shrinkLine =
+                  ingestRes.shrinkflationAlerts.length > 0
+                    ? `\n🚨 Reduflação: ${ingestRes.shrinkflationAlerts[0]}`
+                    : '';
 
-              const kbReceipt = new InlineKeyboard()
-                .text('🏷️ Não é Nota — Mudar p/ Flyer', `switch_to_scan:${ingestRes.receiptId}`)
-                .row()
-                .text('🗑️ Desfazer / Apagar Nota', `rollback_receipt:${ingestRes.receiptId}`);
+                const uncertainNote =
+                  verdict.decision === 'UNCERTAIN_ASK_USER'
+                    ? `\n⚠️ Classificação incerta (${verdict.confidencePct}%) — se for Flyer, clique abaixo.`
+                    : '';
 
-              await updateStatus(receiptMsg, kbReceipt);
-              await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
+                const receiptMsg = [
+                  `${prefix}🧾 NOTA FISCAL SALVA — ${extracted.storeTradingName}`,
+                  `💰 Total: R$ ${extracted.totalAmount.toFixed(2)} | 💳 ${extracted.paymentMethod}`,
+                  `📦 ${extracted.items.length} itens | ⏱️ ${elapsedSec}s${shrinkLine}${uncertainNote}`,
+                  '',
+                  topItemsPreview + moreItems
+                ].join('\n');
+
+                const kbReceipt = new InlineKeyboard()
+                  .text('🏷️ Não é Nota — Mudar p/ Flyer', `switch_to_scan:${ingestRes.receiptId}`)
+                  .row()
+                  .text('🗑️ Desfazer / Apagar Nota', `rollback_receipt:${ingestRes.receiptId}`);
+
+                await sendDocResult(receiptMsg, kbReceipt);
+              }
+
+              if (anySaved) {
+                await reconciler.reconcileAndSyncSheets().catch(() => {});
+                await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+              }
+              await stickers.sendEmotionalSticker(ctx, lastSticker);
             })(),
             globalTimeout
           ]);

@@ -70,6 +70,15 @@ export interface ExtractedReceiptData {
   classificationReasoning?: string;
 }
 
+export type ImageQualityLevel = 'GOOD' | 'ACCEPTABLE' | 'UNREADABLE';
+
+export interface MultiDocumentExtractionResult {
+  imageQuality: ImageQualityLevel;
+  qualityReason: string;
+  documentsCount: number;
+  documents: ExtractedReceiptData[];
+}
+
 export interface DuplicateVerificationResult {
   isDuplicate: boolean;
   layer:
@@ -235,10 +244,11 @@ export class ArgusReceiptProcessor {
     const purchaseDate = this.normalizeReceiptDate(raw.purchaseDate);
     const totalAmount = Number(Number(raw.totalAmount || 0).toFixed(2));
 
-    // Verifica se há uma Chave de Acesso SEFAZ oficial de 44 dígitos reais (não preenchida artificialmente)
+    // Verifica se há uma Chave de Acesso SEFAZ oficial de 44 dígitos reais (não sintética 8888... nem preenchida artificialmente)
     const cleanKeyDigits = (raw.accessKey || '').replace(/\D/g, '');
     const isGenuine44Key =
       cleanKeyDigits.length === 44 &&
+      !cleanKeyDigits.startsWith('8888') &&
       !/^(\d)\1{15,}$/.test(cleanKeyDigits) &&
       !cleanKeyDigits.endsWith('9999999999') &&
       !cleanKeyDigits.endsWith('0000000000');
@@ -891,33 +901,93 @@ export class ArgusReceiptProcessor {
   }
 
   /**
-   * 3. Fallback Inteligente com Gemini Vision (Structured Outputs) para extrair foto/PDF
+   * 3. Fallback Inteligente com Gemini Vision (Structured Outputs) com:
+   *    - Verificação explícita de qualidade da imagem (`GOOD` / `ACCEPTABLE` / `UNREADABLE`)
+   *    - Detecção e extração separada de MÚLTIPLOS cupons fiscais na mesma foto!
    */
-  async extractReceiptViaGeminiVision(
+  async extractMultipleReceiptsViaGeminiVision(
     imageBuffer: Buffer,
     mimeType = 'image/jpeg'
-  ): Promise<ExtractedReceiptData> {
+  ): Promise<MultiDocumentExtractionResult> {
     if (!this.ai) {
       throw new Error(
         'GEMINI_API_KEY não configurada e QR Code SEFAZ não pôde ser lido localmente.'
       );
     }
 
-    // Otimiza a imagem com sharp antes de enviar ao Gemini Vision para reduzir latência de rede e inferência
+    // Otimiza a imagem mantendo alta resolução (1800x2600) para preservar legibilidade de múltiplas notas lado a lado
     let optimizedBuffer = imageBuffer;
     let optimizedMime = mimeType;
     if (mimeType.startsWith('image/')) {
       try {
         optimizedBuffer = await sharp(imageBuffer)
           .rotate()
-          .resize({ width: 1400, height: 2200, fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 82, mozjpeg: true })
+          .resize({ width: 1800, height: 2600, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 86, mozjpeg: true })
           .toBuffer();
         optimizedMime = 'image/jpeg';
       } catch {
         optimizedBuffer = imageBuffer;
       }
     }
+
+    const documentSchema = {
+      type: Type.OBJECT,
+      properties: {
+        detectedDocumentType: {
+          type: Type.STRING,
+          enum: ['FISCAL_RECEIPT', 'MARKET_FLYER', 'SHELF_TAG', 'UNCERTAIN']
+        },
+        classificationConfidencePct: { type: Type.NUMBER },
+        hasPrintedTotalLine: { type: Type.BOOLEAN },
+        hasPaymentOrChangeLine: { type: Type.BOOLEAN },
+        hasTabularQtyUnitColumns: { type: Type.BOOLEAN },
+        hasPromotionalFlyerMarkers: { type: Type.BOOLEAN },
+        classificationReasoning: { type: Type.STRING },
+        storeCnpj: { type: Type.STRING },
+        storeRawName: { type: Type.STRING },
+        storeTradingName: { type: Type.STRING },
+        storeAddress: { type: Type.STRING },
+        purchaseDate: { type: Type.STRING },
+        totalAmount: { type: Type.NUMBER },
+        discountAmount: { type: Type.NUMBER },
+        paymentMethod: {
+          type: Type.STRING,
+          enum: ['PIX', 'CREDIT_CARD', 'DEBIT', 'VR_VA', 'CASH']
+        },
+        accessKey: { type: Type.STRING },
+        receiptNumber: { type: Type.STRING },
+        items: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              rawDescription: { type: Type.STRING },
+              quantity: { type: Type.NUMBER },
+              unitType: { type: Type.STRING, enum: ['KG', 'UN', 'LT'] },
+              unitPrice: { type: Type.NUMBER },
+              totalPrice: { type: Type.NUMBER }
+            },
+            required: ['rawDescription', 'quantity', 'unitType', 'unitPrice', 'totalPrice']
+          }
+        }
+      },
+      required: [
+        'detectedDocumentType',
+        'classificationConfidencePct',
+        'hasPrintedTotalLine',
+        'hasPaymentOrChangeLine',
+        'hasTabularQtyUnitColumns',
+        'hasPromotionalFlyerMarkers',
+        'classificationReasoning',
+        'storeCnpj',
+        'storeTradingName',
+        'totalAmount',
+        'paymentMethod',
+        'accessKey',
+        'items'
+      ]
+    };
 
     const response = await this.generateWithModelFallback(
       {
@@ -931,18 +1001,29 @@ export class ArgusReceiptProcessor {
           },
           {
             text: `Você é o Argus (@MonetaArgusBot), auditor fiscal e classificador multimodal de documentos de supermercado.
-PRIMEIRA TAREFA (CLASSIFICAÇÃO):
-Classifique a imagem em detectedDocumentType:
-- 'FISCAL_RECEIPT': Cupom fiscal térmico, NFC-e, SAT ou Pedido de Caixa (papel monocromático, colunas Desc/Qtd/Unit/Total, linha impressa de TOTAL a pagar, meio de pagamento/TROCO, número de Pedido/COO). Mesmo se o topo com nome do mercado ou CNPJ estiver cortado na foto, se tiver tabela de itens comprados + Pedido + TOTAL + CREDITO/TROCO, é 'FISCAL_RECEIPT'!
-- 'MARKET_FLYER': Panfleto, jornal de ofertas, encarte promocional ou post de Instagram de supermercado (arte gráfica colorida, grade de fotos de produtos com selos amarelos/vermelhos de preço, "Clube", "Ofertas Válidas", "Quarta Verde", "Quinta Vermelha", "Imagens Ilustrativas", múltiplos endereços de lojas no rodapé, sem linha de TOTAL de compra).
-- 'SHELF_TAG': Foto de etiqueta de preço na gôndola/prateleira física do supermercado.
-- 'UNCERTAIN': Imagem ambígua ou parcialmente ilegível onde não há certeza absoluta entre nota fiscal e panfleto/gôndola.
 
-REGRAS ESTRITAS DE EXTRAÇÃO:
-1. NUNCA some preços de um panfleto/flyer para inventar um totalAmount! Se NÃO houver uma linha de TOTAL de caixa explicitamente impressa no documento, retorne hasPrintedTotalLine = false e totalAmount = 0.
-2. Em receiptNumber, extraia APENAS os dígitos/código do número do Pedido, COO ou Extrato (ex: se estiver escrito "Pedido: 2596437", retorne "2596437").
-3. Se o CNPJ não estiver visível na foto (por exemplo, topo cortado ou panfleto), retorne string vazia "" em storeCnpj.
-4. Preencha hasPaymentOrChangeLine (true se houver PIX/CREDITO/DEBITO/DINHEIRO/TROCO impresso), hasTabularQtyUnitColumns (true se houver colunas Qtd x Unit = Total), e hasPromotionalFlyerMarkers (true se houver selos de oferta/clube/encarte).`
+TAREFA 1 — QUALIDADE DA IMAGEM (OBRIGATÓRIO):
+Avalie imageQuality:
+- 'GOOD': Texto, preços e nomes de produtos legíveis com clareza.
+- 'ACCEPTABLE': Levemente escuro/amassado/inclinado, mas valores e itens principais são legíveis com segurança.
+- 'UNREADABLE': Foto muito borrada, sem foco, escura demais, cortada nos preços ou ilegível a ponto de não ser possível garantir os valores reais. Explique o motivo curto em qualityReason.
+
+TAREFA 2 — DETECÇÃO DE MÚLTIPLOS DOCUMENTOS NA MESMA FOTO (OBRIGATÓRIO):
+Inspecione TODA a foto da esquerda para a direita e de cima para baixo!
+- Se houver 2 ou mais notas fiscais / cupons / pedidos separados lado a lado ou empilhados na mesma imagem (ex.: duas folhas de papel térmico diferentes), você DEVE extrair CADA documento separadamente no array \`documents\` (1 objeto por nota fiscal) e informar a quantidade exata em \`documentsCount\`!
+- NUNCA misture itens de duas notas diferentes no mesmo objeto, e NUNCA ignore a segunda nota!
+
+TAREFA 3 — CLASSIFICAÇÃO DE CADA DOCUMENTO:
+- 'FISCAL_RECEIPT': Cupom fiscal térmico, NFC-e, SAT ou Pedido de Caixa (papel monocromático, colunas Desc/Qtd/Unit/Total, linha impressa de TOTAL a pagar, meio de pagamento/TROCO, Pedido/COO). Mesmo se o topo com nome do mercado/CNPJ estiver cortado, se tiver itens + TOTAL + pagamento, é 'FISCAL_RECEIPT'.
+- 'MARKET_FLYER': Panfleto/encarte/post de ofertas (arte colorida, selos de preço, "Clube", "Ofertas Válidas", sem linha de TOTAL de compra).
+- 'SHELF_TAG': Etiqueta de gôndola/prateleira.
+- 'UNCERTAIN': Ambíguo.
+
+REGRAS ESTRITAS:
+1. NUNCA some preços de um panfleto/flyer para inventar totalAmount! Sem linha impressa de TOTAL => hasPrintedTotalLine = false e totalAmount = 0.
+2. Em receiptNumber, extraia APENAS o código/número do Pedido, COO ou Extrato (ex: "2596437", "2593977").
+3. Se o CNPJ não estiver visível, retorne "" em storeCnpj.
+4. Se imageQuality = 'UNREADABLE', retorne documents: [] e documentsCount: 0.`
           }
         ],
         config: {
@@ -950,70 +1031,61 @@ REGRAS ESTRITAS DE EXTRAÇÃO:
           responseSchema: {
             type: Type.OBJECT,
             properties: {
-              detectedDocumentType: {
+              imageQuality: {
                 type: Type.STRING,
-                enum: ['FISCAL_RECEIPT', 'MARKET_FLYER', 'SHELF_TAG', 'UNCERTAIN']
+                enum: ['GOOD', 'ACCEPTABLE', 'UNREADABLE']
               },
-              classificationConfidencePct: { type: Type.NUMBER },
-              hasPrintedTotalLine: { type: Type.BOOLEAN },
-              hasPaymentOrChangeLine: { type: Type.BOOLEAN },
-              hasTabularQtyUnitColumns: { type: Type.BOOLEAN },
-              hasPromotionalFlyerMarkers: { type: Type.BOOLEAN },
-              classificationReasoning: { type: Type.STRING },
-              storeCnpj: { type: Type.STRING },
-              storeRawName: { type: Type.STRING },
-              storeTradingName: { type: Type.STRING },
-              storeAddress: { type: Type.STRING },
-              purchaseDate: { type: Type.STRING },
-              totalAmount: { type: Type.NUMBER },
-              discountAmount: { type: Type.NUMBER },
-              paymentMethod: {
-                type: Type.STRING,
-                enum: ['PIX', 'CREDIT_CARD', 'DEBIT', 'VR_VA', 'CASH']
-              },
-              accessKey: { type: Type.STRING },
-              receiptNumber: { type: Type.STRING },
-              items: {
+              qualityReason: { type: Type.STRING },
+              documentsCount: { type: Type.NUMBER },
+              documents: {
                 type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    rawDescription: { type: Type.STRING },
-                    quantity: { type: Type.NUMBER },
-                    unitType: { type: Type.STRING, enum: ['KG', 'UN', 'LT'] },
-                    unitPrice: { type: Type.NUMBER },
-                    totalPrice: { type: Type.NUMBER }
-                  },
-                  required: ['rawDescription', 'quantity', 'unitType', 'unitPrice', 'totalPrice']
-                }
+                items: documentSchema
               }
             },
-            required: [
-              'detectedDocumentType',
-              'classificationConfidencePct',
-              'hasPrintedTotalLine',
-              'hasPaymentOrChangeLine',
-              'hasTabularQtyUnitColumns',
-              'hasPromotionalFlyerMarkers',
-              'classificationReasoning',
-              'storeCnpj',
-              'storeTradingName',
-              'totalAmount',
-              'paymentMethod',
-              'accessKey',
-              'items'
-            ]
+            required: ['imageQuality', 'qualityReason', 'documentsCount', 'documents']
           }
         }
       },
-      20000
+      25000
     );
 
-    const parsed = JSON.parse(response.text || '{}') as ExtractedReceiptData;
-    return this.finalizeReceiptIdentifiers({
-      ...parsed,
-      extractionMethod: 'GEMINI_VISION_2_5_FLASH'
-    });
+    const parsed = JSON.parse(response.text || '{}') as {
+      imageQuality?: ImageQualityLevel;
+      qualityReason?: string;
+      documentsCount?: number;
+      documents?: ExtractedReceiptData[];
+    };
+
+    const rawDocs = Array.isArray(parsed.documents) ? parsed.documents : [];
+    const finalizedDocs = rawDocs.map((doc) =>
+      this.finalizeReceiptIdentifiers({
+        ...doc,
+        extractionMethod: 'GEMINI_VISION_2_5_FLASH'
+      })
+    );
+
+    return {
+      imageQuality: parsed.imageQuality || 'ACCEPTABLE',
+      qualityReason: parsed.qualityReason || 'Leitura padrão',
+      documentsCount: finalizedDocs.length,
+      documents: finalizedDocs
+    };
+  }
+
+  /**
+   * Wrapper retrocompatível que extrai o primeiro documento encontrado na imagem.
+   */
+  async extractReceiptViaGeminiVision(
+    imageBuffer: Buffer,
+    mimeType = 'image/jpeg'
+  ): Promise<ExtractedReceiptData> {
+    const multi = await this.extractMultipleReceiptsViaGeminiVision(imageBuffer, mimeType);
+    if (multi.documents.length === 0) {
+      throw new Error(
+        `Imagem ilegível ou sem itens detectados (${multi.qualityReason || 'baixa nitidez'}).`
+      );
+    }
+    return multi.documents[0];
   }
 
   /**
