@@ -74,7 +74,7 @@ export function createArgusBot(): Bot {
     const isAuthorizedByUsername =
       allowedUsernames.size > 0 && Boolean(senderUsername) && allowedUsernames.has(senderUsername);
 
-    // Se houver regras configuradas, exige match estrito (ID imutável ou @AsminnAeterna)
+    // Se houver regras configuradas, exige match estrito (ID imutável ou username autorizado via .env)
     if (allowedIds.size > 0 || allowedUsernames.size > 0) {
       if (!isAuthorizedById && !isAuthorizedByUsername) {
         const incident = await security.recordBlockedInteraction(ctx);
@@ -90,7 +90,7 @@ export function createArgusBot(): Bot {
           '[ArgusBot] Tentativa de acesso bloqueada e persistida em argus.security_audit_logs'
         );
 
-        // Notifica proativamente o proprietário (@AsminnAeterna) quando detectar ameaça HIGH ou CRITICAL
+        // Notifica proativamente o proprietário quando detectar ameaça HIGH ou CRITICAL
         if (
           env.TELEGRAM_DEFAULT_CHAT_ID &&
           (incident.threatLevel === 'HIGH' || incident.threatLevel === 'CRITICAL')
