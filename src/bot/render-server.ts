@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { webhookCallback } from 'grammy';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
+import { queryArgus } from '../lib/db';
 import { createArgusBot } from './index';
 
 const PORT = Number(process.env.PORT || env.PORT || 3000);
@@ -47,6 +48,24 @@ async function main() {
     const urlPath = (req.url || '/').split('?')[0];
 
     if (req.method === 'GET' && (urlPath === '/' || urlPath === '/health' || urlPath === '/healthz')) {
+      let dbOk = false;
+      let dbHost = 'not_set';
+      let dbError: string | undefined;
+      try {
+        const rawDb = (env.DATABASE_URL || env.DIRECT_URL || '').replace(/^["']|["']$/g, '').trim();
+        if (rawDb) {
+          try {
+            dbHost = new URL(rawDb).hostname;
+          } catch {
+            dbHost = 'invalid_url_format';
+          }
+        }
+        await queryArgus('SELECT 1 AS ok');
+        dbOk = true;
+      } catch (e) {
+        dbError = (e as Error).message;
+      }
+
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(
         JSON.stringify({
@@ -54,6 +73,9 @@ async function main() {
           service: 'moneta-argus-bot',
           bot: `@${bot.botInfo.username}`,
           mode: useWebhook ? 'webhook' : 'polling',
+          dbOk,
+          dbHost,
+          dbError,
           uptimeSec: Math.round(process.uptime()),
           timestamp: new Date().toISOString()
         })
