@@ -3,7 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
+import {
+  fetchPublicDashboardFallback,
+  resolvePublicApiUrl
+} from '@/lib/public-bi-client';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -15,7 +18,9 @@ import {
   Filter,
   MapPin,
   Package,
+  Pencil,
   Receipt,
+  Save,
   Search,
   Store,
   Tag,
@@ -24,6 +29,7 @@ import {
   X
 } from 'lucide-react';
 import type {
+  BaseUnit,
   ScannedProductEntry,
   ScannedProductSourceKind,
   StoreBiDetail
@@ -125,6 +131,24 @@ export default function ArgusProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<SortOption>('RECENT');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
+  const [editingProduct, setEditingProduct] = useState<{
+    id: string;
+    sourceKind: ScannedProductSourceKind;
+    canonicalProductId: string | null;
+    canonicalProductName: string;
+    rawDescription: string;
+    category: string;
+    baseUnit: BaseUnit;
+    standardPackageSize: string;
+    isEssential: boolean;
+    quantity: string;
+    unitType: string;
+    unitPrice: string;
+    totalPrice: string;
+  } | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [saveProductMsg, setSaveProductMsg] = useState<string | null>(null);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -260,6 +284,63 @@ export default function ArgusProductsPage() {
     setStoreFilter('ALL');
     setCategoryFilter('ALL');
   }
+
+  const openEditProduct = (item: ScannedProductEntry) => {
+    setSaveProductMsg(null);
+    setEditingProduct({
+      id: item.id,
+      sourceKind: item.sourceKind,
+      canonicalProductId: item.canonicalProductId,
+      canonicalProductName: item.canonicalProductName,
+      rawDescription: item.rawDescription,
+      category: String(item.category || 'Mercearia'),
+      baseUnit: item.baseUnit || 'un',
+      standardPackageSize: String(item.standardPackageSize || 1),
+      isEssential: Boolean(item.isEssential),
+      quantity: String(item.quantity || 1),
+      unitType: item.unitType || 'UN',
+      unitPrice: String(item.unitPrice || 0),
+      totalPrice: String(item.totalPrice || 0)
+    });
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setSavingProduct(true);
+    setSaveProductMsg(null);
+    try {
+      const res = await fetch(resolvePublicApiUrl('/api/products'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingProduct.id,
+          sourceKind: editingProduct.sourceKind,
+          canonicalProductId: editingProduct.canonicalProductId,
+          canonicalProductName: editingProduct.canonicalProductName,
+          rawDescription: editingProduct.rawDescription,
+          category: editingProduct.category,
+          baseUnit: editingProduct.baseUnit,
+          standardPackageSize: Number(editingProduct.standardPackageSize) || 1,
+          isEssential: editingProduct.isEssential,
+          quantity: Number(editingProduct.quantity) || 1,
+          unitType: editingProduct.unitType,
+          unitPrice: Number(editingProduct.unitPrice) || 0,
+          totalPrice: Number(editingProduct.totalPrice) || 0
+        })
+      });
+      const json = (await res.json()) as { status?: string; message?: string };
+      if (!res.ok || json.status === 'error') {
+        throw new Error(json.message || 'Falha ao salvar alterações do produto.');
+      }
+      setEditingProduct(null);
+      await loadProducts();
+    } catch (err) {
+      setSaveProductMsg((err as Error).message || 'Erro ao salvar produto.');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100">
@@ -544,7 +625,64 @@ export default function ArgusProductsPage() {
                 const sourceMeta = getSourceMeta(item.sourceKind);
                 const SourceIcon = sourceMeta.Icon;
 
-                return (
+                const openEditProduct = (item: ScannedProductEntry) => {
+    setSaveProductMsg(null);
+    setEditingProduct({
+      id: item.id,
+      sourceKind: item.sourceKind,
+      canonicalProductId: item.canonicalProductId,
+      canonicalProductName: item.canonicalProductName,
+      rawDescription: item.rawDescription,
+      category: String(item.category || 'Mercearia'),
+      baseUnit: item.baseUnit || 'un',
+      standardPackageSize: String(item.standardPackageSize || 1),
+      isEssential: Boolean(item.isEssential),
+      quantity: String(item.quantity || 1),
+      unitType: item.unitType || 'UN',
+      unitPrice: String(item.unitPrice || 0),
+      totalPrice: String(item.totalPrice || 0)
+    });
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setSavingProduct(true);
+    setSaveProductMsg(null);
+    try {
+      const res = await fetch(resolvePublicApiUrl('/api/products'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingProduct.id,
+          sourceKind: editingProduct.sourceKind,
+          canonicalProductId: editingProduct.canonicalProductId,
+          canonicalProductName: editingProduct.canonicalProductName,
+          rawDescription: editingProduct.rawDescription,
+          category: editingProduct.category,
+          baseUnit: editingProduct.baseUnit,
+          standardPackageSize: Number(editingProduct.standardPackageSize) || 1,
+          isEssential: editingProduct.isEssential,
+          quantity: Number(editingProduct.quantity) || 1,
+          unitType: editingProduct.unitType,
+          unitPrice: Number(editingProduct.unitPrice) || 0,
+          totalPrice: Number(editingProduct.totalPrice) || 0
+        })
+      });
+      const json = (await res.json()) as { status?: string; message?: string };
+      if (!res.ok || json.status === 'error') {
+        throw new Error(json.message || 'Falha ao salvar alterações do produto.');
+      }
+      setEditingProduct(null);
+      await loadProducts();
+    } catch (err) {
+      setSaveProductMsg((err as Error).message || 'Erro ao salvar produto.');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
+  return (
                   <div key={item.id} className="transition-colors hover:bg-slate-900/80">
                     <button
                       type="button"
@@ -694,15 +832,28 @@ export default function ArgusProductsPage() {
                                 </p>
                                 <p className="mt-1 text-slate-300">{item.storeLocation}</p>
                               </div>
-                              {item.storeId && (
-                                <Link
-                                  href={`/mercados?id=${encodeURIComponent(item.storeId)}`}
-                                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+                              <div className="flex flex-wrap items-center gap-2 mt-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditProduct(item);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 px-3 py-1.5 text-xs font-semibold text-sky-200 transition-colors"
                                 >
-                                  <Store className="h-3.5 w-3.5" />
-                                  Abrir B.I. do {item.storeName} →
-                                </Link>
-                              )}
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Editar Produto / Medida
+                                </button>
+                                {item.storeId && (
+                                  <Link
+                                    href={`/mercados?id=${encodeURIComponent(item.storeId)}`}
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+                                  >
+                                    <Store className="h-3.5 w-3.5" />
+                                    Abrir B.I. do {item.storeName} →
+                                  </Link>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </motion.div>
@@ -715,6 +866,201 @@ export default function ArgusProductsPage() {
           </section>
         )}
       </div>
+
+      {/* MODAL DE EDIÇÃO DE PRODUTO */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <form
+            onSubmit={handleSaveProduct}
+            className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Pencil className="h-4 w-4 text-sky-400" />
+                Editar Produto &amp; Medida
+              </h2>
+              <button
+                type="button"
+                onClick={() => setEditingProduct(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                aria-label="Fechar modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {saveProductMsg && (
+              <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-xs text-rose-200">
+                {saveProductMsg}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <label className="space-y-1 md:col-span-2">
+                <span className="text-slate-300 font-medium">Nome no Catálogo</span>
+                <input
+                  type="text"
+                  required
+                  value={editingProduct.canonicalProductName}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, canonicalProductName: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="space-y-1 md:col-span-2">
+                <span className="text-slate-300 font-medium">Descrição da Leitura (Cupom/Gôndola)</span>
+                <input
+                  type="text"
+                  required
+                  value={editingProduct.rawDescription}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, rawDescription: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">Categoria</span>
+                <input
+                  type="text"
+                  value={editingProduct.category}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, category: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">Unidade Base (Receitas &amp; BI)</span>
+                <select
+                  value={editingProduct.baseUnit}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, baseUnit: e.target.value as BaseUnit })
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                >
+                  <option value="g">g (Gramas / Peso)</option>
+                  <option value="ml">ml (Mililitros / Líquidos)</option>
+                  <option value="un">un (Unidade / Pacote)</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">
+                  Peso/Medida da Embalagem ({editingProduct.baseUnit})
+                </span>
+                <input
+                  type="number"
+                  step="any"
+                  min="0.01"
+                  required
+                  value={editingProduct.standardPackageSize}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, standardPackageSize: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+                <span className="block text-[10px] text-slate-400">
+                  Ex: 100 para pacote de 100g, 1000 para 1L, 1 para unidade.
+                </span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1">
+                  <span className="text-slate-300 font-medium">Qtd. Lida</span>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0.001"
+                    required
+                    value={editingProduct.quantity}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, quantity: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-slate-300 font-medium">Un. Lida</span>
+                  <input
+                    type="text"
+                    required
+                    value={editingProduct.unitType}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, unitType: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white uppercase focus:border-emerald-500 focus:outline-none"
+                  />
+                </label>
+              </div>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">Preço Unitário (R$)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={editingProduct.unitPrice}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, unitPrice: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">Total Pago no Item (R$)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={editingProduct.totalPrice}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, totalPrice: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 md:col-span-2 pt-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editingProduct.isEssential}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, isEssential: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-slate-600 bg-slate-950 text-emerald-500"
+                />
+                <span className="text-slate-200">Item Essencial (não é besteira/impulso)</span>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingProduct(null)}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={savingProduct}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 px-4 py-2 text-xs font-semibold text-slate-950"
+              >
+                <Save className="h-3.5 w-3.5" />
+                {savingProduct ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

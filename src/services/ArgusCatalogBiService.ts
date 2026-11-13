@@ -45,8 +45,83 @@ interface RawStoreRow {
   raw_name: string;
   trading_name: string;
   address: string;
+  google_maps_url?: string | null;
   latitude: string | number;
   longitude: string | number;
+}
+
+export interface UpdateProductInput {
+  id: string;
+  sourceKind: ScannedProductSourceKind;
+  canonicalProductId?: string | null;
+  canonicalProductName: string;
+  rawDescription: string;
+  category: string;
+  baseUnit: BaseUnit;
+  standardPackageSize: number;
+  isEssential: boolean;
+  quantity: number;
+  unitType: string;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface UpdateStoreInput {
+  storeId: string;
+  tradingName: string;
+  cnpj?: string;
+  address: string;
+  googleMapsUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export function computeNormalizedPricePerBaseUnit(params: {
+  baseUnit: BaseUnit;
+  standardPackageSize: number;
+  quantity: number;
+  unitType: string;
+  totalPrice: number;
+}): number {
+  const u = (params.unitType || 'un').trim().toLowerCase();
+  const qty = Math.max(0.0001, Number(params.quantity) || 1);
+  const pkgSize = Math.max(1, Number(params.standardPackageSize) || 1);
+  let totalBaseUnits = qty;
+
+  if (params.baseUnit === 'g') {
+    if (u === 'kg') {
+      totalBaseUnits = qty * 1000;
+    } else if (u === 'g' || u === 'gr' || u === 'grama' || u === 'gramas') {
+      totalBaseUnits = qty;
+    } else {
+      totalBaseUnits = qty * pkgSize;
+    }
+  } else if (params.baseUnit === 'ml') {
+    if (u === 'l' || u === 'lt' || u === 'litro' || u === 'litros') {
+      totalBaseUnits = qty * 1000;
+    } else if (u === 'ml') {
+      totalBaseUnits = qty;
+    } else {
+      totalBaseUnits = qty * pkgSize;
+    }
+  }
+
+  return totalBaseUnits > 0 ? Number((params.totalPrice / totalBaseUnits).toFixed(6)) : params.totalPrice;
+}
+
+export function extractCoordsFromGoogleMapsUrl(
+  url?: string | null
+): { lat: number; lng: number } | null {
+  if (!url) return null;
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) {
+    return { lat: Number(atMatch[1]), lng: Number(atMatch[2]) };
+  }
+  const qMatch = url.match(/[?&](?:q|query|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (qMatch) {
+    return { lat: Number(qMatch[1]), lng: Number(qMatch[2]) };
+  }
+  return null;
 }
 
 interface RawReceiptRow {
@@ -129,10 +204,14 @@ export class ArgusCatalogBiService {
     scannedProducts: ScannedProductEntry[];
     storesBi: StoreBiDetail[];
   }> {
+    await queryArgus(
+      `ALTER TABLE argus.stores ADD COLUMN IF NOT EXISTS google_maps_url TEXT`
+    ).catch(() => {});
+
     const [storesRaw, receiptsRaw, receiptItemsRaw, collectedPricesRaw, heatmapRaw] =
       await Promise.all([
         queryArgus<RawStoreRow>(
-          `SELECT id, cnpj, raw_name, trading_name, address, latitude, longitude
+          `SELECT id, cnpj, raw_name, trading_name, address, google_maps_url, latitude, longitude
            FROM argus.stores
            ORDER BY trading_name ASC`
         ),
@@ -609,6 +688,7 @@ export class ArgusCatalogBiService {
         rawName: store.raw_name,
         cnpj: store.cnpj,
         address: store.address,
+        googleMapsUrl: store.google_maps_url ?? null,
         latitude: Number(store.latitude) || 0,
         longitude: Number(store.longitude) || 0,
         totalSpentAllTime,
@@ -652,5 +732,142 @@ export class ArgusCatalogBiService {
       scannedProducts,
       storesBi
     };
+  }
+
+  async updateScannedProduct(input: UpdateProductInput): Promise<{
+    updated: boolean;
+    normalizedPricePerBaseUnit: number;
+  }> {
+    const cleanName = input.canonicalProductName.trim();
+    const cleanRawDesc = input.rawDescription.trim() || cleanName;
+    const cleanCategory = input.category.trim() || 'Mercearia';
+    const cleanBaseUnit: BaseUnit =
+      input.baseUnit === 'g' || input.baseUnit === 'ml' ? input.baseUnit : 'un';
+    const stdPkgSize = Math.max(1, Number(input.standardPackageSize) || 1);
+    const qty = Math.max(0.0001, Number(input.quantity) || 1);
+    const unitType = (input.unitType || 'UN').trim().toUpperCase();
+    const totalPrice = Math.max(0, Number(input.totalPrice) || 0);
+    const unitPrice =
+      Number(input.unitPrice) > 0
+        ? Number(input.unitPrice)
+        : Number((totalPrice / qty).toFixed(4));
+
+    const normalizedPricePerBaseUnit = computeNormalizedPricePerBaseUnit({
+      baseUnit: cleanBaseUnit,
+      standardPackageSize: stdPkgSize,
+      quantity: qty,
+      unitType,
+      totalPrice
+    });
+
+    if (input.canonicalProductId) {
+      await queryArgus(
+        `UPDATE argus.canonical_products
+         SET name = $2,
+             category = $3,
+             base_unit = $4,
+             standard_package_size = $5,
+             is_essential = $6
+         WHERE id = $1`,
+        [
+          input.canonicalProductId,
+          cleanName,
+          cleanCategory,
+          cleanBaseUnit,
+          stdPkgSize,
+          Boolean(input.isEssential)
+        ]
+      );
+    }
+
+    if (input.sourceKind === 'RECEIPT_ITEM') {
+      await queryArgus(
+        `UPDATE argus.receipt_items
+         SET raw_description = $2,
+             quantity = $3,
+             unit_type = $4,
+             unit_price = $5,
+             total_price = $6,
+             normalized_price_per_base_unit = $7
+         WHERE id = $1`,
+        [
+          input.id,
+          cleanRawDesc,
+          qty,
+          unitType,
+          unitPrice,
+          totalPrice,
+          normalizedPricePerBaseUnit
+        ]
+      );
+    } else {
+      await queryArgus(
+        `UPDATE argus.collected_prices
+         SET raw_product_description = $2,
+             canonical_product_name = $3,
+             category = $4,
+             base_unit = $5,
+             unit_type = $6,
+             package_size_in_base_unit = $7,
+             collected_price = $8,
+             normalized_price_per_base_unit = $9
+         WHERE id = $1`,
+        [
+          input.id,
+          cleanRawDesc,
+          cleanName,
+          cleanCategory,
+          cleanBaseUnit,
+          unitType,
+          stdPkgSize,
+          totalPrice,
+          normalizedPricePerBaseUnit
+        ]
+      );
+    }
+
+    return { updated: true, normalizedPricePerBaseUnit };
+  }
+
+  async updateStoreDetails(input: UpdateStoreInput): Promise<{ updated: boolean }> {
+    await queryArgus(
+      `ALTER TABLE argus.stores ADD COLUMN IF NOT EXISTS google_maps_url TEXT`
+    ).catch(() => {});
+
+    const cleanTrading = input.tradingName.trim();
+    const cleanAddress = input.address.trim();
+    const cleanCnpj = (input.cnpj || '').trim();
+    const cleanMapsUrl = input.googleMapsUrl ? input.googleMapsUrl.trim() : null;
+
+    let lat =
+      input.latitude !== null && input.latitude !== undefined && Number.isFinite(Number(input.latitude))
+        ? Number(input.latitude)
+        : null;
+    let lng =
+      input.longitude !== null && input.longitude !== undefined && Number.isFinite(Number(input.longitude))
+        ? Number(input.longitude)
+        : null;
+
+    if ((lat === null || lng === null || (lat === 0 && lng === 0)) && cleanMapsUrl) {
+      const extracted = extractCoordsFromGoogleMapsUrl(cleanMapsUrl);
+      if (extracted) {
+        lat = extracted.lat;
+        lng = extracted.lng;
+      }
+    }
+
+    await queryArgus(
+      `UPDATE argus.stores
+       SET trading_name = $2,
+           address = $3,
+           cnpj = CASE WHEN $4 <> '' THEN $4 ELSE cnpj END,
+           google_maps_url = $5,
+           latitude = COALESCE($6, latitude),
+           longitude = COALESCE($7, longitude)
+       WHERE id = $1`,
+      [input.storeId, cleanTrading, cleanAddress, cleanCnpj, cleanMapsUrl, lat, lng]
+    );
+
+    return { updated: true };
   }
 }

@@ -4,6 +4,11 @@ import { webhookCallback } from 'grammy';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { queryArgus } from '../lib/db';
+import {
+  ArgusCatalogBiService,
+  type UpdateProductInput,
+  type UpdateStoreInput
+} from '../services/ArgusCatalogBiService';
 import { ArgusDashboardBuilderService } from '../services/ArgusDashboardBuilderService';
 import { ArgusRecipeService } from '../services/ArgusRecipeService';
 import { createArgusBot } from './index';
@@ -13,9 +18,18 @@ const WEBHOOK_PATH = '/telegram/webhook';
 
 function applyCorsHeaders(res: http.ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
+}
+
+async function readJsonBody<T>(req: http.IncomingMessage): Promise<T> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  const raw = Buffer.concat(chunks).toString('utf8');
+  return JSON.parse(raw || '{}') as T;
 }
 
 function getPublicBaseUrl(): string {
@@ -35,6 +49,7 @@ async function main() {
   const bot = createArgusBot();
   const dashboardBuilder = new ArgusDashboardBuilderService();
   const recipeService = new ArgusRecipeService();
+  const catalogBiService = new ArgusCatalogBiService();
   const publicBaseUrl = getPublicBaseUrl();
   const useWebhook =
     Boolean(publicBaseUrl) && process.env.TELEGRAM_BOT_MODE !== 'polling';
@@ -148,6 +163,46 @@ async function main() {
           timestamp: new Date().toISOString()
         })
       );
+      return;
+    }
+
+    if (req.method === 'PATCH' && urlPath === '/api/products') {
+      applyCorsHeaders(res);
+      try {
+        const body = await readJsonBody<UpdateProductInput>(req);
+        if (!body?.id || !body?.canonicalProductName) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Campos obrigatórios ausentes.' }));
+          return;
+        }
+        const result = await catalogBiService.updateScannedProduct(body);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', ...result }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro ao atualizar produto em /api/products');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    if (req.method === 'PATCH' && urlPath === '/api/stores') {
+      applyCorsHeaders(res);
+      try {
+        const body = await readJsonBody<UpdateStoreInput>(req);
+        if (!body?.storeId || !body?.tradingName) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Campos obrigatórios ausentes.' }));
+          return;
+        }
+        const result = await catalogBiService.updateStoreDetails(body);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', ...result }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro ao atualizar mercado em /api/stores');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
       return;
     }
 

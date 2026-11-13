@@ -10,6 +10,18 @@ export function getPublicBotApiBaseUrl(): string {
 }
 
 /**
+ * Resolve a URL de API para leitura ou mutação (PATCH):
+ * - No GitHub Pages (estático), aponta para o Render Live API.
+ * - Em execução local/Node, usa a rota relativa do Next.js (`/api/...`).
+ */
+export function resolvePublicApiUrl(apiPath: string): string {
+  const isGitHubPages =
+    typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
+  const cleanPath = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
+  return isGitHubPages ? `${getPublicBotApiBaseUrl()}${cleanPath}` : cleanPath;
+}
+
+/**
  * Busca o snapshot público do Argus Vision BI em ordem de frescor:
  * 1) Render Live API (/api/public-snapshot direto do PostgreSQL)
  * 2) Supabase Storage (public-bi/dashboard-live.json)

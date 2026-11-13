@@ -587,6 +587,7 @@ export interface StoreBiDetail {
   rawName: string;
   cnpj: string;
   address: string;
+  googleMapsUrl?: string | null;
   latitude: number;
   longitude: number;
   totalSpentAllTime: number;
