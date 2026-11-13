@@ -10,6 +10,7 @@ import {
   type UpdateStoreInput
 } from '../services/ArgusCatalogBiService';
 import { ArgusDashboardBuilderService } from '../services/ArgusDashboardBuilderService';
+import { ArgusPantryGuideService } from '../services/ArgusPantryGuideService';
 import { ArgusRecipeService } from '../services/ArgusRecipeService';
 import { createArgusBot } from './index';
 
@@ -18,7 +19,7 @@ const WEBHOOK_PATH = '/telegram/webhook';
 
 function applyCorsHeaders(res: http.ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -49,6 +50,7 @@ async function main() {
   const bot = createArgusBot();
   const dashboardBuilder = new ArgusDashboardBuilderService();
   const recipeService = new ArgusRecipeService();
+  const pantryGuideService = new ArgusPantryGuideService();
   const catalogBiService = new ArgusCatalogBiService();
   const publicBaseUrl = getPublicBaseUrl();
   const useWebhook =
@@ -200,6 +202,29 @@ async function main() {
         res.end(JSON.stringify({ status: 'ok', ...result }));
       } catch (err) {
         logger.error({ err }, '[ArgusRender] Erro ao atualizar mercado em /api/stores');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && urlPath === '/api/recipes/pantry-chat') {
+      applyCorsHeaders(res);
+      try {
+        const body = await readJsonBody<{ message?: string; recipes?: any[] }>(req);
+        if (!body?.message || !body.message.trim()) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Informe os ingredientes no chat.' }));
+          return;
+        }
+        const result = await pantryGuideService.answerPantryQuery({
+          message: body.message,
+          recipes: body.recipes
+        });
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro em /api/recipes/pantry-chat');
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
       }

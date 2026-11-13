@@ -28,6 +28,7 @@ import {
   Navigation,
   Package,
   Plus,
+  Refrigerator,
   Search,
   ShoppingCart,
   Snowflake,
@@ -43,6 +44,7 @@ import type {
   PerishabilityTier,
   RecipeCostEvaluation
 } from '@/types/argus';
+import RecipePantryGuideChat from './RecipePantryGuideChat';
 import { matchesRecipeSearch } from '@/lib/recipe-intelligence';
 import RecipeStoreComparisonCard from './RecipeStoreComparisonCard';
 
@@ -194,6 +196,7 @@ export default function ArgusRecipesPage() {
 
   // Estado do formulário para adicionar receita (Texto, Imagem ou Link URL)
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showPantryGuide, setShowPantryGuide] = useState(false);
   const [inputTab, setInputTab] = useState<'TEXT' | 'IMAGE' | 'URL'>('TEXT');
   const [rawRecipeText, setRawRecipeText] = useState('');
   const [recipeUrl, setRecipeUrl] = useState('');
@@ -626,7 +629,20 @@ export default function ArgusRecipesPage() {
             </Link>
           </nav>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              type="button"
+              onClick={() => setShowPantryGuide((prev) => !prev)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                showPantryGuide
+                  ? 'border-sky-400 bg-sky-500/20 text-sky-200'
+                  : 'border-slate-700 bg-slate-900 hover:border-sky-500/50 text-slate-200'
+              }`}
+            >
+              <Refrigerator className="h-4 w-4 text-sky-400" />
+              <span>{showPantryGuide ? 'Fechar Guia' : 'Guia da Geladeira'}</span>
+            </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
               type="button"
@@ -662,6 +678,23 @@ export default function ArgusRecipesPage() {
 
         {/* FEEDBACK / ERRO ANIMADOS */}
         <AnimatePresence>
+          {showPantryGuide && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <RecipePantryGuideChat
+                recipes={recipes}
+                onSelectRecipe={(recipeId) => {
+                  setSelectedRecipeId(recipeId);
+                  setActiveDetailTab('OVERVIEW');
+                }}
+                onClose={() => setShowPantryGuide(false)}
+              />
+            </motion.div>
+          )}
+
           {submitFeedback && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
