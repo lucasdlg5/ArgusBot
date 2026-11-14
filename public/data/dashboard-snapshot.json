@@ -1,19 +1,19 @@
 {
   "status": "ok",
-  "generatedAt": "2026-11-14T15:31:33.218Z",
+  "generatedAt": "2026-11-14T20:24:04.715Z",
   "homeLocation": {
     "lat": -23.305,
     "lng": -45.965,
     "address": "Jacareí / São Paulo - SP (Coordenadas Protegidas OpSec)"
   },
   "kpis": {
-    "totalMonthSpent": 526.07,
-    "potentialMonthlySavings": 52.8,
+    "totalMonthSpent": 658.96,
+    "potentialMonthlySavings": 61.3,
     "vrVaBurnAmount": 33.74,
     "vrVaMonthlyBudget": 850,
     "vrVaBurnRatePct": 4,
-    "reconciliationRatePct": 41.2,
-    "scannedReceiptsCount": 17,
+    "reconciliationRatePct": 38.9,
+    "scannedReceiptsCount": 18,
     "pluggyTransactionsCount": 0,
     "collectedPricesCount": 60
   },
@@ -524,7 +524,7 @@
       "estimated_package_price": 13.2,
       "min_historical_price": 13.2,
       "max_historical_price": 13.2,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -699,6 +699,23 @@
       "observations_count": 1
     },
     {
+      "canonical_product_id": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+      "product_name": "ASKOV FUN VODKA",
+      "category": "Mercearia",
+      "base_unit": "ml",
+      "standard_package_size": 500,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 0.01598,
+      "estimated_package_price": 7.99,
+      "min_historical_price": 7.99,
+      "max_historical_price": 7.99,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
+      "observations_count": 1
+    },
+    {
       "canonical_product_id": "c363320c-d9d8-467d-9a49-44c907779d9d",
       "product_name": "AZEIT VD RECH PIM",
       "category": "Mercearia",
@@ -711,7 +728,7 @@
       "estimated_package_price": 10.29,
       "min_historical_price": 10.29,
       "max_historical_price": 10.29,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -881,7 +898,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -949,7 +966,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -1034,7 +1051,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -1102,7 +1119,7 @@
       "estimated_package_price": 3.99,
       "min_historical_price": 3.99,
       "max_historical_price": 3.99,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -1221,7 +1238,7 @@
       "estimated_package_price": 9.99,
       "min_historical_price": 9.99,
       "max_historical_price": 9.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -1408,7 +1425,7 @@
       "estimated_package_price": 2.69,
       "min_historical_price": 2.69,
       "max_historical_price": 2.69,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -1697,7 +1714,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -1901,9 +1918,9 @@
       "estimated_package_price": 8.49,
       "min_historical_price": 8.49,
       "max_historical_price": 8.49,
-      "days_since_last_seen": 2,
-      "last_seen_at": "2026-11-11T22:38:30.000Z",
-      "observations_count": 1
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
+      "observations_count": 2
     },
     {
       "canonical_product_id": "a2c12e13-5b59-4018-8e6e-3eabf6b144fe",
@@ -2003,7 +2020,7 @@
       "estimated_package_price": 10.9,
       "min_historical_price": 10.9,
       "max_historical_price": 10.9,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -2156,7 +2173,7 @@
       "estimated_package_price": 3.19,
       "min_historical_price": 3.19,
       "max_historical_price": 3.19,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -2292,7 +2309,7 @@
       "estimated_package_price": 1,
       "min_historical_price": 1,
       "max_historical_price": 1,
-      "days_since_last_seen": 62,
+      "days_since_last_seen": 63,
       "last_seen_at": "2026-09-12T17:38:36.000Z",
       "observations_count": 4
     },
@@ -2326,7 +2343,7 @@
       "estimated_package_price": 34.98,
       "min_historical_price": 34.98,
       "max_historical_price": 34.98,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -2343,7 +2360,7 @@
       "estimated_package_price": 9.9,
       "min_historical_price": 9.9,
       "max_historical_price": 9.9,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 2
     },
@@ -2360,7 +2377,7 @@
       "estimated_package_price": 4.49,
       "min_historical_price": 4.49,
       "max_historical_price": 4.49,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 2
     },
@@ -2462,7 +2479,7 @@
       "estimated_package_price": 21.99,
       "min_historical_price": 21.99,
       "max_historical_price": 21.99,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -2564,7 +2581,7 @@
       "estimated_package_price": 58.91,
       "min_historical_price": 58.91,
       "max_historical_price": 58.91,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -2632,7 +2649,7 @@
       "estimated_package_price": 3.29,
       "min_historical_price": 3.29,
       "max_historical_price": 3.29,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -2649,8 +2666,25 @@
       "estimated_package_price": 10.59,
       "min_historical_price": 10.59,
       "max_historical_price": 10.59,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "a714b56a-5879-49d9-b63d-bcad10655bab",
+      "product_name": "GELO COCO LEVE MARACUJA",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 3.49,
+      "estimated_package_price": 3.49,
+      "min_historical_price": 3.49,
+      "max_historical_price": 3.49,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 1
     },
     {
@@ -2751,7 +2785,7 @@
       "estimated_package_price": 2.59,
       "min_historical_price": 2.59,
       "max_historical_price": 2.59,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -2768,7 +2802,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -2785,7 +2819,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -2841,6 +2875,23 @@
       "observations_count": 1
     },
     {
+      "canonical_product_id": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+      "product_name": "IORGUTE MILK MIX COCO 1",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 6.99,
+      "estimated_package_price": 6.99,
+      "min_historical_price": 6.99,
+      "max_historical_price": 6.99,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
+      "observations_count": 1
+    },
+    {
       "canonical_product_id": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
       "product_name": "KETCH ELEFANTE",
       "category": "Mercearia",
@@ -2887,7 +2938,7 @@
       "estimated_package_price": 7.89,
       "min_historical_price": 7.89,
       "max_historical_price": 7.89,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -2904,7 +2955,7 @@
       "estimated_package_price": 3.99,
       "min_historical_price": 3.99,
       "max_historical_price": 3.99,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -2938,7 +2989,7 @@
       "estimated_package_price": 25.99,
       "min_historical_price": 25.99,
       "max_historical_price": 25.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -3057,7 +3108,7 @@
       "estimated_package_price": 5.49,
       "min_historical_price": 5.49,
       "max_historical_price": 5.49,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -3227,7 +3278,7 @@
       "estimated_package_price": 4.48,
       "min_historical_price": 4.48,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -3261,7 +3312,7 @@
       "estimated_package_price": 3.99,
       "min_historical_price": 3.99,
       "max_historical_price": 3.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -3329,7 +3380,7 @@
       "estimated_package_price": 44.9,
       "min_historical_price": 44.9,
       "max_historical_price": 44.9,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -3465,7 +3516,7 @@
       "estimated_package_price": 3.29,
       "min_historical_price": 3.29,
       "max_historical_price": 3.29,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 2
     },
@@ -3873,7 +3924,7 @@
       "estimated_package_price": 1.15,
       "min_historical_price": 1.15,
       "max_historical_price": 1.15,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -3958,7 +4009,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 62,
+      "days_since_last_seen": 63,
       "last_seen_at": "2026-09-12T17:38:36.000Z",
       "observations_count": 1
     },
@@ -3975,7 +4026,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 62,
+      "days_since_last_seen": 63,
       "last_seen_at": "2026-09-12T17:38:36.000Z",
       "observations_count": 1
     },
@@ -4043,7 +4094,7 @@
       "estimated_package_price": 3.49,
       "min_historical_price": 3.49,
       "max_historical_price": 3.49,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -4060,7 +4111,7 @@
       "estimated_package_price": 10.49,
       "min_historical_price": 10.49,
       "max_historical_price": 10.49,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -4077,7 +4128,7 @@
       "estimated_package_price": 1.69,
       "min_historical_price": 1.69,
       "max_historical_price": 1.69,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 4
     },
@@ -4094,7 +4145,7 @@
       "estimated_package_price": 1.39,
       "min_historical_price": 1.39,
       "max_historical_price": 1.39,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -4162,7 +4213,7 @@
       "estimated_package_price": 6.49,
       "min_historical_price": 6.49,
       "max_historical_price": 6.49,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -4179,7 +4230,7 @@
       "estimated_package_price": 3.69,
       "min_historical_price": 3.69,
       "max_historical_price": 3.69,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -4213,9 +4264,9 @@
       "estimated_package_price": 55.5,
       "min_historical_price": 55,
       "max_historical_price": 60,
-      "days_since_last_seen": 2,
-      "last_seen_at": "2026-11-11T22:38:30.000Z",
-      "observations_count": 4
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
+      "observations_count": 5
     },
     {
       "canonical_product_id": "44eb8108-3437-4179-ae99-9884f370f010",
@@ -4264,7 +4315,7 @@
       "estimated_package_price": 6.39,
       "min_historical_price": 6.39,
       "max_historical_price": 6.39,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -4366,7 +4417,7 @@
       "estimated_package_price": 8.49,
       "min_historical_price": 7.39,
       "max_historical_price": 8.49,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -4383,7 +4434,7 @@
       "estimated_package_price": 6.75,
       "min_historical_price": 6.75,
       "max_historical_price": 6.75,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -4400,7 +4451,7 @@
       "estimated_package_price": 2.69,
       "min_historical_price": 2.69,
       "max_historical_price": 2.69,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -4558,6 +4609,23 @@
       "observations_count": 1
     },
     {
+      "canonical_product_id": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+      "product_name": "PAO DE FORMA SEVEN BOYS",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 7.49,
+      "estimated_package_price": 7.49,
+      "min_historical_price": 7.49,
+      "max_historical_price": 7.49,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
+      "observations_count": 1
+    },
+    {
       "canonical_product_id": "c71c87a7-24f5-41c6-8722-a91ff83df748",
       "product_name": "PAO DE QUEIJO RECH FRANGO",
       "category": "Carnes",
@@ -4655,9 +4723,9 @@
       "estimated_package_price": 15,
       "min_historical_price": 15,
       "max_historical_price": 15,
-      "days_since_last_seen": 2,
-      "last_seen_at": "2026-11-11T22:38:30.000Z",
-      "observations_count": 1
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
+      "observations_count": 2
     },
     {
       "canonical_product_id": "b28d65bc-a96c-4d9b-976f-b4759496cb3f",
@@ -4876,7 +4944,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -4978,7 +5046,7 @@
       "estimated_package_price": 16.99,
       "min_historical_price": 16.99,
       "max_historical_price": 16.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5029,7 +5097,7 @@
       "estimated_package_price": 13.89,
       "min_historical_price": 13.89,
       "max_historical_price": 13.89,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5080,7 +5148,7 @@
       "estimated_package_price": 10.95,
       "min_historical_price": 10.95,
       "max_historical_price": 10.95,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5097,7 +5165,7 @@
       "estimated_package_price": 9,
       "min_historical_price": 9,
       "max_historical_price": 9,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5199,7 +5267,7 @@
       "estimated_package_price": 37.9,
       "min_historical_price": 37.9,
       "max_historical_price": 37.9,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5216,7 +5284,7 @@
       "estimated_package_price": 26.98,
       "min_historical_price": 26.98,
       "max_historical_price": 26.98,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5267,9 +5335,9 @@
       "estimated_package_price": 35,
       "min_historical_price": 35,
       "max_historical_price": 35,
-      "days_since_last_seen": 2,
-      "last_seen_at": "2026-11-11T22:38:30.000Z",
-      "observations_count": 4
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
+      "observations_count": 5
     },
     {
       "canonical_product_id": "14ab34bb-f7e5-4be2-8bad-7d12b5125969",
@@ -5301,7 +5369,7 @@
       "estimated_package_price": 89.9,
       "min_historical_price": 89.9,
       "max_historical_price": 89.9,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5318,7 +5386,7 @@
       "estimated_package_price": 49.99,
       "min_historical_price": 49.99,
       "max_historical_price": 49.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5386,7 +5454,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5454,7 +5522,7 @@
       "estimated_package_price": 1.29,
       "min_historical_price": 1.29,
       "max_historical_price": 1.29,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -5862,7 +5930,7 @@
       "estimated_package_price": 45.93,
       "min_historical_price": 45.93,
       "max_historical_price": 45.93,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 1
     },
@@ -5981,7 +6049,7 @@
       "estimated_package_price": 15.99,
       "min_historical_price": 15.99,
       "max_historical_price": 15.99,
-      "days_since_last_seen": 151,
+      "days_since_last_seen": 152,
       "last_seen_at": "2026-06-15T15:37:41.000Z",
       "observations_count": 1
     },
@@ -6049,7 +6117,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -6066,7 +6134,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 179,
+      "days_since_last_seen": 180,
       "last_seen_at": "2026-05-18T17:29:43.000Z",
       "observations_count": 1
     },
@@ -6119,6 +6187,23 @@
       "max_historical_price": 9.29,
       "days_since_last_seen": 2,
       "last_seen_at": "2026-11-12T05:49:05.666Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "e8019981-da78-4696-a10d-7e543add4625",
+      "product_name": "SORV LAKA DIAMANTE NEGR",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 33.9,
+      "estimated_package_price": 33.9,
+      "min_historical_price": 33.9,
+      "max_historical_price": 33.9,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 1
     },
     {
@@ -6355,7 +6440,7 @@
       "estimated_package_price": 8.9,
       "min_historical_price": 8.9,
       "max_historical_price": 8.9,
-      "days_since_last_seen": 165,
+      "days_since_last_seen": 166,
       "last_seen_at": "2026-06-01T18:59:06.000Z",
       "observations_count": 2
     },
@@ -6670,7 +6755,7 @@
       "products_tracked": 8,
       "competitiveness_index": 100,
       "basket_category_cost": 66.23,
-      "min_days_since_seen": 2,
+      "min_days_since_seen": 0,
       "max_days_since_seen": 1084,
       "freshness_tier": "> 30 dias"
     },
@@ -6682,7 +6767,7 @@
       "competitiveness_index": 100,
       "basket_category_cost": 76.96,
       "min_days_since_seen": 139,
-      "max_days_since_seen": 151,
+      "max_days_since_seen": 152,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6693,7 +6778,7 @@
       "competitiveness_index": 96.9,
       "basket_category_cost": 55.79,
       "min_days_since_seen": 52,
-      "max_days_since_seen": 179,
+      "max_days_since_seen": 180,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6711,9 +6796,9 @@
       "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
       "store_name": "MERCADO SOUZA",
       "category": "Mercearia",
-      "products_tracked": 50,
-      "competitiveness_index": 100.4,
-      "basket_category_cost": 424.15,
+      "products_tracked": 55,
+      "competitiveness_index": 100.3,
+      "basket_category_cost": 484.01,
       "min_days_since_seen": 0,
       "max_days_since_seen": 1084,
       "freshness_tier": "> 30 dias"
@@ -6726,7 +6811,7 @@
       "competitiveness_index": 100,
       "basket_category_cost": 112.11,
       "min_days_since_seen": 1,
-      "max_days_since_seen": 165,
+      "max_days_since_seen": 166,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6920,6 +7005,19 @@
       "mom_inflation_pct": -5,
       "shrinkflation_detected": false,
       "package_reduction_pct": 60
+    },
+    {
+      "canonical_product_id": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+      "product_name": "ASKOV FUN VODKA",
+      "category": "Mercearia",
+      "base_unit": "ml",
+      "standard_package_size": 500,
+      "latest_seen_package_size": 500,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 7.99,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
     },
     {
       "canonical_product_id": "70241138-ccca-402a-8f42-f3a5b6ef282e",
@@ -7195,6 +7293,32 @@
       "package_reduction_pct": 0
     },
     {
+      "canonical_product_id": "a714b56a-5879-49d9-b63d-bcad10655bab",
+      "product_name": "GELO COCO LEVE MARACUJA",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 3.49,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+      "product_name": "IORGUTE MILK MIX COCO 1",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 6.99,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
       "canonical_product_id": "5eb71898-3b84-4908-b556-c5b39f7342d6",
       "product_name": "LARANJA PERA KG",
       "category": "Mercearia",
@@ -7416,6 +7540,19 @@
       "package_reduction_pct": 0
     },
     {
+      "canonical_product_id": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+      "product_name": "PAO DE FORMA SEVEN BOYS",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 7.49,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
       "canonical_product_id": "1eee497b-f2fd-4f33-8190-e09927569229",
       "product_name": "PAO FORMA BAUDUCCO T",
       "category": "Mercearia",
@@ -7515,6 +7652,19 @@
       "latest_seen_package_size": 1,
       "ref_month": "2026-11-01T00:00:00.000Z",
       "avg_std_package_price": 1.59,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "e8019981-da78-4696-a10d-7e543add4625",
+      "product_name": "SORV LAKA DIAMANTE NEGR",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 33.9,
       "mom_inflation_pct": 0,
       "shrinkflation_detected": false,
       "package_reduction_pct": 0
@@ -10293,6 +10443,17 @@
     {
       "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
       "wallet_source": "BANK_ACCOUNT",
+      "payment_method": "CREDIT_CARD",
+      "category": "Mercearia",
+      "is_essential": true,
+      "spending_pillar": "Alimentação Essencial",
+      "receipts_count": 3,
+      "reconciled_receipts_count": 1,
+      "total_spent": 264.07
+    },
+    {
+      "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+      "wallet_source": "BANK_ACCOUNT",
       "payment_method": "CASH",
       "category": "Mercearia",
       "is_essential": true,
@@ -10305,23 +10466,12 @@
       "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
       "wallet_source": "BANK_ACCOUNT",
       "payment_method": "CREDIT_CARD",
-      "category": "Mercearia",
-      "is_essential": true,
-      "spending_pillar": "Alimentação Essencial",
-      "receipts_count": 2,
-      "reconciled_receipts_count": 1,
-      "total_spent": 148.16
-    },
-    {
-      "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
-      "wallet_source": "BANK_ACCOUNT",
-      "payment_method": "CREDIT_CARD",
       "category": "Besteiras/Impulso",
       "is_essential": false,
       "spending_pillar": "Besteiras/Impulso",
-      "receipts_count": 2,
+      "receipts_count": 3,
       "reconciled_receipts_count": 1,
-      "total_spent": 56.94
+      "total_spent": 73.92
     },
     {
       "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
@@ -11022,6 +11172,7 @@
       "AÇÚCAR REFINADO UNIÃO": 3.59,
       "APRESUNTADO SADIA KG": 30.99,
       "ARROZ SABOROSO": 18.99,
+      "ASKOV FUN VODKA": 7.99,
       "AZEITONA RIVOLI FATIADA OU S/CAROÇO": 4.99,
       "BAGUETTE": 2,
       "BANANA NANICA KG": 3.89,
@@ -11043,6 +11194,8 @@
       "DETERGENTE LIMPOL": 1.99,
       "FAROFA YOKI TRADICIONAL": 4.99,
       "FEIJÃO SABOROSO": 7.49,
+      "GELO COCO LEVE MARACUJA": 3.49,
+      "IORGUTE MILK MIX COCO 1": 6.99,
       "LARANJA PERA KG": 2.99,
       "LEITE CONDENSADO ITALAC": 5.49,
       "LEITE ITALAC INTEGRAL": 5.19,
@@ -11060,6 +11213,7 @@
       "OVO EXTRA AJA 20UN": 12.99,
       "PAO DE FORMA PANCO": 10.99,
       "PÃO DE FORMA PANCO TRAD / BISNAGUINHA PANCO TRAD": 7.99,
+      "PAO DE FORMA SEVEN BOYS": 7.49,
       "PAO FORMA BAUDUCCO T": 6.99,
       "PAO FRANCES": 15,
       "PAPEL HIG DAMA": 14.99,
@@ -11068,6 +11222,7 @@
       "SABÃO EM PÓ BRILHANTE": 19.99,
       "SABÃO EM PÓ OMO": 9.99,
       "SABONETE ALBANY": 1.59,
+      "SORV LAKA DIAMANTE NEGR": 33.9,
       "SUCRILHOS KELLOGGS LV 240 PG": 7.99,
       "TEMPERO SAZÓN SABORES": 4.99,
       "TORGUTE MILK MIX MORANG": 6.99,
@@ -33721,8 +33876,8 @@
           "storeName": "CLUBE SEMAR",
           "lat": -23.571414,
           "lng": -46.665881,
-          "itemsCount": 347,
-          "subtotalProducts": 11532.36,
+          "itemsCount": 352,
+          "subtotalProducts": 11652.08,
           "items": [
             {
               "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -33975,6 +34130,13 @@
               "packages": 3,
               "packagePrice": 5.72,
               "lineTotal": 17.16
+            },
+            {
+              "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+              "productName": "ASKOV FUN VODKA",
+              "packages": 2,
+              "packagePrice": 7.99,
+              "lineTotal": 15.98
             },
             {
               "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -34614,6 +34776,13 @@
               "lineTotal": 21.18
             },
             {
+              "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+              "productName": "GELO COCO LEVE MARACUJA",
+              "packages": 2,
+              "packagePrice": 3.49,
+              "lineTotal": 6.98
+            },
+            {
               "productId": "b74958d4-f126-49b0-aea0-344453db152c",
               "productName": "HAMBÚRGUER AURORA FAROESTE",
               "packages": 2,
@@ -34689,6 +34858,13 @@
               "packages": 3,
               "packagePrice": 10.99,
               "lineTotal": 32.97
+            },
+            {
+              "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+              "productName": "IORGUTE MILK MIX COCO 1",
+              "packages": 2,
+              "packagePrice": 6.99,
+              "lineTotal": 13.98
             },
             {
               "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -35377,6 +35553,13 @@
               "lineTotal": 25.98
             },
             {
+              "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+              "productName": "PAO DE FORMA SEVEN BOYS",
+              "packages": 2,
+              "packagePrice": 7.49,
+              "lineTotal": 14.98
+            },
+            {
               "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
               "productName": "PAO DE QUEIJO RECH FRANGO",
               "packages": 3,
@@ -35986,6 +36169,13 @@
               "lineTotal": 18.58
             },
             {
+              "productId": "e8019981-da78-4696-a10d-7e543add4625",
+              "productName": "SORV LAKA DIAMANTE NEGR",
+              "packages": 2,
+              "packagePrice": 33.9,
+              "lineTotal": 67.8
+            },
+            {
               "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
               "productName": "SUCO DE LARANJA PRATS INTEGRAL",
               "packages": 2,
@@ -36156,13 +36346,13 @@
           ]
         }
       ],
-      "productsCost": 11532.36,
+      "productsCost": 11652.08,
       "totalDistanceKm": 5.14,
       "totalDurationMin": 9,
       "gasCost": 2.88,
       "uberCost": 19.77,
-      "totalWithGas": 11535.24,
-      "totalWithUber": 11552.13,
+      "totalWithGas": 11654.96,
+      "totalWithUber": 11671.85,
       "routeLegs": [
         {
           "fromName": "Minha Casa",
@@ -38435,8 +38625,8 @@
           "storeName": "MERCADO SOUZA",
           "lat": -23.573414,
           "lng": -46.670881,
-          "itemsCount": 65,
-          "subtotalProducts": 1234.59,
+          "itemsCount": 70,
+          "subtotalProducts": 1354.31,
           "items": [
             {
               "productId": "161ca3b3-06bb-4d84-b9be-a1a666873c1b",
@@ -38472,6 +38662,13 @@
               "packages": 2,
               "packagePrice": 4.99,
               "lineTotal": 9.98
+            },
+            {
+              "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+              "productName": "ASKOV FUN VODKA",
+              "packages": 2,
+              "packagePrice": 7.99,
+              "lineTotal": 15.98
             },
             {
               "productId": "bfabc490-c95c-41d3-a654-95589914d346",
@@ -38586,11 +38783,25 @@
               "lineTotal": 6.58
             },
             {
+              "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+              "productName": "GELO COCO LEVE MARACUJA",
+              "packages": 2,
+              "packagePrice": 3.49,
+              "lineTotal": 6.98
+            },
+            {
               "productId": "8e11710b-bd6c-4812-aeeb-17631731117c",
               "productName": "IOGURTE MILK MIX FRUTAS",
               "packages": 3,
               "packagePrice": 6.99,
               "lineTotal": 20.97
+            },
+            {
+              "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+              "productName": "IORGUTE MILK MIX COCO 1",
+              "packages": 2,
+              "packagePrice": 6.99,
+              "lineTotal": 13.98
             },
             {
               "productId": "9e159483-a5a0-4263-b553-a4196796d556",
@@ -38782,6 +38993,13 @@
               "lineTotal": 21.98
             },
             {
+              "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+              "productName": "PAO DE FORMA SEVEN BOYS",
+              "packages": 2,
+              "packagePrice": 7.49,
+              "lineTotal": 14.98
+            },
+            {
               "productId": "cafee688-27da-4e5d-b827-fe97d45516c5",
               "productName": "PAO FRANCES",
               "packages": 2,
@@ -38873,6 +39091,13 @@
               "lineTotal": 13.98
             },
             {
+              "productId": "e8019981-da78-4696-a10d-7e543add4625",
+              "productName": "SORV LAKA DIAMANTE NEGR",
+              "packages": 2,
+              "packagePrice": 33.9,
+              "lineTotal": 67.8
+            },
+            {
               "productId": "aeedbc2f-4eca-45e8-98ca-44166a41da04",
               "productName": "TORGUTE MILK MIX MORANG",
               "packages": 2,
@@ -38896,13 +39121,13 @@
           ]
         }
       ],
-      "productsCost": 11524.26,
+      "productsCost": 11643.98,
       "totalDistanceKm": 6.7,
       "totalDurationMin": 14,
       "gasCost": 3.76,
       "uberCost": 30.04,
-      "totalWithGas": 11528.02,
-      "totalWithUber": 11554.3,
+      "totalWithGas": 11647.74,
+      "totalWithUber": 11674.02,
       "routeLegs": [
         {
           "fromName": "Minha Casa",
@@ -39876,8 +40101,8 @@
             "storeName": "Comercial Melhor",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 347,
-            "subtotalProducts": 11532.36,
+            "itemsCount": 352,
+            "subtotalProducts": 11652.08,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -40130,6 +40355,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -40769,6 +41001,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -40844,6 +41083,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -41532,6 +41778,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -42141,6 +42394,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -42311,13 +42571,13 @@
             ]
           }
         ],
-        "productsCost": 11532.36,
+        "productsCost": 11652.08,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 11535.24,
-        "totalWithUber": 11552.13,
+        "totalWithGas": 11654.96,
+        "totalWithUber": 11671.85,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -42970,8 +43230,8 @@
             "storeName": "Desconhecido/Não visível na imagem",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 347,
-            "subtotalProducts": 11532.36,
+            "itemsCount": 352,
+            "subtotalProducts": 11652.08,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -43224,6 +43484,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -43863,6 +44130,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -43938,6 +44212,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -44626,6 +44907,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -45235,6 +45523,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -45405,13 +45700,13 @@
             ]
           }
         ],
-        "productsCost": 11532.36,
+        "productsCost": 11652.08,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 11535.24,
-        "totalWithUber": 11552.13,
+        "totalWithGas": 11654.96,
+        "totalWithUber": 11671.85,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -46064,8 +46359,8 @@
             "storeName": "Friboi",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 347,
-            "subtotalProducts": 11532.36,
+            "itemsCount": 352,
+            "subtotalProducts": 11652.08,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -46318,6 +46613,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -46957,6 +47259,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -47032,6 +47341,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -47720,6 +48036,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -48329,6 +48652,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -48499,13 +48829,13 @@
             ]
           }
         ],
-        "productsCost": 11532.36,
+        "productsCost": 11652.08,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 11535.24,
-        "totalWithUber": 11552.13,
+        "totalWithGas": 11654.96,
+        "totalWithUber": 11671.85,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -49158,8 +49488,8 @@
             "storeName": "LJ-36 (Rede Desconhecida)",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 347,
-            "subtotalProducts": 11532.36,
+            "itemsCount": 352,
+            "subtotalProducts": 11652.08,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -49412,6 +49742,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -50051,6 +50388,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -50126,6 +50470,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -50814,6 +51165,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -51423,6 +51781,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -51593,13 +51958,13 @@
             ]
           }
         ],
-        "productsCost": 11532.36,
+        "productsCost": 11652.08,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 11535.24,
-        "totalWithUber": 11552.13,
+        "totalWithGas": 11654.96,
+        "totalWithUber": 11671.85,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -52252,8 +52617,8 @@
             "storeName": "Semar",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 347,
-            "subtotalProducts": 11532.36,
+            "itemsCount": 352,
+            "subtotalProducts": 11652.08,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -52506,6 +52871,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -53145,6 +53517,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -53220,6 +53599,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -53908,6 +54294,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -54517,6 +54910,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -54687,13 +55087,13 @@
             ]
           }
         ],
-        "productsCost": 11532.36,
+        "productsCost": 11652.08,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 11535.24,
-        "totalWithUber": 11552.13,
+        "totalWithGas": 11654.96,
+        "totalWithUber": 11671.85,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -55346,8 +55746,8 @@
             "storeName": "Semar Supermercados",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 347,
-            "subtotalProducts": 11532.36,
+            "itemsCount": 352,
+            "subtotalProducts": 11652.08,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -55600,6 +56000,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -56239,6 +56646,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -56314,6 +56728,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -57002,6 +57423,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -57611,6 +58039,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -57781,13 +58216,13 @@
             ]
           }
         ],
-        "productsCost": 11532.36,
+        "productsCost": 11652.08,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 11535.24,
-        "totalWithUber": 11552.13,
+        "totalWithGas": 11654.96,
+        "totalWithUber": 11671.85,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -58440,8 +58875,8 @@
             "storeName": "MANDARIN",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 347,
-            "subtotalProducts": 11532.36,
+            "itemsCount": 352,
+            "subtotalProducts": 11652.08,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -58694,6 +59129,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -59333,6 +59775,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -59408,6 +59857,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -60096,6 +60552,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -60705,6 +61168,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -60875,13 +61345,13 @@
             ]
           }
         ],
-        "productsCost": 11532.36,
+        "productsCost": 11652.08,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 11536.12,
-        "totalWithUber": 11553.5,
+        "totalWithGas": 11655.84,
+        "totalWithUber": 11673.22,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -61838,8 +62308,8 @@
             "storeName": "NE SUPERMERCADO",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 347,
-            "subtotalProducts": 11542.9,
+            "itemsCount": 352,
+            "subtotalProducts": 11662.62,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -62092,6 +62562,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -62731,6 +63208,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -62806,6 +63290,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -63494,6 +63985,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -64103,6 +64601,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -64273,13 +64778,13 @@
             ]
           }
         ],
-        "productsCost": 11542.9,
+        "productsCost": 11662.62,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 11546.66,
-        "totalWithUber": 11564.04,
+        "totalWithGas": 11666.38,
+        "totalWithUber": 11683.76,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -65236,8 +65741,8 @@
             "storeName": "MERCADO SOUZA",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 347,
-            "subtotalProducts": 36989.23,
+            "itemsCount": 352,
+            "subtotalProducts": 37108.95,
             "items": [
               {
                 "productId": "b6566c5c-bf15-4041-8b8a-430a959a06fc",
@@ -65490,6 +65995,13 @@
                 "packages": 3,
                 "packagePrice": 5.72,
                 "lineTotal": 17.16
+              },
+              {
+                "productId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+                "productName": "ASKOV FUN VODKA",
+                "packages": 2,
+                "packagePrice": 7.99,
+                "lineTotal": 15.98
               },
               {
                 "productId": "c363320c-d9d8-467d-9a49-44c907779d9d",
@@ -66129,6 +66641,13 @@
                 "lineTotal": 21.18
               },
               {
+                "productId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+                "productName": "GELO COCO LEVE MARACUJA",
+                "packages": 2,
+                "packagePrice": 3.49,
+                "lineTotal": 6.98
+              },
+              {
                 "productId": "b74958d4-f126-49b0-aea0-344453db152c",
                 "productName": "HAMBÚRGUER AURORA FAROESTE",
                 "packages": 2,
@@ -66204,6 +66723,13 @@
                 "packages": 3,
                 "packagePrice": 10.99,
                 "lineTotal": 32.97
+              },
+              {
+                "productId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+                "productName": "IORGUTE MILK MIX COCO 1",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
               },
               {
                 "productId": "da89b1fb-023a-4c67-96d0-d9d6a66b648f",
@@ -66892,6 +67418,13 @@
                 "lineTotal": 25.98
               },
               {
+                "productId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+                "productName": "PAO DE FORMA SEVEN BOYS",
+                "packages": 2,
+                "packagePrice": 7.49,
+                "lineTotal": 14.98
+              },
+              {
                 "productId": "c71c87a7-24f5-41c6-8722-a91ff83df748",
                 "productName": "PAO DE QUEIJO RECH FRANGO",
                 "packages": 3,
@@ -67501,6 +68034,13 @@
                 "lineTotal": 18.58
               },
               {
+                "productId": "e8019981-da78-4696-a10d-7e543add4625",
+                "productName": "SORV LAKA DIAMANTE NEGR",
+                "packages": 2,
+                "packagePrice": 33.9,
+                "lineTotal": 67.8
+              },
+              {
                 "productId": "273b9b7c-f180-4051-a8ad-036d392f0633",
                 "productName": "SUCO DE LARANJA PRATS INTEGRAL",
                 "packages": 2,
@@ -67671,13 +68211,13 @@
             ]
           }
         ],
-        "productsCost": 36989.23,
+        "productsCost": 37108.95,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 36992.99,
-        "totalWithUber": 37010.37,
+        "totalWithGas": 37112.71,
+        "totalWithUber": 37130.09,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -68636,13 +69176,13 @@
     "argusVerdictText": "👁️ VEREDITO ARGUS: NÃO divida a compra! A economia líquida após combustível (R$ 7.22) fica abaixo da trava mínima de R$ 25.00. Concentre 100% da compra no CLUBE SEMAR."
   },
   "reconciliation": {
-    "scannedReceipts": 17,
+    "scannedReceipts": 18,
     "pluggyTransactions": 0,
     "newlyMatched": 0,
     "totalReconciled": 7,
-    "reconciliationRatePct": 41.2,
+    "reconciliationRatePct": 38.9,
     "vrVaSyncedCount": 2,
-    "sheetsSyncedRows": 933,
+    "sheetsSyncedRows": 938,
     "matches": []
   },
   "openFinanceTransactions": [],
@@ -69657,10 +70197,244 @@
     },
     {
       "status": "SUCCEEDED",
-      "total": 100
+      "total": 102
     }
   ],
   "scannedProducts": [
+    {
+      "id": "f6787de1-85d3-403f-8277-1648a0c83edf",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "IORGUTE MILK MIX COCO 1",
+      "brandName": "Não especificada",
+      "canonicalProductId": "cbe12fe9-feba-4fec-aeda-75c346b05b53",
+      "canonicalProductName": "IORGUTE MILK MIX COCO 1",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 2,
+      "unitType": "UN",
+      "unitPrice": 6.99,
+      "totalPrice": 13.98,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 6.99,
+      "normalizedPackagePrice": 6.99,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
+    {
+      "id": "ee096afa-94ab-4782-961d-68e1cbe4b14c",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "SORV LAKA DIAMANTE NEGR",
+      "brandName": "Não especificada",
+      "canonicalProductId": "e8019981-da78-4696-a10d-7e543add4625",
+      "canonicalProductName": "SORV LAKA DIAMANTE NEGR",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 33.9,
+      "totalPrice": 33.9,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 33.9,
+      "normalizedPackagePrice": 33.9,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
+    {
+      "id": "d716541e-c830-457f-a7fb-cbe97e6b0e0e",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "COCA COLA ZERO RETORNAV",
+      "brandName": "Coca-Cola",
+      "canonicalProductId": "e19f9cbd-543a-429d-8682-0e1a5b8160e9",
+      "canonicalProductName": "COCA COLA ZERO RETORNAV",
+      "category": "Besteiras/Impulso",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": false,
+      "quantity": 2,
+      "unitType": "UN",
+      "unitPrice": 8.49,
+      "totalPrice": 16.98,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 8.49,
+      "normalizedPackagePrice": 8.49,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
+    {
+      "id": "bd83b97e-6280-42e8-9728-ea2d06495eb1",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "PAO DE FORMA SEVEN BOYS",
+      "brandName": "Seven Boys",
+      "canonicalProductId": "9219fb71-b236-4a17-b75f-591f3c0d29d2",
+      "canonicalProductName": "PAO DE FORMA SEVEN BOYS",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 2,
+      "unitType": "UN",
+      "unitPrice": 7.49,
+      "totalPrice": 14.98,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 7.49,
+      "normalizedPackagePrice": 7.49,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
+    {
+      "id": "a8720d34-6b9a-4c3b-9ae5-9aa447184df5",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "PAO FRANCES",
+      "brandName": "Não especificada",
+      "canonicalProductId": "cafee688-27da-4e5d-b827-fe97d45516c5",
+      "canonicalProductName": "PAO FRANCES",
+      "category": "Mercearia",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": true,
+      "quantity": 0.272,
+      "unitType": "KG",
+      "unitPrice": 14.99,
+      "totalPrice": 4.08,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.015,
+      "normalizedPackagePrice": 15,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
+    {
+      "id": "a1ec4ea1-597e-42f8-acbe-af4c9bfb2a6b",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "ASKOV FUN VODKA 500ML",
+      "brandName": "Não especificada",
+      "canonicalProductId": "74cad6c8-92ea-420b-880f-def94ed31e5c",
+      "canonicalProductName": "ASKOV FUN VODKA",
+      "category": "Mercearia",
+      "baseUnit": "ml",
+      "standardPackageSize": 500,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 7.99,
+      "totalPrice": 7.99,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.01598,
+      "normalizedPackagePrice": 7.99,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
+    {
+      "id": "6bcb1e7c-9ad6-4361-8fce-48c45e88370b",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "MUSSARELA",
+      "brandName": "Não especificada",
+      "canonicalProductId": "0ef0c9fc-d036-49e7-aaa7-af037ab4bc20",
+      "canonicalProductName": "MUSSARELA",
+      "category": "Mercearia",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": true,
+      "quantity": 0.412,
+      "unitType": "KG",
+      "unitPrice": 54.99,
+      "totalPrice": 22.66,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.055,
+      "normalizedPackagePrice": 55,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
+    {
+      "id": "38dbc9a4-a7dc-42c9-ae7a-08879f89b690",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "PRESUNTO SEARA",
+      "brandName": "Seara",
+      "canonicalProductId": "de48cb5a-99e1-4418-a7dd-6003d712edcf",
+      "canonicalProductName": "PRESUNTO SEARA",
+      "category": "Mercearia",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": true,
+      "quantity": 0.324,
+      "unitType": "KG",
+      "unitPrice": 34.99,
+      "totalPrice": 11.34,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.035,
+      "normalizedPackagePrice": 35,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
+    {
+      "id": "32b275c3-ae1a-472d-8cf0-ec6fafed37e6",
+      "observedAt": "2026-11-14T15:00:00.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "GELO COCO LEVE MARACUJA",
+      "brandName": "Não especificada",
+      "canonicalProductId": "a714b56a-5879-49d9-b63d-bcad10655bab",
+      "canonicalProductName": "GELO COCO LEVE MARACUJA",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 2,
+      "unitType": "UN",
+      "unitPrice": 3.49,
+      "totalPrice": 6.98,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 3.49,
+      "normalizedPackagePrice": 3.49,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": []
+    },
     {
       "id": "89096eca-7f30-4345-bff6-784d81418ac2",
       "observedAt": "2026-11-14T13:12:12.303Z",
@@ -86885,35 +87659,35 @@
       "googleMapsUrl": null,
       "latitude": -23.573414,
       "longitude": -46.670881,
-      "totalSpentAllTime": 814.26,
+      "totalSpentAllTime": 947.15,
       "totalDiscountAllTime": 0,
-      "receiptsCount": 10,
-      "itemsPurchasedCount": 96,
+      "receiptsCount": 11,
+      "itemsPurchasedCount": 105,
       "collectedPricesCount": 1,
-      "avgTicket": 81.43,
+      "avgTicket": 86.1,
       "currentMonthLabel": "Nov/26",
-      "currentMonthSpent": 211.09,
-      "currentMonthReceiptsCount": 2,
+      "currentMonthSpent": 343.98,
+      "currentMonthReceiptsCount": 3,
       "previousMonthSpent": 0,
       "momSpendDeltaPct": null,
-      "dailySpendRateHistorical": 0.75,
-      "dailySpendRateCurrentMonth": 15.08,
+      "dailySpendRateHistorical": 0.87,
+      "dailySpendRateCurrentMonth": 24.57,
       "activeSpanDays": 1085,
-      "avgDaysBetweenVisits": 120.2,
-      "visitsPerWeek": 0.06,
+      "avgDaysBetweenVisits": 108.5,
+      "visitsPerWeek": 0.07,
       "firstPurchaseAt": "2023-11-26T00:00:00.000Z",
-      "lastPurchaseAt": "2026-11-11T22:38:30.000Z",
+      "lastPurchaseAt": "2026-11-14T15:00:00.000Z",
       "mostConsumedProduct": {
         "canonicalProductId": "0ef0c9fc-d036-49e7-aaa7-af037ab4bc20",
         "productName": "MUSSARELA",
         "category": "Mercearia",
         "baseUnit": "g",
-        "timesPurchased": 4,
-        "totalQuantityInUnit": 1.478,
-        "totalSpent": 82.3,
-        "avgUnitPrice": 20.57,
-        "avgNormalizedPackagePrice": 56.25,
-        "lastPurchasedAt": "2026-11-11T22:38:30.000Z",
+        "timesPurchased": 5,
+        "totalQuantityInUnit": 1.89,
+        "totalSpent": 104.96,
+        "avgUnitPrice": 20.99,
+        "avgNormalizedPackagePrice": 56,
+        "lastPurchasedAt": "2026-11-14T15:00:00.000Z",
         "topBrand": "Variada"
       },
       "highestSpendProduct": {
@@ -86921,12 +87695,12 @@
         "productName": "MUSSARELA",
         "category": "Mercearia",
         "baseUnit": "g",
-        "timesPurchased": 4,
-        "totalQuantityInUnit": 1.478,
-        "totalSpent": 82.3,
-        "avgUnitPrice": 20.57,
-        "avgNormalizedPackagePrice": 56.25,
-        "lastPurchasedAt": "2026-11-11T22:38:30.000Z",
+        "timesPurchased": 5,
+        "totalQuantityInUnit": 1.89,
+        "totalSpent": 104.96,
+        "avgUnitPrice": 20.99,
+        "avgNormalizedPackagePrice": 56,
+        "lastPurchasedAt": "2026-11-14T15:00:00.000Z",
         "topBrand": "Variada"
       },
       "topProducts": [
@@ -86935,12 +87709,12 @@
           "productName": "MUSSARELA",
           "category": "Mercearia",
           "baseUnit": "g",
-          "timesPurchased": 4,
-          "totalQuantityInUnit": 1.478,
-          "totalSpent": 82.3,
-          "avgUnitPrice": 20.57,
-          "avgNormalizedPackagePrice": 56.25,
-          "lastPurchasedAt": "2026-11-11T22:38:30.000Z",
+          "timesPurchased": 5,
+          "totalQuantityInUnit": 1.89,
+          "totalSpent": 104.96,
+          "avgUnitPrice": 20.99,
+          "avgNormalizedPackagePrice": 56,
+          "lastPurchasedAt": "2026-11-14T15:00:00.000Z",
           "topBrand": "Variada"
         },
         {
@@ -86948,12 +87722,12 @@
           "productName": "PRESUNTO SEARA",
           "category": "Mercearia",
           "baseUnit": "g",
-          "timesPurchased": 4,
-          "totalQuantityInUnit": 0.926,
-          "totalSpent": 32.41,
-          "avgUnitPrice": 8.1,
+          "timesPurchased": 5,
+          "totalQuantityInUnit": 1.25,
+          "totalSpent": 43.75,
+          "avgUnitPrice": 8.75,
           "avgNormalizedPackagePrice": 35,
-          "lastPurchasedAt": "2026-11-11T22:38:30.000Z",
+          "lastPurchasedAt": "2026-11-14T15:00:00.000Z",
           "topBrand": "Seara"
         },
         {
@@ -86981,6 +87755,19 @@
           "avgNormalizedPackagePrice": 5.99,
           "lastPurchasedAt": "2026-09-23T00:00:00.000Z",
           "topBrand": "Variada"
+        },
+        {
+          "canonicalProductId": "e19f9cbd-543a-429d-8682-0e1a5b8160e9",
+          "productName": "COCA COLA ZERO RETORNAV",
+          "category": "Besteiras/Impulso",
+          "baseUnit": "un",
+          "timesPurchased": 2,
+          "totalQuantityInUnit": 4,
+          "totalSpent": 33.96,
+          "avgUnitPrice": 16.98,
+          "avgNormalizedPackagePrice": 8.49,
+          "lastPurchasedAt": "2026-11-14T15:00:00.000Z",
+          "topBrand": "Coca-Cola"
         },
         {
           "canonicalProductId": "e443f674-a809-49f3-90ee-63486ad81f99",
@@ -87074,6 +87861,19 @@
           "topBrand": "Variada"
         },
         {
+          "canonicalProductId": "cafee688-27da-4e5d-b827-fe97d45516c5",
+          "productName": "PAO FRANCES",
+          "category": "Mercearia",
+          "baseUnit": "g",
+          "timesPurchased": 2,
+          "totalQuantityInUnit": 0.478,
+          "totalSpent": 7.17,
+          "avgUnitPrice": 3.58,
+          "avgNormalizedPackagePrice": 15,
+          "lastPurchasedAt": "2026-11-14T15:00:00.000Z",
+          "topBrand": "Variada"
+        },
+        {
           "canonicalProductId": "9d682510-77f9-4dec-b6ae-3c78885a7245",
           "productName": "CENOURA KG",
           "category": "Hortifruti",
@@ -87087,43 +87887,17 @@
           "topBrand": "Variada"
         },
         {
-          "canonicalProductId": "756d8684-4bb6-4e29-b96a-62c7214b1f87",
-          "productName": "PEITO DE FRANGO S OSSO",
-          "category": "Carnes",
-          "baseUnit": "g",
-          "timesPurchased": 1,
-          "totalQuantityInUnit": 1.19,
-          "totalSpent": 23.79,
-          "avgUnitPrice": 23.79,
-          "avgNormalizedPackagePrice": 19.99,
-          "lastPurchasedAt": "2026-06-28T00:00:00.000Z",
-          "topBrand": "Variada"
-        },
-        {
-          "canonicalProductId": "c0838137-646f-4fcc-9b7a-55f7c7de2221",
-          "productName": "EMP FRANGO SEARA KG",
-          "category": "Carnes",
-          "baseUnit": "g",
-          "timesPurchased": 1,
-          "totalQuantityInUnit": 0.57,
-          "totalSpent": 19.94,
-          "avgUnitPrice": 19.94,
-          "avgNormalizedPackagePrice": 34.98,
-          "lastPurchasedAt": "2026-06-15T15:37:41.000Z",
-          "topBrand": "Seara"
-        },
-        {
-          "canonicalProductId": "e19f9cbd-543a-429d-8682-0e1a5b8160e9",
-          "productName": "COCA COLA ZERO RETORNAV",
-          "category": "Besteiras/Impulso",
+          "canonicalProductId": "e8019981-da78-4696-a10d-7e543add4625",
+          "productName": "SORV LAKA DIAMANTE NEGR",
+          "category": "Mercearia",
           "baseUnit": "un",
           "timesPurchased": 1,
-          "totalQuantityInUnit": 2,
-          "totalSpent": 16.98,
-          "avgUnitPrice": 16.98,
-          "avgNormalizedPackagePrice": 8.49,
-          "lastPurchasedAt": "2026-11-11T22:38:30.000Z",
-          "topBrand": "Coca-Cola"
+          "totalQuantityInUnit": 1,
+          "totalSpent": 33.9,
+          "avgUnitPrice": 33.9,
+          "avgNormalizedPackagePrice": 33.9,
+          "lastPurchasedAt": "2026-11-14T15:00:00.000Z",
+          "topBrand": "Variada"
         }
       ],
       "monthlySeries": [
@@ -87165,9 +87939,9 @@
         {
           "monthKey": "2026-11",
           "monthLabel": "Nov/26",
-          "totalSpent": 211.09,
-          "receiptsCount": 2,
-          "avgTicket": 105.55
+          "totalSpent": 343.98,
+          "receiptsCount": 3,
+          "avgTicket": 114.66
         }
       ],
       "weekdaySeries": [
@@ -87216,44 +87990,44 @@
         {
           "weekdayIndex": 6,
           "weekdayLabel": "Sáb",
-          "totalSpent": 62.33,
-          "receiptsCount": 2,
-          "avgSpentPerVisit": 31.16
+          "totalSpent": 195.22,
+          "receiptsCount": 3,
+          "avgSpentPerVisit": 65.07
         }
       ],
       "categoryBreakdown": [
         {
           "category": "Mercearia",
-          "totalSpent": 528.88,
-          "sharePct": 64.8,
-          "itemsCount": 64,
-          "competitivenessIndex": 100.4
+          "totalSpent": 644.79,
+          "sharePct": 67.9,
+          "itemsCount": 72,
+          "competitivenessIndex": 100.3
         },
         {
           "category": "Besteiras/Impulso",
-          "totalSpent": 109.17,
-          "sharePct": 13.4,
-          "itemsCount": 10,
+          "totalSpent": 126.15,
+          "sharePct": 13.3,
+          "itemsCount": 11,
           "competitivenessIndex": 100
         },
         {
           "category": "Laticínios",
           "totalSpent": 74.06,
-          "sharePct": 9.1,
+          "sharePct": 7.8,
           "itemsCount": 8,
           "competitivenessIndex": 114.3
         },
         {
           "category": "Carnes",
           "totalSpent": 58.07,
-          "sharePct": 7.1,
+          "sharePct": 6.1,
           "itemsCount": 3,
           "competitivenessIndex": 100
         },
         {
           "category": "Hortifruti",
           "totalSpent": 46.08,
-          "sharePct": 5.6,
+          "sharePct": 4.9,
           "itemsCount": 11,
           "competitivenessIndex": 96.9
         }
@@ -87261,24 +88035,33 @@
       "paymentBreakdown": [
         {
           "method": "Cartão de Crédito",
-          "totalSpent": 690.04,
-          "receiptsCount": 8,
-          "sharePct": 84.7
+          "totalSpent": 822.93,
+          "receiptsCount": 9,
+          "sharePct": 86.9
         },
         {
           "method": "Dinheiro",
           "totalSpent": 100.35,
           "receiptsCount": 1,
-          "sharePct": 12.3
+          "sharePct": 10.6
         },
         {
           "method": "Vale Refeição / Alimentação (VR/VA)",
           "totalSpent": 23.87,
           "receiptsCount": 1,
-          "sharePct": 2.9
+          "sharePct": 2.5
         }
       ],
       "recentReceipts": [
+        {
+          "receiptId": "0112de2d-22a8-4d26-9823-0e57b6e12b17",
+          "purchaseDate": "2026-11-14T15:00:00.000Z",
+          "totalAmount": 132.89,
+          "discountAmount": 0,
+          "paymentMethod": "CREDIT_CARD",
+          "reconciled": false,
+          "itemsCount": 9
+        },
         {
           "receiptId": "32766670-3f82-4ae7-890d-5e11520531f4",
           "purchaseDate": "2026-11-11T22:38:30.000Z",
@@ -88696,6 +89479,128 @@
     }
   ],
   "receiptsDetailed": [
+    {
+      "receiptId": "0112de2d-22a8-4d26-9823-0e57b6e12b17",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeAddress": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "purchaseDate": "2026-11-14T15:00:00.000Z",
+      "totalAmount": 132.89,
+      "discountAmount": 0,
+      "paymentMethod": "CREDIT_CARD",
+      "reconciled": false,
+      "itemsCount": 9,
+      "items": [
+        {
+          "id": "f6787de1-85d3-403f-8277-1648a0c83edf",
+          "rawDescription": "IORGUTE MILK MIX COCO 1",
+          "canonicalProductName": "IORGUTE MILK MIX COCO 1",
+          "category": "Mercearia",
+          "quantity": 2,
+          "unitType": "UN",
+          "unitPrice": 6.99,
+          "totalPrice": 13.98,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 6.99
+        },
+        {
+          "id": "ee096afa-94ab-4782-961d-68e1cbe4b14c",
+          "rawDescription": "SORV LAKA DIAMANTE NEGR",
+          "canonicalProductName": "SORV LAKA DIAMANTE NEGR",
+          "category": "Mercearia",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 33.9,
+          "totalPrice": 33.9,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 33.9
+        },
+        {
+          "id": "d716541e-c830-457f-a7fb-cbe97e6b0e0e",
+          "rawDescription": "COCA COLA ZERO RETORNAV",
+          "canonicalProductName": "COCA COLA ZERO RETORNAV",
+          "category": "Besteiras/Impulso",
+          "quantity": 2,
+          "unitType": "UN",
+          "unitPrice": 8.49,
+          "totalPrice": 16.98,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 8.49
+        },
+        {
+          "id": "bd83b97e-6280-42e8-9728-ea2d06495eb1",
+          "rawDescription": "PAO DE FORMA SEVEN BOYS",
+          "canonicalProductName": "PAO DE FORMA SEVEN BOYS",
+          "category": "Mercearia",
+          "quantity": 2,
+          "unitType": "UN",
+          "unitPrice": 7.49,
+          "totalPrice": 14.98,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 7.49
+        },
+        {
+          "id": "a8720d34-6b9a-4c3b-9ae5-9aa447184df5",
+          "rawDescription": "PAO FRANCES",
+          "canonicalProductName": "PAO FRANCES",
+          "category": "Mercearia",
+          "quantity": 0.272,
+          "unitType": "KG",
+          "unitPrice": 14.99,
+          "totalPrice": 4.08,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.015
+        },
+        {
+          "id": "a1ec4ea1-597e-42f8-acbe-af4c9bfb2a6b",
+          "rawDescription": "ASKOV FUN VODKA 500ML",
+          "canonicalProductName": "ASKOV FUN VODKA",
+          "category": "Mercearia",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 7.99,
+          "totalPrice": 7.99,
+          "baseUnit": "ml",
+          "normalizedPricePerBaseUnit": 0.01598
+        },
+        {
+          "id": "6bcb1e7c-9ad6-4361-8fce-48c45e88370b",
+          "rawDescription": "MUSSARELA",
+          "canonicalProductName": "MUSSARELA",
+          "category": "Mercearia",
+          "quantity": 0.412,
+          "unitType": "KG",
+          "unitPrice": 54.99,
+          "totalPrice": 22.66,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.055
+        },
+        {
+          "id": "38dbc9a4-a7dc-42c9-ae7a-08879f89b690",
+          "rawDescription": "PRESUNTO SEARA",
+          "canonicalProductName": "PRESUNTO SEARA",
+          "category": "Mercearia",
+          "quantity": 0.324,
+          "unitType": "KG",
+          "unitPrice": 34.99,
+          "totalPrice": 11.34,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.035
+        },
+        {
+          "id": "32b275c3-ae1a-472d-8cf0-ec6fafed37e6",
+          "rawDescription": "GELO COCO LEVE MARACUJA",
+          "canonicalProductName": "GELO COCO LEVE MARACUJA",
+          "category": "Mercearia",
+          "quantity": 2,
+          "unitType": "UN",
+          "unitPrice": 3.49,
+          "totalPrice": 6.98,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 3.49
+        }
+      ]
+    },
     {
       "receiptId": "37ae6cf8-235e-421e-9296-3154ddc27764",
       "storeId": "8f318514-d886-46bf-a053-d89a8165756b",
