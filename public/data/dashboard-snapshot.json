@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "generatedAt": "2026-11-15T07:31:02.729Z",
+  "generatedAt": "2026-11-15T15:18:02.822Z",
   "homeLocation": {
     "lat": -23.305,
     "lng": -45.965,
@@ -31,7 +31,7 @@
       "estimated_package_price": 1.99,
       "min_historical_price": 1.99,
       "max_historical_price": 1.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 3
     },
@@ -65,7 +65,7 @@
       "estimated_package_price": 8.69,
       "min_historical_price": 6.99,
       "max_historical_price": 8.69,
-      "days_since_last_seen": 5,
+      "days_since_last_seen": 6,
       "last_seen_at": "2026-11-09T15:00:00.000Z",
       "observations_count": 1
     },
@@ -133,7 +133,7 @@
       "estimated_package_price": 39,
       "min_historical_price": 39,
       "max_historical_price": 39,
-      "days_since_last_seen": 319,
+      "days_since_last_seen": 320,
       "last_seen_at": "2025-12-30T14:49:01.000Z",
       "observations_count": 2
     },
@@ -150,7 +150,7 @@
       "estimated_package_price": 41.71,
       "min_historical_price": 41.71,
       "max_historical_price": 41.71,
-      "days_since_last_seen": 319,
+      "days_since_last_seen": 320,
       "last_seen_at": "2025-12-30T14:49:01.000Z",
       "observations_count": 1
     },
@@ -167,7 +167,7 @@
       "estimated_package_price": 43.26,
       "min_historical_price": 43.26,
       "max_historical_price": 43.26,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -320,7 +320,7 @@
       "estimated_package_price": 3.19,
       "min_historical_price": 3.19,
       "max_historical_price": 3.19,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -354,7 +354,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 5,
+      "days_since_last_seen": 6,
       "last_seen_at": "2026-11-09T15:00:00.000Z",
       "observations_count": 1
     },
@@ -422,7 +422,7 @@
       "estimated_package_price": 1.25,
       "min_historical_price": 1.25,
       "max_historical_price": 1.25,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -439,7 +439,7 @@
       "estimated_package_price": 2.69,
       "min_historical_price": 2.69,
       "max_historical_price": 2.69,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -473,7 +473,7 @@
       "estimated_package_price": 4.29,
       "min_historical_price": 4.29,
       "max_historical_price": 4.29,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -558,7 +558,7 @@
       "estimated_package_price": 49.9,
       "min_historical_price": 49.9,
       "max_historical_price": 49.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:55.986Z",
       "observations_count": 1
     },
@@ -626,7 +626,7 @@
       "estimated_package_price": 30.99,
       "min_historical_price": 30.99,
       "max_historical_price": 30.99,
-      "days_since_last_seen": 8,
+      "days_since_last_seen": 9,
       "last_seen_at": "2026-11-06T07:42:12.000Z",
       "observations_count": 1
     },
@@ -643,7 +643,7 @@
       "estimated_package_price": 4.69,
       "min_historical_price": 4.69,
       "max_historical_price": 4.69,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -694,7 +694,7 @@
       "estimated_package_price": 5.72,
       "min_historical_price": 5.72,
       "max_historical_price": 5.72,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:50:54.139Z",
       "observations_count": 1
     },
@@ -711,7 +711,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 1
     },
@@ -762,7 +762,7 @@
       "estimated_package_price": 20.99,
       "min_historical_price": 20.99,
       "max_historical_price": 20.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -779,7 +779,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -796,7 +796,7 @@
       "estimated_package_price": 49.9,
       "min_historical_price": 49.9,
       "max_historical_price": 49.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:00:37.141Z",
       "observations_count": 1
     },
@@ -847,7 +847,7 @@
       "estimated_package_price": 1.99,
       "min_historical_price": 1.99,
       "max_historical_price": 1.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 2
     },
@@ -864,7 +864,7 @@
       "estimated_package_price": 7.56,
       "min_historical_price": 7.5,
       "max_historical_price": 7.9,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 3
     },
@@ -949,7 +949,7 @@
       "estimated_package_price": 23.9,
       "min_historical_price": 23.9,
       "max_historical_price": 23.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:23.812Z",
       "observations_count": 1
     },
@@ -1068,7 +1068,7 @@
       "estimated_package_price": 10.79,
       "min_historical_price": 10.79,
       "max_historical_price": 10.79,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -1102,7 +1102,7 @@
       "estimated_package_price": 1.99,
       "min_historical_price": 1.99,
       "max_historical_price": 1.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -1153,7 +1153,7 @@
       "estimated_package_price": 22.98,
       "min_historical_price": 22.98,
       "max_historical_price": 22.98,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:26.351Z",
       "observations_count": 1
     },
@@ -1170,7 +1170,7 @@
       "estimated_package_price": 25.99,
       "min_historical_price": 25.99,
       "max_historical_price": 25.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:25.844Z",
       "observations_count": 1
     },
@@ -1255,7 +1255,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 17,
+      "days_since_last_seen": 18,
       "last_seen_at": "2026-10-28T15:00:00.000Z",
       "observations_count": 1
     },
@@ -1357,7 +1357,7 @@
       "estimated_package_price": 20.99,
       "min_historical_price": 20.99,
       "max_historical_price": 20.99,
-      "days_since_last_seen": 17,
+      "days_since_last_seen": 18,
       "last_seen_at": "2026-10-28T15:00:00.000Z",
       "observations_count": 1
     },
@@ -1442,7 +1442,7 @@
       "estimated_package_price": 19.98,
       "min_historical_price": 19.98,
       "max_historical_price": 19.98,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:56.498Z",
       "observations_count": 1
     },
@@ -1510,7 +1510,7 @@
       "estimated_package_price": 37.98,
       "min_historical_price": 37.98,
       "max_historical_price": 37.98,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -1527,7 +1527,7 @@
       "estimated_package_price": 39.9,
       "min_historical_price": 39.9,
       "max_historical_price": 39.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:00:36.621Z",
       "observations_count": 1
     },
@@ -1680,7 +1680,7 @@
       "estimated_package_price": 75.97,
       "min_historical_price": 75.97,
       "max_historical_price": 75.97,
-      "days_since_last_seen": 8,
+      "days_since_last_seen": 9,
       "last_seen_at": "2026-11-06T07:42:12.000Z",
       "observations_count": 1
     },
@@ -1697,7 +1697,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -1731,7 +1731,7 @@
       "estimated_package_price": 11.5,
       "min_historical_price": 11.5,
       "max_historical_price": 11.5,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -1748,7 +1748,7 @@
       "estimated_package_price": 4.9,
       "min_historical_price": 4.9,
       "max_historical_price": 4.9,
-      "days_since_last_seen": 319,
+      "days_since_last_seen": 320,
       "last_seen_at": "2025-12-30T14:49:01.000Z",
       "observations_count": 2
     },
@@ -1765,7 +1765,7 @@
       "estimated_package_price": 7.9,
       "min_historical_price": 7.9,
       "max_historical_price": 7.9,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -1782,7 +1782,7 @@
       "estimated_package_price": 7.9,
       "min_historical_price": 7.9,
       "max_historical_price": 7.9,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -1799,7 +1799,7 @@
       "estimated_package_price": 7.9,
       "min_historical_price": 7.9,
       "max_historical_price": 7.9,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -1901,7 +1901,7 @@
       "estimated_package_price": 8.49,
       "min_historical_price": 8.49,
       "max_historical_price": 8.49,
-      "days_since_last_seen": 5,
+      "days_since_last_seen": 6,
       "last_seen_at": "2026-11-09T15:00:00.000Z",
       "observations_count": 1
     },
@@ -1918,7 +1918,7 @@
       "estimated_package_price": 8.49,
       "min_historical_price": 8.49,
       "max_historical_price": 8.49,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 2
     },
@@ -1952,7 +1952,7 @@
       "estimated_package_price": 69.31,
       "min_historical_price": 69.31,
       "max_historical_price": 69.31,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:05:10.418Z",
       "observations_count": 1
     },
@@ -1986,7 +1986,7 @@
       "estimated_package_price": 5.39,
       "min_historical_price": 5.39,
       "max_historical_price": 5.39,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 3
     },
@@ -2003,7 +2003,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 5,
+      "days_since_last_seen": 6,
       "last_seen_at": "2026-11-09T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2054,7 +2054,7 @@
       "estimated_package_price": 58.7,
       "min_historical_price": 58.7,
       "max_historical_price": 58.7,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:05:10.940Z",
       "observations_count": 1
     },
@@ -2071,7 +2071,7 @@
       "estimated_package_price": 58.9,
       "min_historical_price": 58.9,
       "max_historical_price": 58.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:05:11.976Z",
       "observations_count": 1
     },
@@ -2088,7 +2088,7 @@
       "estimated_package_price": 5.92,
       "min_historical_price": 5.92,
       "max_historical_price": 5.92,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -2105,7 +2105,7 @@
       "estimated_package_price": 2.59,
       "min_historical_price": 2.59,
       "max_historical_price": 2.59,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 2
     },
@@ -2207,7 +2207,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2241,7 +2241,7 @@
       "estimated_package_price": 2.59,
       "min_historical_price": 2.59,
       "max_historical_price": 2.59,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2394,7 +2394,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2411,7 +2411,7 @@
       "estimated_package_price": 3.39,
       "min_historical_price": 3.39,
       "max_historical_price": 3.39,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2496,7 +2496,7 @@
       "estimated_package_price": 32.99,
       "min_historical_price": 32.99,
       "max_historical_price": 32.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:57.010Z",
       "observations_count": 1
     },
@@ -2513,7 +2513,7 @@
       "estimated_package_price": 35.9,
       "min_historical_price": 35.9,
       "max_historical_price": 35.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:56:06.502Z",
       "observations_count": 1
     },
@@ -2530,7 +2530,7 @@
       "estimated_package_price": 25.99,
       "min_historical_price": 25.99,
       "max_historical_price": 25.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:24.321Z",
       "observations_count": 1
     },
@@ -2547,7 +2547,7 @@
       "estimated_package_price": 7.14,
       "min_historical_price": 7.14,
       "max_historical_price": 7.15,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:50:54.657Z",
       "observations_count": 2
     },
@@ -2564,7 +2564,7 @@
       "estimated_package_price": 27.99,
       "min_historical_price": 27.99,
       "max_historical_price": 27.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2598,7 +2598,7 @@
       "estimated_package_price": 3.19,
       "min_historical_price": 3.19,
       "max_historical_price": 3.19,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -2615,7 +2615,7 @@
       "estimated_package_price": 16.8,
       "min_historical_price": 16.8,
       "max_historical_price": 16.8,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2683,7 +2683,7 @@
       "estimated_package_price": 3.49,
       "min_historical_price": 3.49,
       "max_historical_price": 3.49,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2751,7 +2751,7 @@
       "estimated_package_price": 6.5,
       "min_historical_price": 6.5,
       "max_historical_price": 6.5,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -2768,7 +2768,7 @@
       "estimated_package_price": 19.89,
       "min_historical_price": 19.89,
       "max_historical_price": 19.89,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2887,7 +2887,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 1
     },
@@ -2904,7 +2904,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3040,7 +3040,7 @@
       "estimated_package_price": 13.99,
       "min_historical_price": 13.99,
       "max_historical_price": 13.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3057,7 +3057,7 @@
       "estimated_package_price": 6.39,
       "min_historical_price": 6.39,
       "max_historical_price": 6.39,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3159,7 +3159,7 @@
       "estimated_package_price": 8490,
       "min_historical_price": 4.78,
       "max_historical_price": 8490,
-      "days_since_last_seen": 63,
+      "days_since_last_seen": 64,
       "last_seen_at": "2026-09-12T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3176,7 +3176,7 @@
       "estimated_package_price": 6.14,
       "min_historical_price": 5.99,
       "max_historical_price": 6.49,
-      "days_since_last_seen": 5,
+      "days_since_last_seen": 6,
       "last_seen_at": "2026-11-09T15:00:00.000Z",
       "observations_count": 2
     },
@@ -3193,7 +3193,7 @@
       "estimated_package_price": 3.99,
       "min_historical_price": 3.99,
       "max_historical_price": 3.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 2
     },
@@ -3329,7 +3329,7 @@
       "estimated_package_price": 24.92,
       "min_historical_price": 24.92,
       "max_historical_price": 24.92,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3346,7 +3346,7 @@
       "estimated_package_price": 27.9,
       "min_historical_price": 27.9,
       "max_historical_price": 27.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:12.683Z",
       "observations_count": 1
     },
@@ -3363,7 +3363,7 @@
       "estimated_package_price": 25.9,
       "min_historical_price": 25.9,
       "max_historical_price": 25.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:15.270Z",
       "observations_count": 1
     },
@@ -3414,7 +3414,7 @@
       "estimated_package_price": 26.99,
       "min_historical_price": 26.99,
       "max_historical_price": 26.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:17.870Z",
       "observations_count": 1
     },
@@ -3431,7 +3431,7 @@
       "estimated_package_price": 49.9,
       "min_historical_price": 49.9,
       "max_historical_price": 49.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:02:06.518Z",
       "observations_count": 1
     },
@@ -3448,7 +3448,7 @@
       "estimated_package_price": 18.99,
       "min_historical_price": 18.99,
       "max_historical_price": 18.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:17.353Z",
       "observations_count": 1
     },
@@ -3482,7 +3482,7 @@
       "estimated_package_price": 72.39,
       "min_historical_price": 72.39,
       "max_historical_price": 72.39,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:24.829Z",
       "observations_count": 1
     },
@@ -3499,7 +3499,7 @@
       "estimated_package_price": 234.9,
       "min_historical_price": 234.9,
       "max_historical_price": 234.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:25.336Z",
       "observations_count": 1
     },
@@ -3533,7 +3533,7 @@
       "estimated_package_price": 15.93,
       "min_historical_price": 15.93,
       "max_historical_price": 15.93,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3550,7 +3550,7 @@
       "estimated_package_price": 9.89,
       "min_historical_price": 9.89,
       "max_historical_price": 9.89,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3567,7 +3567,7 @@
       "estimated_package_price": 3.49,
       "min_historical_price": 3.49,
       "max_historical_price": 3.49,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 2
     },
@@ -3669,7 +3669,7 @@
       "estimated_package_price": 13.99,
       "min_historical_price": 13.99,
       "max_historical_price": 13.99,
-      "days_since_last_seen": 52,
+      "days_since_last_seen": 53,
       "last_seen_at": "2026-09-23T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3686,7 +3686,7 @@
       "estimated_package_price": 15.99,
       "min_historical_price": 15.99,
       "max_historical_price": 15.99,
-      "days_since_last_seen": 52,
+      "days_since_last_seen": 53,
       "last_seen_at": "2026-09-23T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3703,7 +3703,7 @@
       "estimated_package_price": 3.99,
       "min_historical_price": 3.99,
       "max_historical_price": 3.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3805,7 +3805,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3856,7 +3856,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 5,
+      "days_since_last_seen": 6,
       "last_seen_at": "2026-11-09T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3907,7 +3907,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3941,7 +3941,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 17,
+      "days_since_last_seen": 18,
       "last_seen_at": "2026-10-28T15:00:00.000Z",
       "observations_count": 1
     },
@@ -3992,7 +3992,7 @@
       "estimated_package_price": 3.99,
       "min_historical_price": 3.99,
       "max_historical_price": 3.99,
-      "days_since_last_seen": 52,
+      "days_since_last_seen": 53,
       "last_seen_at": "2026-09-23T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4043,7 +4043,7 @@
       "estimated_package_price": 13.99,
       "min_historical_price": 13.99,
       "max_historical_price": 13.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4077,7 +4077,7 @@
       "estimated_package_price": 2.99,
       "min_historical_price": 2.99,
       "max_historical_price": 2.99,
-      "days_since_last_seen": 52,
+      "days_since_last_seen": 53,
       "last_seen_at": "2026-09-23T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4179,7 +4179,7 @@
       "estimated_package_price": 22.88,
       "min_historical_price": 22.88,
       "max_historical_price": 22.88,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4196,7 +4196,7 @@
       "estimated_package_price": 1.99,
       "min_historical_price": 1.99,
       "max_historical_price": 1.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:02:05.177Z",
       "observations_count": 1
     },
@@ -4247,7 +4247,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 52,
+      "days_since_last_seen": 53,
       "last_seen_at": "2026-09-23T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4264,7 +4264,7 @@
       "estimated_package_price": 55.5,
       "min_historical_price": 55,
       "max_historical_price": 60,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 5
     },
@@ -4281,7 +4281,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4400,7 +4400,7 @@
       "estimated_package_price": 7.39,
       "min_historical_price": 7.39,
       "max_historical_price": 8.49,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4502,7 +4502,7 @@
       "estimated_package_price": 10.99,
       "min_historical_price": 10.99,
       "max_historical_price": 10.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4519,7 +4519,7 @@
       "estimated_package_price": 0.99,
       "min_historical_price": 0.99,
       "max_historical_price": 0.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4536,7 +4536,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 63,
+      "days_since_last_seen": 64,
       "last_seen_at": "2026-09-12T15:00:00.000Z",
       "observations_count": 2
     },
@@ -4604,7 +4604,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:46:36.209Z",
       "observations_count": 1
     },
@@ -4621,7 +4621,7 @@
       "estimated_package_price": 7.49,
       "min_historical_price": 7.49,
       "max_historical_price": 7.49,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4638,7 +4638,7 @@
       "estimated_package_price": 56,
       "min_historical_price": 56,
       "max_historical_price": 56,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -4655,7 +4655,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4672,7 +4672,7 @@
       "estimated_package_price": 10.99,
       "min_historical_price": 10.99,
       "max_historical_price": 10.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:45:48.965Z",
       "observations_count": 1
     },
@@ -4689,7 +4689,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 8,
+      "days_since_last_seen": 9,
       "last_seen_at": "2026-11-06T07:42:12.000Z",
       "observations_count": 1
     },
@@ -4706,7 +4706,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:46:35.693Z",
       "observations_count": 1
     },
@@ -4723,7 +4723,7 @@
       "estimated_package_price": 15,
       "min_historical_price": 15,
       "max_historical_price": 15,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 2
     },
@@ -4740,7 +4740,7 @@
       "estimated_package_price": 9.29,
       "min_historical_price": 9.29,
       "max_historical_price": 9.29,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:45:47.931Z",
       "observations_count": 1
     },
@@ -4757,7 +4757,7 @@
       "estimated_package_price": 8.79,
       "min_historical_price": 8.79,
       "max_historical_price": 8.79,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:45:48.449Z",
       "observations_count": 1
     },
@@ -4791,7 +4791,7 @@
       "estimated_package_price": 10.89,
       "min_historical_price": 10.89,
       "max_historical_price": 10.89,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:46:36.724Z",
       "observations_count": 1
     },
@@ -4842,7 +4842,7 @@
       "estimated_package_price": 14.99,
       "min_historical_price": 14.99,
       "max_historical_price": 14.99,
-      "days_since_last_seen": 17,
+      "days_since_last_seen": 18,
       "last_seen_at": "2026-10-28T15:00:00.000Z",
       "observations_count": 1
     },
@@ -4927,7 +4927,7 @@
       "estimated_package_price": 2.99,
       "min_historical_price": 2.99,
       "max_historical_price": 2.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:07:37.351Z",
       "observations_count": 1
     },
@@ -4961,7 +4961,7 @@
       "estimated_package_price": 58.9,
       "min_historical_price": 58.9,
       "max_historical_price": 58.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:05:11.458Z",
       "observations_count": 1
     },
@@ -4978,7 +4978,7 @@
       "estimated_package_price": 79.9,
       "min_historical_price": 79.9,
       "max_historical_price": 79.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:13.202Z",
       "observations_count": 1
     },
@@ -5029,7 +5029,7 @@
       "estimated_package_price": 7.75,
       "min_historical_price": 7.75,
       "max_historical_price": 7.75,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:50:53.095Z",
       "observations_count": 1
     },
@@ -5063,7 +5063,7 @@
       "estimated_package_price": 76.1,
       "min_historical_price": 76.1,
       "max_historical_price": 76.1,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:13.719Z",
       "observations_count": 1
     },
@@ -5199,7 +5199,7 @@
       "estimated_package_price": 23.9,
       "min_historical_price": 23.9,
       "max_historical_price": 23.9,
-      "days_since_last_seen": 319,
+      "days_since_last_seen": 320,
       "last_seen_at": "2025-12-30T14:49:01.000Z",
       "observations_count": 3
     },
@@ -5216,7 +5216,7 @@
       "estimated_package_price": 22.99,
       "min_historical_price": 22.99,
       "max_historical_price": 22.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5233,7 +5233,7 @@
       "estimated_package_price": 25.9,
       "min_historical_price": 25.9,
       "max_historical_price": 25.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:26.858Z",
       "observations_count": 1
     },
@@ -5250,7 +5250,7 @@
       "estimated_package_price": 53.29,
       "min_historical_price": 53.29,
       "max_historical_price": 53.29,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:54:55.472Z",
       "observations_count": 1
     },
@@ -5318,7 +5318,7 @@
       "estimated_package_price": 32.02,
       "min_historical_price": 32.02,
       "max_historical_price": 32.02,
-      "days_since_last_seen": 8,
+      "days_since_last_seen": 9,
       "last_seen_at": "2026-11-06T07:42:12.000Z",
       "observations_count": 1
     },
@@ -5335,7 +5335,7 @@
       "estimated_package_price": 35,
       "min_historical_price": 35,
       "max_historical_price": 35,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 5
     },
@@ -5352,7 +5352,7 @@
       "estimated_package_price": 27.91,
       "min_historical_price": 27.91,
       "max_historical_price": 27.91,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5403,7 +5403,7 @@
       "estimated_package_price": 102.93,
       "min_historical_price": 102.93,
       "max_historical_price": 102.93,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5420,7 +5420,7 @@
       "estimated_package_price": 54.9,
       "min_historical_price": 54.9,
       "max_historical_price": 54.9,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5471,7 +5471,7 @@
       "estimated_package_price": 0.99,
       "min_historical_price": 0.99,
       "max_historical_price": 0.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 2
     },
@@ -5488,7 +5488,7 @@
       "estimated_package_price": 0.99,
       "min_historical_price": 0.99,
       "max_historical_price": 0.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5505,7 +5505,7 @@
       "estimated_package_price": 0.99,
       "min_historical_price": 0.99,
       "max_historical_price": 0.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 2
     },
@@ -5556,7 +5556,7 @@
       "estimated_package_price": 3.19,
       "min_historical_price": 3.19,
       "max_historical_price": 3.19,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 2
     },
@@ -5573,7 +5573,7 @@
       "estimated_package_price": 9.98,
       "min_historical_price": 9.98,
       "max_historical_price": 9.98,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -5590,7 +5590,7 @@
       "estimated_package_price": 9.49,
       "min_historical_price": 9.49,
       "max_historical_price": 9.49,
-      "days_since_last_seen": 318,
+      "days_since_last_seen": 319,
       "last_seen_at": "2025-12-31T13:53:30.000Z",
       "observations_count": 1
     },
@@ -5658,7 +5658,7 @@
       "estimated_package_price": 2.08,
       "min_historical_price": 1.09,
       "max_historical_price": 2.19,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 5
     },
@@ -5675,7 +5675,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5760,7 +5760,7 @@
       "estimated_package_price": 22.99,
       "min_historical_price": 22.99,
       "max_historical_price": 22.99,
-      "days_since_last_seen": 17,
+      "days_since_last_seen": 18,
       "last_seen_at": "2026-10-28T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5862,7 +5862,7 @@
       "estimated_package_price": 1.25,
       "min_historical_price": 1.25,
       "max_historical_price": 1.25,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5896,7 +5896,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 17,
+      "days_since_last_seen": 18,
       "last_seen_at": "2026-10-28T15:00:00.000Z",
       "observations_count": 1
     },
@@ -5947,7 +5947,7 @@
       "estimated_package_price": 89.9,
       "min_historical_price": 89.9,
       "max_historical_price": 89.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:14.752Z",
       "observations_count": 1
     },
@@ -5998,7 +5998,7 @@
       "estimated_package_price": 11.99,
       "min_historical_price": 11.99,
       "max_historical_price": 11.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:16.313Z",
       "observations_count": 1
     },
@@ -6032,7 +6032,7 @@
       "estimated_package_price": 10.99,
       "min_historical_price": 10.99,
       "max_historical_price": 10.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:02:04.648Z",
       "observations_count": 2
     },
@@ -6066,7 +6066,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:14.235Z",
       "observations_count": 1
     },
@@ -6083,7 +6083,7 @@
       "estimated_package_price": 10.49,
       "min_historical_price": 10.49,
       "max_historical_price": 10.49,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T11:48:15.794Z",
       "observations_count": 1
     },
@@ -6100,7 +6100,7 @@
       "estimated_package_price": 11.49,
       "min_historical_price": 10.89,
       "max_historical_price": 12.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T12:02:05.969Z",
       "observations_count": 2
     },
@@ -6151,7 +6151,7 @@
       "estimated_package_price": 4.29,
       "min_historical_price": 4.29,
       "max_historical_price": 4.29,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 2
     },
@@ -6202,7 +6202,7 @@
       "estimated_package_price": 33.9,
       "min_historical_price": 33.9,
       "max_historical_price": 33.9,
-      "days_since_last_seen": 0,
+      "days_since_last_seen": 1,
       "last_seen_at": "2026-11-14T15:00:00.000Z",
       "observations_count": 1
     },
@@ -6304,7 +6304,7 @@
       "estimated_package_price": 5.49,
       "min_historical_price": 5.49,
       "max_historical_price": 5.49,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -6321,7 +6321,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -6372,7 +6372,7 @@
       "estimated_package_price": 12.89,
       "min_historical_price": 12.89,
       "max_historical_price": 12.89,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -6389,7 +6389,7 @@
       "estimated_package_price": 14.69,
       "min_historical_price": 14.69,
       "max_historical_price": 14.69,
-      "days_since_last_seen": 192,
+      "days_since_last_seen": 193,
       "last_seen_at": "2026-05-06T15:00:00.000Z",
       "observations_count": 1
     },
@@ -6423,7 +6423,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 5,
+      "days_since_last_seen": 6,
       "last_seen_at": "2026-11-09T15:00:00.000Z",
       "observations_count": 1
     },
@@ -6593,7 +6593,7 @@
       "estimated_package_price": 2.49,
       "min_historical_price": 2.49,
       "max_historical_price": 2.49,
-      "days_since_last_seen": 5,
+      "days_since_last_seen": 6,
       "last_seen_at": "2026-11-09T15:00:00.000Z",
       "observations_count": 1
     },
@@ -6623,8 +6623,8 @@
       "products_tracked": 1,
       "competitiveness_index": 100,
       "basket_category_cost": 35.9,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6634,8 +6634,8 @@
       "products_tracked": 3,
       "competitiveness_index": 100,
       "basket_category_cost": 20.61,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6645,8 +6645,8 @@
       "products_tracked": 2,
       "competitiveness_index": 100,
       "basket_category_cost": 89.8,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6656,8 +6656,8 @@
       "products_tracked": 1,
       "competitiveness_index": 100,
       "basket_category_cost": 58.9,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6667,8 +6667,8 @@
       "products_tracked": 3,
       "competitiveness_index": 100,
       "basket_category_cost": 186.91,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6678,8 +6678,8 @@
       "products_tracked": 1,
       "competitiveness_index": 100,
       "basket_category_cost": 12.99,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6689,8 +6689,8 @@
       "products_tracked": 2,
       "competitiveness_index": 100,
       "basket_category_cost": 23.88,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6700,8 +6700,8 @@
       "products_tracked": 8,
       "competitiveness_index": 100,
       "basket_category_cost": 62.76,
-      "min_days_since_seen": 318,
-      "max_days_since_seen": 319,
+      "min_days_since_seen": 319,
+      "max_days_since_seen": 320,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6711,8 +6711,8 @@
       "products_tracked": 2,
       "competitiveness_index": 100,
       "basket_category_cost": 61.92,
-      "min_days_since_seen": 318,
-      "max_days_since_seen": 318,
+      "min_days_since_seen": 319,
+      "max_days_since_seen": 319,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6722,8 +6722,8 @@
       "products_tracked": 1,
       "competitiveness_index": 100,
       "basket_category_cost": 3.19,
-      "min_days_since_seen": 318,
-      "max_days_since_seen": 318,
+      "min_days_since_seen": 319,
+      "max_days_since_seen": 319,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6733,8 +6733,8 @@
       "products_tracked": 3,
       "competitiveness_index": 100,
       "basket_category_cost": 91.47,
-      "min_days_since_seen": 318,
-      "max_days_since_seen": 319,
+      "min_days_since_seen": 319,
+      "max_days_since_seen": 320,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6744,8 +6744,8 @@
       "products_tracked": 5,
       "competitiveness_index": 100,
       "basket_category_cost": 77.44,
-      "min_days_since_seen": 318,
-      "max_days_since_seen": 319,
+      "min_days_since_seen": 319,
+      "max_days_since_seen": 320,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6755,7 +6755,7 @@
       "products_tracked": 8,
       "competitiveness_index": 100,
       "basket_category_cost": 66.23,
-      "min_days_since_seen": 0,
+      "min_days_since_seen": 1,
       "max_days_since_seen": 1085,
       "freshness_tier": "> 30 dias"
     },
@@ -6788,7 +6788,7 @@
       "products_tracked": 7,
       "competitiveness_index": 114.3,
       "basket_category_cost": 8524.49,
-      "min_days_since_seen": 5,
+      "min_days_since_seen": 6,
       "max_days_since_seen": 1085,
       "freshness_tier": "> 30 dias"
     },
@@ -6799,7 +6799,7 @@
       "products_tracked": 55,
       "competitiveness_index": 100.3,
       "basket_category_cost": 484.01,
-      "min_days_since_seen": 0,
+      "min_days_since_seen": 1,
       "max_days_since_seen": 1085,
       "freshness_tier": "> 30 dias"
     },
@@ -6822,7 +6822,7 @@
       "competitiveness_index": 100,
       "basket_category_cost": 104.75,
       "min_days_since_seen": 3,
-      "max_days_since_seen": 192,
+      "max_days_since_seen": 193,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6844,7 +6844,7 @@
       "competitiveness_index": 102.2,
       "basket_category_cost": 84.91,
       "min_days_since_seen": 2,
-      "max_days_since_seen": 192,
+      "max_days_since_seen": 193,
       "freshness_tier": "15-30 dias"
     },
     {
@@ -6855,7 +6855,7 @@
       "competitiveness_index": 92.3,
       "basket_category_cost": 72.58,
       "min_days_since_seen": 2,
-      "max_days_since_seen": 192,
+      "max_days_since_seen": 193,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6877,7 +6877,7 @@
       "competitiveness_index": 99.9,
       "basket_category_cost": 2773.38,
       "min_days_since_seen": 2,
-      "max_days_since_seen": 192,
+      "max_days_since_seen": 193,
       "freshness_tier": "> 30 dias"
     },
     {
@@ -6887,8 +6887,8 @@
       "products_tracked": 14,
       "competitiveness_index": 100,
       "basket_category_cost": 617.28,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6898,8 +6898,8 @@
       "products_tracked": 3,
       "competitiveness_index": 100,
       "basket_category_cost": 95.88,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6909,8 +6909,8 @@
       "products_tracked": 11,
       "competitiveness_index": 100,
       "basket_category_cost": 353.64,
-      "min_days_since_seen": 0,
-      "max_days_since_seen": 0,
+      "min_days_since_seen": 1,
+      "max_days_since_seen": 1,
       "freshness_tier": "< 15 dias"
     }
   ],
@@ -87205,9 +87205,9 @@
       "currentMonthReceiptsCount": 2,
       "previousMonthSpent": 0,
       "momSpendDeltaPct": null,
-      "dailySpendRateHistorical": 4.95,
+      "dailySpendRateHistorical": 4.93,
       "dailySpendRateCurrentMonth": 2.25,
-      "activeSpanDays": 193,
+      "activeSpanDays": 194,
       "avgDaysBetweenVisits": 47.4,
       "visitsPerWeek": 0.18,
       "firstPurchaseAt": "2026-05-06T15:00:00.000Z",
@@ -88177,7 +88177,7 @@
       "momSpendDeltaPct": null,
       "dailySpendRateHistorical": 0.72,
       "dailySpendRateCurrentMonth": 0,
-      "activeSpanDays": 320,
+      "activeSpanDays": 321,
       "avgDaysBetweenVisits": 1,
       "visitsPerWeek": 0.04,
       "firstPurchaseAt": "2025-12-30T14:49:01.000Z",
