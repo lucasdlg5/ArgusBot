@@ -1,175 +1,130 @@
-# 👁️ Argus (`moneta-argus`) — O Olho Fiscal do Ecossistema Moneta
+# 👁️ Argus (`@MonetaArgusBot`) — Seu Assistente de Mercado, Receitas e Economia
 
-> **Argus Vision BI:** *Market Arbitrage, Recipe Costing & Open Finance Intelligence*  
-> **Argus Bot (`@MonetaArgusBot`):** *O Olho Fiscal — Ingestão de Cupons Fiscais (NFC-e / SAT-CF-e), Histórico de Preços por Unidade Base (`g`/`ml`/`un`), Detector de Reduflação, Engenharia de Custo de Receitas e Simulador Logístico (Gasolina vs. Uber com Rota Real OSRM).*
+Olá! O **Argus** é o bot do Telegram do ecossistema **Moneta**, criado para ajudar você a **pagar menos no supermercado, acompanhar preços reais e entender para onde está indo o seu dinheiro** — tudo direto pelo chat, sem planilhas complicadas na mão.
 
----
-
-## 📌 Visão Geral
-
-O **Argus (`moneta-argus`)** é uma plataforma independente de Business Intelligence de consumo pessoal e automação financeira via Telegram, parte do ecossistema **Moneta**. Ele cruza faturas genéricas de supermercado vindas do **Open Finance (Pluggy API)** com os itens granulares extraídos de **Cupons Fiscais (NFC-e / SAT)** para responder:
-1. **O que realmente compramos?** Quanto do gasto em supermercados foi *Alimentação Essencial* vs. *Limpeza & Higiene* vs. *Besteiras/Impulso* (`is_essential = false`), separado entre Conta Bancária (Pix/Cartão) e Carteira de Benefícios (`VR_VA`)?
-2. **Qual produto sofreu Reduflação (Shrinkflation)?** Detecta automaticamente quando uma embalagem encolhe (ex: `800g → 720g` ou `90g → 80g`) elevando o custo real por grama/ml.
-3. **Onde comprar cada categoria?** Mapa de calor competitivo (*Store Heatmap*) comparando mercados locais por corredor e frescor dos dados (`< 15 dias`, `15-30 dias`, `> 30 dias`).
-4. **Quanto custa cada marmita/receita?** Calcula simultaneamente o **Custo Proporcional por Porção** (gramas consumidas) e o **Desembolso de Caixa** (embalagens fechadas exigidas no caixa do mercado).
-5. **Compensa dividir a compra em dois mercados ou ir em um só? De carro ou de Uber?** Traça a rota viária real via **OSRM (`router.project-osrm.org`)**, desconta o custo de combustível ou corrida de Uber e aplica a trava de segurança `MIN_SAVINGS_HURDLE = R$ 25,00`.
+Basta mandar uma foto de cupom fiscal, um vídeo da gôndola do mercado, uma receita ou simplesmente conversar com ele. O Argus lê tudo, organiza os dados e mostra onde vale mais a pena comprar.
 
 ---
 
-## 💸 Stack 100% Gratuita (Zero-Cost Stack)
+## ✨ O que o Argus faz por você?
 
-| Camada | Tecnologia / Provedor Gratuito | Função no Ecossistema Argus |
-| :--- | :--- | :--- |
-| **Frontend & API BI** | **Next.js 15 (App Router)** + **React 19** + **Tailwind CSS** | Dashboard executivo **Argus Vision BI** (Dark Mode em tons Slate/Emerald/Amber) e rotas REST |
-| **Visualização & Mapas** | **Recharts** + **Leaflet / React-Leaflet** + **CartoDB Dark Matter** | Gráficos analíticos de BI e mapa interativo 100% gratuito (sem Google Maps pago) |
-| **Roteirização & Geocoding** | **OSRM (`router.project-osrm.org`)** + **Nominatim (OpenStreetMap)** | Cálculo de distância (`km`), tempo (`min`) e geometria GeoJSON das rotas de compras |
-| **Bot do Telegram** | **`grammY` (TypeScript)** | Assistente `@MonetaArgusBot` (*"O Olho Fiscal"*) com suporte a fotos, PDFs e Inline Keyboards |
-| **Leitura QR Code & SEFAZ** | **`sharp` + `jsqr` + `cheerio` / `fetch`** | Decodificação 100% local do QR Code da nota fiscal e scraping direto do portal SEFAZ |
-| **IA / Visão Computacional** | **Google Gemini API (`@google/genai` — `gemini-2.5-flash`)** | Fallback OCR estruturado para fotos de cupons amassados e normalização semântica de produtos |
-| **Banco de Dados & BI** | **Supabase PostgreSQL** (`pg` + `@supabase/supabase-js`) | Schema isolado `argus` com 6 tabelas transacionais e 4 Views Analíticas de BI |
-| **Open Finance & Planilha** | **Pluggy SDK** + **Google Sheets API (`googleapis`)** | Conciliação bancária automática (`-2h` a `+48h`, `<= R$ 0,05`) e sincronização em lote na planilha *Argus Ledger* |
+- **🧾 Lê seus cupons fiscais automaticamente:** Envie a foto, PDF ou link da SEFAZ da sua nota fiscal. O bot lê os itens, guarda o histórico de preços por grama/ml/unidade e avisa se algum produto encolheu de tamanho (**reduflação**).
+- **🏷️ Coleta preços direto da prateleira ou encarte:** Está no mercado ou viu um panfleto de ofertas? Mande uma foto da gôndola, do flyer ou um vídeo rápido do corredor. O Argus extrai os produtos e preços e mostra o nível de confiabilidade da leitura.
+- **🍲 Calcula o custo real das suas receitas:** Descubra quanto custa fazer um prato comprando tudo em um único mercado ou dividindo a compra entre mercados diferentes — já pensando na ordem certa para não estragar itens gelados/perecíveis.
+- **🚗 Compara Carro vs. Uber na ida ao mercado:** Simula a rota real pelas ruas e calcula se vale a pena ir a dois mercados para economizar, já descontando o gasto com gasolina ou corrida de Uber.
+- **🏦 Concilia com sua conta bancária e planilha:** Cruza os cupons fiscais com suas transações do Open Finance (Pluggy) e mantém sua planilha no Google Sheets atualizada.
+- **📊 Painel Web (Argus Vision BI):** Além do Telegram, você pode acompanhar gráficos, mapa de rotas, notas, produtos e receitas em um dashboard web.
 
 ---
 
-## 📂 Estrutura de Diretórios
+## 💬 Como usar no Telegram (sem precisar decorar comandos)
 
-```text
-moneta-argus/
-├── migrations/
-│   └── 001_init_argus_schema.sql      # DDL completo do schema isolado `argus` (6 tabelas + 4 Views BI)
-├── scripts/
-│   ├── setup-env.ts                   # Diagnóstico de variáveis .env e teste de conectividade ao vivo
-│   ├── setup-resources.ts             # Provisionamento da planilha Google "Argus Ledger" e aplicação do schema SQL
-│   ├── run-migrations.ts              # Executor direto da migration SQL no PostgreSQL/Supabase
-│   ├── seed-demo.ts                   # Popula 3 mercados, 20 produtos, 9 cupons (2 meses) e 2 receitas
-│   └── clear-demo.ts                  # Limpa de forma reversível os dados de demonstração do schema `argus`
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── dashboard/route.ts     # Endpoint agregador das 4 Views BI + KPIs + Otimizador + Conciliação
-│   │   │   ├── optimize/route.ts      # Endpoint do Simulador Logístico OSRM e Calculadora de Receitas
-│   │   │   ├── receipts/route.ts      # Endpoint de ingestão de cupons fiscais via QR URL ou JSON estruturado
-│   │   │   ├── reconcile/route.ts     # Endpoint de conciliação Pluggy Open Finance + Google Sheets
-│   │   │   └── telegram/route.ts      # Disparo da lista de compras otimizada para o Telegram (@MonetaArgusBot)
-│   │   ├── globals.css                # Estilos globais Dark Mode e customização Leaflet
-│   │   ├── layout.tsx                 # Root Layout do Argus Vision BI
-│   │   └── page.tsx                   # Página principal do Argus Vision BI
-│   ├── bot/
-│   │   └── index.ts                   # Servidor do @MonetaArgusBot (grammY) com comandos e confirmação Inline
-│   ├── components/
-│   │   ├── ArgusVisionDashboard.tsx   # Interface completa com os 4 Módulos do Argus Vision BI
-│   │   └── ArgusLogisticsMap.tsx      # Mapa interativo React-Leaflet traçando rotas reais do OSRM
-│   ├── config/
-│   │   ├── env.ts                     # Validação de ambiente com Zod
-│   │   └── logger.ts                  # Logger estruturado Pino com redaction de segredos
-│   ├── integrations/
-│   │   ├── PluggyClient.ts            # Adapter isolado para Pluggy Open Finance API
-│   │   └── GoogleSheetsClient.ts      # Adapter de sincronização em lote (batchUpdate) com Google Sheets
-│   ├── lib/
-│   │   └── db.ts                      # Pool PostgreSQL e cliente Supabase apontando para o schema `argus`
-│   ├── services/
-│   │   ├── ArgusReceiptProcessor.ts   # QR Code local (sharp+jsqr), scraper SEFAZ, Gemini 2.5 Flash e cache de aliases
-│   │   ├── ArgusReconciliationService.ts # Conciliação Pluggy (-2h a +48h, <= R$ 0,05) e carteira VR/VA
-│   │   ├── ArgusOptimizerService.ts   # Duplo custo de receitas e roteirizador OSRM (Gasolina vs. Uber)
-│   │   └── ArgusOptimizerService.test.ts # Suite de testes automatizados (Vitest)
-│   └── types/
-│       └── argus.ts                   # Contratos TypeScript de todo o domínio Argus
-├── .env.example                       # Template documentado de variáveis de ambiente (sem segredos)
-├── ARCHITECTURE.md                    # Documentação técnica detalhada da arquitetura, banco, fluxos e segurança
-└── package.json                       # Scripts e dependências do projeto
-```
+Você não precisa usar comandos o tempo todo — pode **enviar mensagens e mídias direto no chat**:
+
+| O que você enviar | O que o Argus faz |
+| :--- | :--- |
+| **💬 Texto livre** | Responde dúvidas rápidas de forma natural e sugere o comando certo (ex.: *"quanto tá o arroz?"*). |
+| **📸 Foto ou PDF de Cupom Fiscal** | Lê o QR Code ou faz leitura por IA da nota, mostra o resumo e pede confirmação para salvar os itens. |
+| **🔗 Link da SEFAZ (QR Code)** | Consulta a nota fiscal direto no portal da Fazenda e registra os produtos automaticamente. |
+| **🎥 Vídeo do corredor / Foto de gôndola ou panfleto** | Extrai os produtos e preços visíveis, calcula a confiabilidade da leitura e salva no histórico. |
+| **🍳 Receita (texto, foto/print ou link)** | Extrai os ingredientes e o modo de preparo, salva a receita e já calcula onde sai mais barato comprar. |
 
 ---
 
-## ⚙️ Pré-requisitos e Configuração (`.env`)
+## 🤖 Comandos do Bot (`@MonetaArgusBot`)
 
-1. **Node.js 20.11+** instalado.
-2. Copie o arquivo `.env.example` para `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-3. Preencha as variáveis no seu `.env`:
-   - `DATABASE_URL` / `DIRECT_URL`: String de conexão PostgreSQL do seu projeto Supabase.
-   - `TELEGRAM_BOT_TOKEN`: Token do seu bot obtido no `@BotFather` para o `@MonetaArgusBot`.
-   - `GEMINI_API_KEY`: Chave gratuita do Google AI Studio (`gemini-2.5-flash`).
-   - `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, `PLUGGY_ITEM_IDS`: Credenciais da Pluggy Open Finance.
-   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_SPREADSHEET_ID`: Credenciais da Service Account para sincronizar a planilha `"Argus - Controle de Mercado & Receitas"`.
-   - `HOME_LAT`, `HOME_LNG`, `HOME_ADDRESS`: Coordenadas da sua residência para cálculo das rotas OSRM.
+Se preferir ir direto ao ponto, use os comandos abaixo no chat:
+
+### 🔍 Preços e Coletas
+- **`/produto <item>`** *(ou `/preco <item>`)*  
+  Mostra o preço atual estimado por embalagem e por unidade (`g`, `ml`, `un`) em cada mercado, além de avisar com **`🔥 MÍNIMA HISTÓRICA (ESTOCAR)`** quando o item está muito barato.  
+  *Exemplo:* `/produto arroz` ou `/preco frango`
+
+- **`/loja <Nome do Mercado | Bairro>`**  
+  Define ou corrige o nome do mercado da última foto/vídeo de gôndola ou panfleto que você enviou, melhorando a precisão dos dados.  
+  *Exemplo:* `/loja Atacadão | Paulista`
+
+- **`/fila`**  
+  Mostra o status das fotos e vídeos processados, o que está aguardando reprocessamento automático e os últimos preços coletados de gôndolas e panfletos.
+
+### 🍲 Receitas e Compras
+- **`/receita [nome]`**  
+  Lista suas receitas cadastradas (ou busca uma específica) com:
+  - **Menor preço possível** (dividindo a compra entre mercados);
+  - **Melhor mercado único** (comprando tudo em um só lugar);
+  - **Custo por porção** e **ordem anti-perecíveis** para fazer as compras.  
+  *Exemplo:* `/receita` ou `/receita strogonoff`
+
+- **`/otimizar`**  
+  Roda o simulador de compras e compara **Mercado Único vs. Compra Dividida**, levando em conta distância real, tempo de trajeto, **Gasolina vs. Uber** e uma margem mínima de economia para garantir que o deslocamento realmente compense.
+
+### 📊 Finanças, Painel e Segurança
+- **`/dashboard`**  
+  Envia um resumo rápido direto no Telegram com os gastos do mês, produtos com reduflação detectada, melhores ofertas atuais e o link para o painel web **Argus Vision BI** (quando configurado).
+
+- **`/reconciliar`**  
+  Cruza os cupons fiscais salvos com as transações bancárias do Open Finance (Pluggy) e sincroniza os dados na planilha **Argus Ledger** do Google Sheets.
+
+- **`/seguranca`**  
+  Exibe o relatório de tentativas de acesso não autorizado bloqueadas pelo bot.
+
+- **`/start`** e **`/ajuda`** *(ou `/help`)*  
+  Mostra a apresentação do Argus com botões de acesso rápido para as principais funções.
 
 ---
 
-## 🚀 Como Rodar o Servidor e os Scripts
+## 🚀 Quer rodar o projeto localmente?
 
-### 1. Instalar Dependências
+Se você é desenvolvedor e quer subir o bot e o painel web na sua máquina:
+
+### 1. Pré-requisitos
+- **Node.js 20.11+** instalado.
+
+### 2. Instalação e configuração
 ```bash
+# Instale as dependências
 npm install --legacy-peer-deps
+
+# Crie seu arquivo de configuração a partir do exemplo
+cp .env.example .env
 ```
 
-### 2. Verificar Ambiente e Provisionar Banco / Planilha
+Preencha no `.env` as chaves que for utilizar (como `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, credenciais do Pluggy, Google Sheets e suas coordenadas `HOME_LAT` / `HOME_LNG`).
+
+### 3. Banco de dados e diagnóstico
 ```bash
-# Verifica todas as chaves do .env e testa a conectividade de cada serviço (Supabase, Pluggy, Sheets, Gemini, Telegram, OSRM):
+# Testa as variáveis do .env e a conexão com os serviços
 npm run setup:env
 
-# Aplica a migration SQL no schema isolado `argus` e provisiona a planilha Google:
-npm run setup:resources
-# ou apenas a migration SQL:
+# Cria as tabelas e views no banco (ou provisiona banco + planilha)
 npm run db:migrate
+# ou: npm run setup:resources
 ```
 
-### 3. Popular o Banco com Dados de Demonstração Realistas (Seed)
-Para abrir o **Argus Vision BI** imediatamente rico em gráficos, rotas reais no mapa, histórico de 2 meses em 3 mercados (Atacadão Cambuci, Assaí Paulista e Pão de Açúcar Jardins), 20 produtos essenciais, casos reais de **Reduflação** e 2 receitas completas:
-```bash
-npm run db:seed-demo
-```
-> Para limpar todos os dados de demonstração quando desejar:
-> ```bash
-> npm run db:clear-demo
-> ```
+> **Quer testar com dados de exemplo?**  
+> Rode `npm run db:seed-demo` para popular mercados, produtos, cupons e receitas fictícias. Para limpar depois, use `npm run db:clear-demo`.
 
-### 4. Iniciar o Dashboard Web (**Argus Vision BI**)
-Em modo de desenvolvimento:
+### 4. Subindo o Bot e o Painel Web
 ```bash
-npm run dev
-```
-Ou em modo de produção otimizado:
-```bash
-npm run build
-npm start
-```
-Acesse no navegador: **`http://localhost:3000`**
-
-### 5. Iniciar o **Argus Bot (`@MonetaArgusBot`)** no Telegram
-Com o `TELEGRAM_BOT_TOKEN` configurado no `.env`:
-```bash
-# Modo desenvolvimento (com hot-reload):
+# Iniciar o bot do Telegram em modo desenvolvimento (hot-reload)
 npm run bot:dev
 
-# Modo produção:
-npm run bot:start
+# Iniciar o painel web Argus Vision BI (http://localhost:3000)
+npm run dev
 ```
 
----
-
-## 🤖 Comandos do Argus Bot (`@MonetaArgusBot`)
-
-| Comando / Ação | Descrição |
-| :--- | :--- |
-| `/start` | Apresenta a persona oficial do **Argus — O Olho Fiscal** e exibe atalho para o dashboard. |
-| **Enviar Foto ou PDF** | Decodifica o QR Code localmente (`sharp` + `jsqr`), faz scraping da SEFAZ ou usa o `gemini-2.5-flash` e exibe botões Inline (`✅ Confirmar & Auditar Cupom` / `❌ Descartar`). |
-| `/preco <produto>` | Consulta o preço estimado atual por grama/ml em cada mercado e destaca mínimas históricas (`🔥 ESTOCAR`). |
-| `/receita` | Calcula o **Custo Proporcional por Marmita** vs. **Desembolso de Caixa (Embalagens Fechadas)** das receitas cadastradas. |
-| `/otimizar` | Executa o Simulador Logístico OSRM comparando *Mercado Único* vs. *Compra Dividida* e *Gasolina* vs. *Uber* com a trava de R$ 25,00. |
-| `/reconciliar` | Concilia os cupons fiscais com as transações do Pluggy Open Finance (`-2h` a `+48h`, `<= R$ 0,05`) e sincroniza a planilha *Argus Ledger*. |
-| `/dashboard` | Envia o botão de acesso rápido ao painel web **Argus Vision BI**. |
+Para produção, utilize `npm run build` + `npm start` para o painel web, e `npm run bot:start` para o bot.
 
 ---
 
-## 🧪 Qualidade, Typecheck e Testes Automatizados
+## 🧪 Testes e Verificação
 
 ```bash
-# Validação estrita de tipos TypeScript (zero erros):
+# Verifica erros de TypeScript
 npm run typecheck
 
-# Execução dos testes automatizados (Vitest):
+# Roda os testes automatizados (Vitest)
 npm test
 ```
+
+> 📖 Quer saber mais sobre a arquitetura técnica, banco de dados (schema `argus`), segurança e integrações? Veja o arquivo [`ARCHITECTURE.md`](ARCHITECTURE.md).
