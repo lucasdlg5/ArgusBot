@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "generatedAt": "2026-11-16T00:43:45.915Z",
+  "generatedAt": "2026-11-16T07:37:27.131Z",
   "homeLocation": {
     "lat": -23.305,
     "lng": -45.965,
@@ -48,7 +48,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 8.69,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.127Z",
       "observations_count": 1
     },
@@ -82,7 +82,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.185Z",
       "observations_count": 1
     },
@@ -99,7 +99,7 @@
       "estimated_package_price": 2.91,
       "min_historical_price": 2.89,
       "max_historical_price": 2.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.388Z",
       "observations_count": 3
     },
@@ -116,7 +116,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.303Z",
       "observations_count": 3
     },
@@ -184,7 +184,7 @@
       "estimated_package_price": 39.99,
       "min_historical_price": 39.99,
       "max_historical_price": 39.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.197Z",
       "observations_count": 1
     },
@@ -201,7 +201,7 @@
       "estimated_package_price": 39.99,
       "min_historical_price": 39.99,
       "max_historical_price": 39.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.042Z",
       "observations_count": 1
     },
@@ -218,7 +218,7 @@
       "estimated_package_price": 39.99,
       "min_historical_price": 39.99,
       "max_historical_price": 39.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:30:59.205Z",
       "observations_count": 1
     },
@@ -235,7 +235,7 @@
       "estimated_package_price": 10.99,
       "min_historical_price": 10.99,
       "max_historical_price": 10.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.003Z",
       "observations_count": 1
     },
@@ -303,7 +303,7 @@
       "estimated_package_price": 3.13,
       "min_historical_price": 2.78,
       "max_historical_price": 3.19,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.665Z",
       "observations_count": 4
     },
@@ -337,7 +337,7 @@
       "estimated_package_price": 3.49,
       "min_historical_price": 3.49,
       "max_historical_price": 3.49,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.469Z",
       "observations_count": 1
     },
@@ -388,7 +388,7 @@
       "estimated_package_price": 3.59,
       "min_historical_price": 3.59,
       "max_historical_price": 3.59,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -405,7 +405,7 @@
       "estimated_package_price": 4.19,
       "min_historical_price": 4.19,
       "max_historical_price": 4.19,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.396Z",
       "observations_count": 1
     },
@@ -456,7 +456,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.299Z",
       "observations_count": 1
     },
@@ -507,7 +507,7 @@
       "estimated_package_price": 1.99,
       "min_historical_price": 1.99,
       "max_historical_price": 1.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:51.941Z",
       "observations_count": 3
     },
@@ -541,7 +541,7 @@
       "estimated_package_price": 25.99,
       "min_historical_price": 25.99,
       "max_historical_price": 25.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.257Z",
       "observations_count": 1
     },
@@ -609,7 +609,7 @@
       "estimated_package_price": 1.99,
       "min_historical_price": 1.99,
       "max_historical_price": 1.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.255Z",
       "observations_count": 3
     },
@@ -745,7 +745,7 @@
       "estimated_package_price": 29.99,
       "min_historical_price": 29.99,
       "max_historical_price": 29.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.252Z",
       "observations_count": 1
     },
@@ -830,7 +830,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -983,7 +983,7 @@
       "estimated_package_price": 4.14,
       "min_historical_price": 3.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.554Z",
       "observations_count": 3
     },
@@ -1085,7 +1085,7 @@
       "estimated_package_price": 9.29,
       "min_historical_price": 8.99,
       "max_historical_price": 10.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.322Z",
       "observations_count": 3
     },
@@ -1221,7 +1221,7 @@
       "estimated_package_price": 15.99,
       "min_historical_price": 15.99,
       "max_historical_price": 15.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.060Z",
       "observations_count": 1
     },
@@ -1272,7 +1272,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:51.989Z",
       "observations_count": 1
     },
@@ -1289,7 +1289,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:37.711Z",
       "observations_count": 1
     },
@@ -1306,7 +1306,7 @@
       "estimated_package_price": 13.99,
       "min_historical_price": 13.99,
       "max_historical_price": 13.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:03.802Z",
       "observations_count": 1
     },
@@ -1323,7 +1323,7 @@
       "estimated_package_price": 19.99,
       "min_historical_price": 19.99,
       "max_historical_price": 19.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -1340,7 +1340,7 @@
       "estimated_package_price": 19.99,
       "min_historical_price": 19.99,
       "max_historical_price": 19.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:38.763Z",
       "observations_count": 1
     },
@@ -1374,7 +1374,7 @@
       "estimated_package_price": 20.99,
       "min_historical_price": 20.99,
       "max_historical_price": 20.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.860Z",
       "observations_count": 1
     },
@@ -1408,7 +1408,7 @@
       "estimated_package_price": 22.99,
       "min_historical_price": 22.99,
       "max_historical_price": 22.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.858Z",
       "observations_count": 1
     },
@@ -1459,7 +1459,7 @@
       "estimated_package_price": 25.99,
       "min_historical_price": 25.99,
       "max_historical_price": 25.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.956Z",
       "observations_count": 1
     },
@@ -1544,7 +1544,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:37.800Z",
       "observations_count": 1
     },
@@ -1561,7 +1561,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.148Z",
       "observations_count": 2
     },
@@ -1612,7 +1612,7 @@
       "estimated_package_price": 2.89,
       "min_historical_price": 2.89,
       "max_historical_price": 2.89,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:03.855Z",
       "observations_count": 1
     },
@@ -1629,7 +1629,7 @@
       "estimated_package_price": 3.89,
       "min_historical_price": 3.89,
       "max_historical_price": 3.89,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.767Z",
       "observations_count": 1
     },
@@ -1646,7 +1646,7 @@
       "estimated_package_price": 1.99,
       "min_historical_price": 1.99,
       "max_historical_price": 1.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.811Z",
       "observations_count": 1
     },
@@ -1663,7 +1663,7 @@
       "estimated_package_price": 2.69,
       "min_historical_price": 2.69,
       "max_historical_price": 2.69,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:03.895Z",
       "observations_count": 1
     },
@@ -1850,7 +1850,7 @@
       "estimated_package_price": 23.99,
       "min_historical_price": 23.99,
       "max_historical_price": 23.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.909Z",
       "observations_count": 1
     },
@@ -1884,7 +1884,7 @@
       "estimated_package_price": 2.93,
       "min_historical_price": 2.59,
       "max_historical_price": 2.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.525Z",
       "observations_count": 3
     },
@@ -1935,7 +1935,7 @@
       "estimated_package_price": 10.99,
       "min_historical_price": 10.99,
       "max_historical_price": 10.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.610Z",
       "observations_count": 1
     },
@@ -1969,7 +1969,7 @@
       "estimated_package_price": 52.99,
       "min_historical_price": 52.99,
       "max_historical_price": 52.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.065Z",
       "observations_count": 2
     },
@@ -2037,7 +2037,7 @@
       "estimated_package_price": 8.14,
       "min_historical_price": 7.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.109Z",
       "observations_count": 3
     },
@@ -2139,7 +2139,7 @@
       "estimated_package_price": 26.99,
       "min_historical_price": 26.99,
       "max_historical_price": 26.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -2190,7 +2190,7 @@
       "estimated_package_price": 3.99,
       "min_historical_price": 3.99,
       "max_historical_price": 3.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.720Z",
       "observations_count": 1
     },
@@ -2224,7 +2224,7 @@
       "estimated_package_price": 11.49,
       "min_historical_price": 11.49,
       "max_historical_price": 11.49,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.566Z",
       "observations_count": 1
     },
@@ -2275,7 +2275,7 @@
       "estimated_package_price": 1.15,
       "min_historical_price": 1.15,
       "max_historical_price": 1.15,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:53.116Z",
       "observations_count": 1
     },
@@ -2292,7 +2292,7 @@
       "estimated_package_price": 2.18,
       "min_historical_price": 1.15,
       "max_historical_price": 2.69,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:39.023Z",
       "observations_count": 3
     },
@@ -2462,7 +2462,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.49,
       "max_historical_price": 8.49,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.636Z",
       "observations_count": 5
     },
@@ -2632,7 +2632,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.145Z",
       "observations_count": 2
     },
@@ -2700,7 +2700,7 @@
       "estimated_package_price": 16.98,
       "min_historical_price": 16.98,
       "max_historical_price": 16.98,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.276Z",
       "observations_count": 2
     },
@@ -2717,7 +2717,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.593Z",
       "observations_count": 1
     },
@@ -2734,7 +2734,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.300Z",
       "observations_count": 2
     },
@@ -2853,7 +2853,7 @@
       "estimated_package_price": 2.49,
       "min_historical_price": 2.49,
       "max_historical_price": 2.49,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.093Z",
       "observations_count": 1
     },
@@ -2870,7 +2870,7 @@
       "estimated_package_price": 10.99,
       "min_historical_price": 10.99,
       "max_historical_price": 10.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.052Z",
       "observations_count": 1
     },
@@ -2972,7 +2972,7 @@
       "estimated_package_price": 36.99,
       "min_historical_price": 36.99,
       "max_historical_price": 36.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.466Z",
       "observations_count": 1
     },
@@ -3125,7 +3125,7 @@
       "estimated_package_price": 4.69,
       "min_historical_price": 4.69,
       "max_historical_price": 4.69,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.771Z",
       "observations_count": 2
     },
@@ -3227,7 +3227,7 @@
       "estimated_package_price": 5.19,
       "min_historical_price": 5.19,
       "max_historical_price": 5.19,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.711Z",
       "observations_count": 1
     },
@@ -3261,7 +3261,7 @@
       "estimated_package_price": 169.99,
       "min_historical_price": 169.99,
       "max_historical_price": 169.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:03.660Z",
       "observations_count": 1
     },
@@ -3295,7 +3295,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 4.48,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.546Z",
       "observations_count": 1
     },
@@ -3397,7 +3397,7 @@
       "estimated_package_price": 22.99,
       "min_historical_price": 22.99,
       "max_historical_price": 22.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.555Z",
       "observations_count": 1
     },
@@ -3465,7 +3465,7 @@
       "estimated_package_price": 19.89,
       "min_historical_price": 19.89,
       "max_historical_price": 19.89,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.087Z",
       "observations_count": 2
     },
@@ -3601,7 +3601,7 @@
       "estimated_package_price": 8.29,
       "min_historical_price": 7.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 3
     },
@@ -3635,7 +3635,7 @@
       "estimated_package_price": 3.17,
       "min_historical_price": 2.99,
       "max_historical_price": 3.59,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 2
     },
@@ -3720,7 +3720,7 @@
       "estimated_package_price": 11.9,
       "min_historical_price": 11.9,
       "max_historical_price": 11.9,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.622Z",
       "observations_count": 1
     },
@@ -3737,7 +3737,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.680Z",
       "observations_count": 1
     },
@@ -3771,7 +3771,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:03.959Z",
       "observations_count": 1
     },
@@ -3788,7 +3788,7 @@
       "estimated_package_price": 14.99,
       "min_historical_price": 14.99,
       "max_historical_price": 14.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.787Z",
       "observations_count": 1
     },
@@ -3822,7 +3822,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.98,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.336Z",
       "observations_count": 3
     },
@@ -3839,7 +3839,7 @@
       "estimated_package_price": 1.99,
       "min_historical_price": 1.99,
       "max_historical_price": 1.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.966Z",
       "observations_count": 1
     },
@@ -3873,7 +3873,7 @@
       "estimated_package_price": 3.99,
       "min_historical_price": 3.99,
       "max_historical_price": 3.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.855Z",
       "observations_count": 1
     },
@@ -3890,7 +3890,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.582Z",
       "observations_count": 2
     },
@@ -3958,7 +3958,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:38.273Z",
       "observations_count": 1
     },
@@ -3975,7 +3975,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.485Z",
       "observations_count": 1
     },
@@ -4162,7 +4162,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.505Z",
       "observations_count": 1
     },
@@ -4332,7 +4332,7 @@
       "estimated_package_price": 6.78,
       "min_historical_price": 6.47,
       "max_historical_price": 7.49,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:38.713Z",
       "observations_count": 2
     },
@@ -4366,7 +4366,7 @@
       "estimated_package_price": 6.99,
       "min_historical_price": 6.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -4383,7 +4383,7 @@
       "estimated_package_price": 6.57,
       "min_historical_price": 6.47,
       "max_historical_price": 7.49,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.810Z",
       "observations_count": 4
     },
@@ -4485,7 +4485,7 @@
       "estimated_package_price": 10.99,
       "min_historical_price": 10.99,
       "max_historical_price": 10.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.446Z",
       "observations_count": 1
     },
@@ -4587,7 +4587,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -4825,7 +4825,7 @@
       "estimated_package_price": 13.99,
       "min_historical_price": 13.99,
       "max_historical_price": 13.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.854Z",
       "observations_count": 1
     },
@@ -4859,7 +4859,7 @@
       "estimated_package_price": 14.99,
       "min_historical_price": 14.99,
       "max_historical_price": 14.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:38.978Z",
       "observations_count": 1
     },
@@ -4876,7 +4876,7 @@
       "estimated_package_price": 14.99,
       "min_historical_price": 14.99,
       "max_historical_price": 14.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:53.047Z",
       "observations_count": 1
     },
@@ -4893,7 +4893,7 @@
       "estimated_package_price": 20.99,
       "min_historical_price": 20.99,
       "max_historical_price": 20.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.155Z",
       "observations_count": 1
     },
@@ -4995,7 +4995,7 @@
       "estimated_package_price": 11.49,
       "min_historical_price": 11.49,
       "max_historical_price": 11.49,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.239Z",
       "observations_count": 1
     },
@@ -5080,7 +5080,7 @@
       "estimated_package_price": 5.99,
       "min_historical_price": 5.99,
       "max_historical_price": 5.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.574Z",
       "observations_count": 3
     },
@@ -5114,7 +5114,7 @@
       "estimated_package_price": 6.84,
       "min_historical_price": 5.99,
       "max_historical_price": 6.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.596Z",
       "observations_count": 3
     },
@@ -5131,7 +5131,7 @@
       "estimated_package_price": 9.98,
       "min_historical_price": 9.98,
       "max_historical_price": 9.98,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.142Z",
       "observations_count": 1
     },
@@ -5182,7 +5182,7 @@
       "estimated_package_price": 12.99,
       "min_historical_price": 12.99,
       "max_historical_price": 12.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.505Z",
       "observations_count": 3
     },
@@ -5301,7 +5301,7 @@
       "estimated_package_price": 2.5,
       "min_historical_price": 2.48,
       "max_historical_price": 2.58,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.211Z",
       "observations_count": 3
     },
@@ -5437,7 +5437,7 @@
       "estimated_package_price": 4.98,
       "min_historical_price": 4.89,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.189Z",
       "observations_count": 3
     },
@@ -5607,7 +5607,7 @@
       "estimated_package_price": 7.19,
       "min_historical_price": 7.19,
       "max_historical_price": 7.19,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.144Z",
       "observations_count": 1
     },
@@ -5624,7 +5624,7 @@
       "estimated_package_price": 2.51,
       "min_historical_price": 2.49,
       "max_historical_price": 2.59,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.369Z",
       "observations_count": 3
     },
@@ -5641,7 +5641,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:03.999Z",
       "observations_count": 1
     },
@@ -5692,7 +5692,7 @@
       "estimated_package_price": 14.99,
       "min_historical_price": 14.99,
       "max_historical_price": 14.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.339Z",
       "observations_count": 1
     },
@@ -5726,7 +5726,7 @@
       "estimated_package_price": 19.99,
       "min_historical_price": 19.99,
       "max_historical_price": 19.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -5743,7 +5743,7 @@
       "estimated_package_price": 22.99,
       "min_historical_price": 22.99,
       "max_historical_price": 22.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:53.004Z",
       "observations_count": 1
     },
@@ -5777,7 +5777,7 @@
       "estimated_package_price": 24.99,
       "min_historical_price": 24.99,
       "max_historical_price": 24.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:38.928Z",
       "observations_count": 1
     },
@@ -5811,7 +5811,7 @@
       "estimated_package_price": 9.99,
       "min_historical_price": 9.99,
       "max_historical_price": 9.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -5828,7 +5828,7 @@
       "estimated_package_price": 13.04,
       "min_historical_price": 11.49,
       "max_historical_price": 14.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:53.077Z",
       "observations_count": 4
     },
@@ -5879,7 +5879,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:52:37.758Z",
       "observations_count": 1
     },
@@ -5913,7 +5913,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.085Z",
       "observations_count": 1
     },
@@ -6015,7 +6015,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.165Z",
       "observations_count": 3
     },
@@ -6168,7 +6168,7 @@
       "estimated_package_price": 21.99,
       "min_historical_price": 21.99,
       "max_historical_price": 21.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.510Z",
       "observations_count": 1
     },
@@ -6185,7 +6185,7 @@
       "estimated_package_price": 9.29,
       "min_historical_price": 9.29,
       "max_historical_price": 9.29,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:05.666Z",
       "observations_count": 1
     },
@@ -6219,7 +6219,7 @@
       "estimated_package_price": 13.99,
       "min_historical_price": 13.99,
       "max_historical_price": 13.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.380Z",
       "observations_count": 2
     },
@@ -6236,7 +6236,7 @@
       "estimated_package_price": 19.99,
       "min_historical_price": 19.99,
       "max_historical_price": 19.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.360Z",
       "observations_count": 2
     },
@@ -6253,7 +6253,7 @@
       "estimated_package_price": 1.09,
       "min_historical_price": 1.09,
       "max_historical_price": 1.09,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:04.191Z",
       "observations_count": 1
     },
@@ -6270,7 +6270,7 @@
       "estimated_package_price": 14.99,
       "min_historical_price": 14.99,
       "max_historical_price": 14.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:39.729Z",
       "observations_count": 1
     },
@@ -6355,7 +6355,7 @@
       "estimated_package_price": 4.99,
       "min_historical_price": 4.99,
       "max_historical_price": 4.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -6406,7 +6406,7 @@
       "estimated_package_price": 13.14,
       "min_historical_price": 12.99,
       "max_historical_price": 13.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:02:52.260Z",
       "observations_count": 3
     },
@@ -6491,7 +6491,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T06:01:21.680Z",
       "observations_count": 1
     },
@@ -6508,7 +6508,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.607Z",
       "observations_count": 2
     },
@@ -6525,7 +6525,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.448Z",
       "observations_count": 1
     },
@@ -6542,7 +6542,7 @@
       "estimated_package_price": 8.99,
       "min_historical_price": 8.99,
       "max_historical_price": 8.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:32:26.668Z",
       "observations_count": 2
     },
@@ -6559,7 +6559,7 @@
       "estimated_package_price": 7.99,
       "min_historical_price": 7.99,
       "max_historical_price": 7.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:26:38.409Z",
       "observations_count": 1
     },
@@ -6576,7 +6576,7 @@
       "estimated_package_price": 36.99,
       "min_historical_price": 36.99,
       "max_historical_price": 36.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:03.760Z",
       "observations_count": 1
     },
@@ -6610,7 +6610,7 @@
       "estimated_package_price": 75.99,
       "min_historical_price": 75.99,
       "max_historical_price": 75.99,
-      "days_since_last_seen": 3,
+      "days_since_last_seen": 4,
       "last_seen_at": "2026-11-12T05:49:03.716Z",
       "observations_count": 1
     }
@@ -6821,7 +6821,7 @@
       "products_tracked": 6,
       "competitiveness_index": 100,
       "basket_category_cost": 104.75,
-      "min_days_since_seen": 3,
+      "min_days_since_seen": 4,
       "max_days_since_seen": 193,
       "freshness_tier": "> 30 dias"
     },
@@ -6833,7 +6833,7 @@
       "competitiveness_index": 100,
       "basket_category_cost": 85.34,
       "min_days_since_seen": 3,
-      "max_days_since_seen": 3,
+      "max_days_since_seen": 4,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -6866,7 +6866,7 @@
       "competitiveness_index": 100,
       "basket_category_cost": 61.29,
       "min_days_since_seen": 3,
-      "max_days_since_seen": 3,
+      "max_days_since_seen": 4,
       "freshness_tier": "< 15 dias"
     },
     {
@@ -11231,6 +11231,3132 @@
     }
   ],
   "recipesEvaluations": [
+    {
+      "recipeId": "6a406455-361d-499f-ba85-4f0f4742b552",
+      "recipeName": "Mousse de Limão",
+      "servings": 6,
+      "requestedPortions": 6,
+      "instructions": "1. Coloque no liquidificador o creme de leite (com soro) e o leite condensado.\n2. Bata um pouco e vá acrescentando o suco de limão aos poucos.\n3. Quando ficar bem consistente, leve à geladeira por cerca de 1 hora antes de servir.",
+      "instructionSteps": [
+        "Coloque no liquidificador o creme de leite (com soro) e o leite condensado.",
+        "Bata um pouco e vá acrescentando o suco de limão aos poucos.",
+        "Quando ficar bem consistente, leve à geladeira por cerca de 1 hora antes de servir."
+      ],
+      "prepTimeMinutes": 35,
+      "difficulty": "Fácil",
+      "cuisineTags": [
+        "Ideal p/ Marmita"
+      ],
+      "estimatedCaloriesPerPortion": 235,
+      "proportionalTotalCost": 10.87,
+      "proportionalCostPerPortion": 1.81,
+      "cashOutlayTotalCost": 18.13,
+      "totalLeftoverPantryValue": 7.26,
+      "pantryUtilizationPct": 60,
+      "bestSingleStoreId": "8f318514-d886-46bf-a053-d89a8165756b",
+      "bestSingleStoreName": "NE SUPERMERCADO",
+      "bestSingleStoreAddress": "RODOVIA NILO MAXIMO, 836 JARDIM COLONIA JACAREI-SP",
+      "bestSingleStoreCashCost": 18.13,
+      "bestSingleStoreProportionalCost": 10.87,
+      "bestSingleStoreCoveragePct": 66.7,
+      "lowestPossibleProportionalCost": 10.87,
+      "lowestPossibleCashCost": 18.13,
+      "lowestPossibleStoresCount": 1,
+      "priceCoverageCount": 2,
+      "totalIngredientsCount": 3,
+      "coldChainSummary": "Compra concentrada no NE SUPERMERCADO: pegue primeiro os itens não perecíveis (despensa) e deixe carnes, laticínios e congelados para os últimos corredores antes do caixa.",
+      "storeQuotes": [
+        {
+          "storeId": "8f318514-d886-46bf-a053-d89a8165756b",
+          "storeName": "NE SUPERMERCADO",
+          "address": "RODOVIA NILO MAXIMO, 836 JARDIM COLONIA JACAREI-SP",
+          "lat": -23.573414,
+          "lng": -46.670881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 2,
+          "totalIngredientsCount": 3,
+          "coveragePct": 66.7,
+          "missingIngredients": [
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 7.5,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": true,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": true,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "8e2306c4-55d9-4306-9217-8f19fe9d4b2a",
+          "storeName": "CLUBE SEMAR",
+          "address": "Localização pendente (Coleta de Gôndola/Flyer)",
+          "lat": -23.571414,
+          "lng": -46.665881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "d6e8b892-6350-4451-845b-e92cae92b73a",
+          "storeName": "Comercial Melhor",
+          "address": "São Paulo - SP",
+          "lat": -23.571414,
+          "lng": -46.665881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "321f320f-5b78-4c54-b9ee-aab3b51b3005",
+          "storeName": "Desconhecido/Não visível na imagem",
+          "address": "Localização pendente (Coleta de Gôndola/Flyer)",
+          "lat": -23.571414,
+          "lng": -46.665881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "32400c0a-fba1-4dc1-8271-3a2ed8c6175d",
+          "storeName": "Friboi",
+          "address": "Localização pendente (Coleta de Gôndola/Flyer)",
+          "lat": -23.571414,
+          "lng": -46.665881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "36846047-53c8-4939-be1e-b9269abb68f1",
+          "storeName": "LJ-36 (Rede Desconhecida)",
+          "address": "Localização pendente (Coleta de Gôndola/Flyer)",
+          "lat": -23.571414,
+          "lng": -46.665881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "bab16da7-f63c-4b64-bd2d-a325ecc9fcee",
+          "storeName": "MANDARIN",
+          "address": "AV. SAO JORGE, 2010 CIDADE SALVADOR JACAREI-SP",
+          "lat": -23.573414,
+          "lng": -46.670881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+          "storeName": "MERCADO SOUZA",
+          "address": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+          "lat": -23.573414,
+          "lng": -46.670881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "15d1edd7-46b9-42e5-894a-f74d1c114c27",
+          "storeName": "Semar",
+          "address": "Localização pendente (Coleta de Gôndola/Flyer)",
+          "lat": -23.571414,
+          "lng": -46.665881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        },
+        {
+          "storeId": "c7530ec2-8b6d-4554-9635-2209c7a5f1c7",
+          "storeName": "Semar Supermercados",
+          "address": "Localização pendente (Coleta de Gôndola/Flyer)",
+          "lat": -23.571414,
+          "lng": -46.665881,
+          "totalCashCost": 18.13,
+          "totalProportionalCost": 10.87,
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "missingIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC",
+            "Suco de Limão (500ml)"
+          ],
+          "estimatedMissingCost": 18.13,
+          "items": [
+            {
+              "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+              "productName": "LEITE CONDENSADO ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 1,
+              "packagePrice": 5.59,
+              "proportionalCost": 5.59,
+              "cashOutlayCost": 5.59,
+              "hasRealPrice": false,
+              "perishabilityTier": "NON_PERISHABLE",
+              "perishabilityRank": 1
+            },
+            {
+              "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+              "productName": "Suco de Limão (500ml)",
+              "category": "Hortifruti",
+              "packagesNeeded": 1,
+              "packagePrice": 7.5,
+              "proportionalCost": 1.5,
+              "cashOutlayCost": 7.5,
+              "hasRealPrice": false,
+              "perishabilityTier": "SEMI_PERISHABLE",
+              "perishabilityRank": 2
+            },
+            {
+              "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+              "productName": "CREME DE LEITE ITALAC",
+              "category": "Laticínios",
+              "packagesNeeded": 2,
+              "packagePrice": 2.52,
+              "proportionalCost": 3.78,
+              "cashOutlayCost": 5.04,
+              "hasRealPrice": false,
+              "perishabilityTier": "REFRIGERATED",
+              "perishabilityRank": 3
+            }
+          ]
+        }
+      ],
+      "ingredientsBreakdown": [
+        {
+          "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+          "productName": "LEITE CONDENSADO ITALAC",
+          "category": "Laticínios",
+          "baseUnit": "g",
+          "requiredBaseQty": 395,
+          "standardPackageSize": 395,
+          "packagesNeeded": 1,
+          "surplusBaseQty": 0,
+          "surplusPct": 0,
+          "leftoverValue": 0,
+          "bestStoreId": "8f318514-d886-46bf-a053-d89a8165756b",
+          "bestStoreName": "NE SUPERMERCADO",
+          "bestUnitPrice": 0.0142,
+          "bestPackagePrice": 5.59,
+          "proportionalCost": 5.59,
+          "cashOutlayCost": 5.59,
+          "hasRealPrice": true,
+          "perishabilityTier": "NON_PERISHABLE",
+          "perishabilityRank": 1,
+          "perishabilityLabel": "1º Não Perecível (Despensa)",
+          "perishabilityReason": "Estável em temperatura ambiente; pode permanecer no carro/sacola durante todo o trajeto sem perder qualidade."
+        },
+        {
+          "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+          "productName": "Suco de Limão (500ml)",
+          "category": "Hortifruti",
+          "baseUnit": "ml",
+          "requiredBaseQty": 100,
+          "standardPackageSize": 500,
+          "packagesNeeded": 1,
+          "surplusBaseQty": 400,
+          "surplusPct": 80,
+          "leftoverValue": 6,
+          "bestStoreName": "Sem leitura no banco (Estimado)",
+          "bestUnitPrice": 0.015,
+          "bestPackagePrice": 7.5,
+          "proportionalCost": 1.5,
+          "cashOutlayCost": 7.5,
+          "hasRealPrice": false,
+          "perishabilityTier": "SEMI_PERISHABLE",
+          "perishabilityRank": 2,
+          "perishabilityLabel": "2º Hortifruti & Ovos (Fresco)",
+          "perishabilityReason": "Sensível a calor prolongado e amassamento; ideal comprar após os itens secos da despensa."
+        },
+        {
+          "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+          "productName": "CREME DE LEITE ITALAC",
+          "category": "Laticínios",
+          "baseUnit": "g",
+          "requiredBaseQty": 300,
+          "standardPackageSize": 200,
+          "packagesNeeded": 2,
+          "surplusBaseQty": 100,
+          "surplusPct": 25,
+          "leftoverValue": 1.26,
+          "bestStoreId": "8f318514-d886-46bf-a053-d89a8165756b",
+          "bestStoreName": "NE SUPERMERCADO",
+          "bestUnitPrice": 0.0126,
+          "bestPackagePrice": 2.52,
+          "proportionalCost": 3.78,
+          "cashOutlayCost": 5.04,
+          "hasRealPrice": true,
+          "perishabilityTier": "REFRIGERATED",
+          "perishabilityRank": 3,
+          "perishabilityLabel": "3º Refrigerado / Laticínio",
+          "perishabilityReason": "Exige refrigeração constante; manter na etapa final da compra reduz aquecimento fora da geladeira."
+        }
+      ],
+      "historicalStoreComparison": {
+        "mercadoSouza": {
+          "storeName": "Mercado Souza",
+          "matchedIngredientsCount": 0,
+          "totalIngredientsCount": 3,
+          "coveragePct": 0,
+          "totalObservationsCount": 0,
+          "lastObservedAt": null,
+          "weightedCashCost": 18.13,
+          "weightedProportionalCost": 10.89,
+          "avgHistoricalCashCost": 18.13,
+          "avgHistoricalProportionalCost": 10.89,
+          "minHistoricalCashCost": 18.13,
+          "minHistoricalProportionalCost": 10.89,
+          "maxHistoricalCashCost": 18.13,
+          "maxHistoricalProportionalCost": 10.89,
+          "latestCashCost": 18.13,
+          "latestProportionalCost": 10.89
+        },
+        "neSupermercado": {
+          "storeName": "NE Supermercado",
+          "matchedIngredientsCount": 2,
+          "totalIngredientsCount": 3,
+          "coveragePct": 66.7,
+          "totalObservationsCount": 11,
+          "lastObservedAt": "2026-11-12T22:40:36.029Z",
+          "weightedCashCost": 18.13,
+          "weightedProportionalCost": 10.87,
+          "avgHistoricalCashCost": 18.57,
+          "avgHistoricalProportionalCost": 11.27,
+          "minHistoricalCashCost": 17.97,
+          "minHistoricalProportionalCost": 10.72,
+          "maxHistoricalCashCost": 19.27,
+          "maxHistoricalProportionalCost": 11.93,
+          "latestCashCost": 17.97,
+          "latestProportionalCost": 10.72
+        },
+        "commonOnly": {
+          "sharedIngredientsCount": 0,
+          "mercadoSouzaWeightedCash": 0,
+          "neSupermercadoWeightedCash": 0,
+          "mercadoSouzaWeightedProportional": 0,
+          "neSupermercadoWeightedProportional": 0,
+          "mercadoSouzaAvgCash": 0,
+          "neSupermercadoAvgCash": 0,
+          "mercadoSouzaMinCash": 0,
+          "neSupermercadoMinCash": 0
+        },
+        "winnerWeightedCash": "TIE",
+        "savingsWeightedCash": 0,
+        "savingsWeightedPct": 0,
+        "winnerWeightedProportional": "TIE",
+        "savingsWeightedProportional": 0.02,
+        "items": [
+          {
+            "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+            "productName": "LEITE CONDENSADO ITALAC",
+            "category": "Laticínios",
+            "baseUnit": "g",
+            "requiredBaseQty": 395,
+            "standardPackageSize": 395,
+            "packagesNeeded": 1,
+            "mercadoSouza": {
+              "storeName": "Mercado Souza",
+              "hasRealHistory": false,
+              "observationsCount": 0,
+              "latestPackagePrice": 5.59,
+              "weightedPackagePrice": 5.59,
+              "avgHistoricalPackagePrice": 5.59,
+              "minHistoricalPackagePrice": 5.59,
+              "maxHistoricalPackagePrice": 5.59,
+              "latestProportionalCost": 5.61,
+              "weightedProportionalCost": 5.61,
+              "avgProportionalCost": 5.61,
+              "minProportionalCost": 5.61,
+              "maxProportionalCost": 5.61,
+              "latestCashCost": 5.59,
+              "weightedCashCost": 5.59,
+              "avgCashCost": 5.59,
+              "minCashCost": 5.59,
+              "maxCashCost": 5.59,
+              "lastSeenAt": null,
+              "pricePoints": []
+            },
+            "neSupermercado": {
+              "storeName": "NE Supermercado",
+              "hasRealHistory": true,
+              "observationsCount": 6,
+              "latestPackagePrice": 5.49,
+              "weightedPackagePrice": 5.59,
+              "avgHistoricalPackagePrice": 5.89,
+              "minHistoricalPackagePrice": 5.49,
+              "maxHistoricalPackagePrice": 6.39,
+              "latestProportionalCost": 5.49,
+              "weightedProportionalCost": 5.59,
+              "avgProportionalCost": 5.89,
+              "minProportionalCost": 5.49,
+              "maxProportionalCost": 6.39,
+              "latestCashCost": 5.49,
+              "weightedCashCost": 5.59,
+              "avgCashCost": 5.89,
+              "minCashCost": 5.49,
+              "maxCashCost": 6.39,
+              "lastSeenAt": "2026-11-12T22:40:35.985Z",
+              "pricePoints": [
+                {
+                  "observedAt": "2026-10-28T15:00:00.000Z",
+                  "packagePrice": 5.99,
+                  "basePrice": 0.015165,
+                  "sourceType": "CUPOM_FISCAL"
+                },
+                {
+                  "observedAt": "2026-11-12T05:49:04.774Z",
+                  "packagePrice": 6.39,
+                  "basePrice": 0.016177,
+                  "sourceType": "MARKET_FLYER"
+                },
+                {
+                  "observedAt": "2026-11-12T05:52:38.816Z",
+                  "packagePrice": 5.99,
+                  "basePrice": 0.015165,
+                  "sourceType": "MARKET_FLYER"
+                },
+                {
+                  "observedAt": "2026-11-12T06:01:21.680Z",
+                  "packagePrice": 5.49,
+                  "basePrice": 0.013899,
+                  "sourceType": "CUPOM_FISCAL"
+                },
+                {
+                  "observedAt": "2026-11-12T06:02:52.930Z",
+                  "packagePrice": 5.99,
+                  "basePrice": 0.015165,
+                  "sourceType": "MARKET_FLYER"
+                },
+                {
+                  "observedAt": "2026-11-12T22:40:35.985Z",
+                  "packagePrice": 5.49,
+                  "basePrice": 0.013899,
+                  "sourceType": "MARKET_FLYER"
+                }
+              ]
+            },
+            "cheaperStoreWeighted": "INSUFFICIENT_DATA",
+            "weightedCashDiff": 0,
+            "weightedProportionalDiff": 0.02
+          },
+          {
+            "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+            "productName": "Suco de Limão (500ml)",
+            "category": "Hortifruti",
+            "baseUnit": "ml",
+            "requiredBaseQty": 100,
+            "standardPackageSize": 500,
+            "packagesNeeded": 1,
+            "mercadoSouza": {
+              "storeName": "Mercado Souza",
+              "hasRealHistory": false,
+              "observationsCount": 0,
+              "latestPackagePrice": 7.5,
+              "weightedPackagePrice": 7.5,
+              "avgHistoricalPackagePrice": 7.5,
+              "minHistoricalPackagePrice": 7.5,
+              "maxHistoricalPackagePrice": 7.5,
+              "latestProportionalCost": 1.5,
+              "weightedProportionalCost": 1.5,
+              "avgProportionalCost": 1.5,
+              "minProportionalCost": 1.5,
+              "maxProportionalCost": 1.5,
+              "latestCashCost": 7.5,
+              "weightedCashCost": 7.5,
+              "avgCashCost": 7.5,
+              "minCashCost": 7.5,
+              "maxCashCost": 7.5,
+              "lastSeenAt": null,
+              "pricePoints": []
+            },
+            "neSupermercado": {
+              "storeName": "NE Supermercado",
+              "hasRealHistory": false,
+              "observationsCount": 0,
+              "latestPackagePrice": 7.5,
+              "weightedPackagePrice": 7.5,
+              "avgHistoricalPackagePrice": 7.5,
+              "minHistoricalPackagePrice": 7.5,
+              "maxHistoricalPackagePrice": 7.5,
+              "latestProportionalCost": 1.5,
+              "weightedProportionalCost": 1.5,
+              "avgProportionalCost": 1.5,
+              "minProportionalCost": 1.5,
+              "maxProportionalCost": 1.5,
+              "latestCashCost": 7.5,
+              "weightedCashCost": 7.5,
+              "avgCashCost": 7.5,
+              "minCashCost": 7.5,
+              "maxCashCost": 7.5,
+              "lastSeenAt": null,
+              "pricePoints": []
+            },
+            "cheaperStoreWeighted": "INSUFFICIENT_DATA",
+            "weightedCashDiff": 0,
+            "weightedProportionalDiff": 0
+          },
+          {
+            "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+            "productName": "CREME DE LEITE ITALAC",
+            "category": "Laticínios",
+            "baseUnit": "g",
+            "requiredBaseQty": 300,
+            "standardPackageSize": 200,
+            "packagesNeeded": 2,
+            "mercadoSouza": {
+              "storeName": "Mercado Souza",
+              "hasRealHistory": false,
+              "observationsCount": 0,
+              "latestPackagePrice": 2.52,
+              "weightedPackagePrice": 2.52,
+              "avgHistoricalPackagePrice": 2.52,
+              "minHistoricalPackagePrice": 2.52,
+              "maxHistoricalPackagePrice": 2.52,
+              "latestProportionalCost": 3.78,
+              "weightedProportionalCost": 3.78,
+              "avgProportionalCost": 3.78,
+              "minProportionalCost": 3.78,
+              "maxProportionalCost": 3.78,
+              "latestCashCost": 5.04,
+              "weightedCashCost": 5.04,
+              "avgCashCost": 5.04,
+              "minCashCost": 5.04,
+              "maxCashCost": 5.04,
+              "lastSeenAt": null,
+              "pricePoints": []
+            },
+            "neSupermercado": {
+              "storeName": "NE Supermercado",
+              "hasRealHistory": true,
+              "observationsCount": 5,
+              "latestPackagePrice": 2.49,
+              "weightedPackagePrice": 2.52,
+              "avgHistoricalPackagePrice": 2.59,
+              "minHistoricalPackagePrice": 2.49,
+              "maxHistoricalPackagePrice": 2.69,
+              "latestProportionalCost": 3.73,
+              "weightedProportionalCost": 3.78,
+              "avgProportionalCost": 3.88,
+              "minProportionalCost": 3.73,
+              "maxProportionalCost": 4.04,
+              "latestCashCost": 4.98,
+              "weightedCashCost": 5.04,
+              "avgCashCost": 5.18,
+              "minCashCost": 4.98,
+              "maxCashCost": 5.38,
+              "lastSeenAt": "2026-11-12T22:40:36.029Z",
+              "pricePoints": [
+                {
+                  "observedAt": "2026-10-28T15:00:00.000Z",
+                  "packagePrice": 2.69,
+                  "basePrice": 0.01345,
+                  "sourceType": "CUPOM_FISCAL"
+                },
+                {
+                  "observedAt": "2026-11-12T05:52:38.871Z",
+                  "packagePrice": 2.59,
+                  "basePrice": 0.01295,
+                  "sourceType": "MARKET_FLYER"
+                },
+                {
+                  "observedAt": "2026-11-12T06:01:21.680Z",
+                  "packagePrice": 2.49,
+                  "basePrice": 0.01245,
+                  "sourceType": "CUPOM_FISCAL"
+                },
+                {
+                  "observedAt": "2026-11-12T06:02:52.963Z",
+                  "packagePrice": 2.69,
+                  "basePrice": 0.01345,
+                  "sourceType": "MARKET_FLYER"
+                },
+                {
+                  "observedAt": "2026-11-12T22:40:36.029Z",
+                  "packagePrice": 2.49,
+                  "basePrice": 0.01245,
+                  "sourceType": "MARKET_FLYER"
+                }
+              ]
+            },
+            "cheaperStoreWeighted": "INSUFFICIENT_DATA",
+            "weightedCashDiff": 0,
+            "weightedProportionalDiff": 0
+          }
+        ],
+        "timeline": [
+          {
+            "periodLabel": "Jun/26",
+            "sortKey": "2026-06",
+            "mercadoSouzaCash": 18.13,
+            "neSupermercadoCash": 18.87,
+            "mercadoSouzaProportional": 10.89,
+            "neSupermercadoProportional": 11.53,
+            "mercadoSouzaRealItems": 0,
+            "neSupermercadoRealItems": 0
+          },
+          {
+            "periodLabel": "Jul/26",
+            "sortKey": "2026-07",
+            "mercadoSouzaCash": 18.13,
+            "neSupermercadoCash": 18.87,
+            "mercadoSouzaProportional": 10.89,
+            "neSupermercadoProportional": 11.53,
+            "mercadoSouzaRealItems": 0,
+            "neSupermercadoRealItems": 0
+          },
+          {
+            "periodLabel": "Ago/26",
+            "sortKey": "2026-08",
+            "mercadoSouzaCash": 18.13,
+            "neSupermercadoCash": 18.87,
+            "mercadoSouzaProportional": 10.89,
+            "neSupermercadoProportional": 11.53,
+            "mercadoSouzaRealItems": 0,
+            "neSupermercadoRealItems": 0
+          },
+          {
+            "periodLabel": "Set/26",
+            "sortKey": "2026-09",
+            "mercadoSouzaCash": 18.13,
+            "neSupermercadoCash": 18.87,
+            "mercadoSouzaProportional": 10.89,
+            "neSupermercadoProportional": 11.53,
+            "mercadoSouzaRealItems": 0,
+            "neSupermercadoRealItems": 0
+          },
+          {
+            "periodLabel": "Out/26",
+            "sortKey": "2026-10",
+            "mercadoSouzaCash": 18.13,
+            "neSupermercadoCash": 18.87,
+            "mercadoSouzaProportional": 10.89,
+            "neSupermercadoProportional": 11.53,
+            "mercadoSouzaRealItems": 0,
+            "neSupermercadoRealItems": 2
+          },
+          {
+            "periodLabel": "Nov/26",
+            "sortKey": "2026-11",
+            "mercadoSouzaCash": 18.13,
+            "neSupermercadoCash": 17.97,
+            "mercadoSouzaProportional": 10.89,
+            "neSupermercadoProportional": 10.73,
+            "mercadoSouzaRealItems": 0,
+            "neSupermercadoRealItems": 2
+          }
+        ]
+      },
+      "similarRecipes": [
+        {
+          "recipeId": "f5a23b82-a412-4d8a-b342-ac0e676f259d",
+          "recipeName": "Pavê rápido e simples",
+          "sharedIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC"
+          ],
+          "sharedCount": 2,
+          "similarityPct": 27,
+          "lowestPossibleCashCost": 79.85,
+          "proportionalCostPerPortion": 9.92,
+          "servings": 6,
+          "prepTimeMinutes": 50,
+          "difficulty": "Elaborada",
+          "additionalOutlayEstimate": 79.85
+        },
+        {
+          "recipeId": "44fe0262-bcff-440e-bbc9-e5fad677a8dc",
+          "recipeName": "Pavê simples de chocolate",
+          "sharedIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC"
+          ],
+          "sharedCount": 2,
+          "similarityPct": 21,
+          "lowestPossibleCashCost": 81.58,
+          "proportionalCostPerPortion": 5.92,
+          "servings": 8,
+          "prepTimeMinutes": 65,
+          "difficulty": "Elaborada",
+          "additionalOutlayEstimate": 81.58
+        },
+        {
+          "recipeId": "cca58da5-d887-4e21-8965-ac71f6394970",
+          "recipeName": "Pavê Simples de Chocolate",
+          "sharedIngredients": [
+            "LEITE CONDENSADO ITALAC",
+            "CREME DE LEITE ITALAC"
+          ],
+          "sharedCount": 2,
+          "similarityPct": 21,
+          "lowestPossibleCashCost": 80.11,
+          "proportionalCostPerPortion": 6.04,
+          "servings": 8,
+          "prepTimeMinutes": 65,
+          "difficulty": "Elaborada",
+          "additionalOutlayEstimate": 80.11
+        }
+      ],
+      "routeAnalysis": {
+        "singleStoreBestId": "8f318514-d886-46bf-a053-d89a8165756b",
+        "singleStoreBestName": "NE SUPERMERCADO",
+        "singleStoreScenario": {
+          "mode": "SINGLE_STORE",
+          "title": "Mercado Único: NE SUPERMERCADO",
+          "storesVisited": [
+            {
+              "storeId": "8f318514-d886-46bf-a053-d89a8165756b",
+              "storeName": "NE SUPERMERCADO",
+              "lat": -23.573414,
+              "lng": -46.670881,
+              "itemsCount": 3,
+              "subtotalProducts": 18.13,
+              "items": [
+                {
+                  "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+                  "productName": "LEITE CONDENSADO ITALAC",
+                  "packages": 1,
+                  "packagePrice": 5.59,
+                  "lineTotal": 5.59
+                },
+                {
+                  "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+                  "productName": "Suco de Limão (500ml)",
+                  "packages": 1,
+                  "packagePrice": 7.5,
+                  "lineTotal": 7.5
+                },
+                {
+                  "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+                  "productName": "CREME DE LEITE ITALAC",
+                  "packages": 2,
+                  "packagePrice": 2.52,
+                  "lineTotal": 5.04
+                }
+              ]
+            }
+          ],
+          "productsCost": 18.13,
+          "totalDistanceKm": 6.7,
+          "totalDurationMin": 11,
+          "gasCost": 3.76,
+          "uberCost": 21.14,
+          "totalWithGas": 21.89,
+          "totalWithUber": 39.27,
+          "routeLegs": [
+            {
+              "fromName": "Minha Casa",
+              "toName": "NE SUPERMERCADO",
+              "distanceKm": 2.64,
+              "durationMin": 4,
+              "coordinates": [
+                [
+                  -23.561442,
+                  -46.655819
+                ],
+                [
+                  -23.562456,
+                  -46.656357
+                ],
+                [
+                  -23.563043,
+                  -46.656627
+                ],
+                [
+                  -23.563455,
+                  -46.656765
+                ],
+                [
+                  -23.564495,
+                  -46.657137
+                ],
+                [
+                  -23.564773,
+                  -46.65722
+                ],
+                [
+                  -23.565029,
+                  -46.657306
+                ],
+                [
+                  -23.565188,
+                  -46.657389
+                ],
+                [
+                  -23.565336,
+                  -46.657472
+                ],
+                [
+                  -23.565492,
+                  -46.657597
+                ],
+                [
+                  -23.565597,
+                  -46.65769
+                ],
+                [
+                  -23.565816,
+                  -46.657917
+                ],
+                [
+                  -23.566149,
+                  -46.658239
+                ],
+                [
+                  -23.566272,
+                  -46.658359
+                ],
+                [
+                  -23.566334,
+                  -46.658419
+                ],
+                [
+                  -23.56695,
+                  -46.659015
+                ],
+                [
+                  -23.566966,
+                  -46.65903
+                ],
+                [
+                  -23.567059,
+                  -46.659121
+                ],
+                [
+                  -23.567128,
+                  -46.659187
+                ],
+                [
+                  -23.56735,
+                  -46.6594
+                ],
+                [
+                  -23.567585,
+                  -46.659626
+                ],
+                [
+                  -23.56786,
+                  -46.659891
+                ],
+                [
+                  -23.568532,
+                  -46.660539
+                ],
+                [
+                  -23.568573,
+                  -46.660578
+                ],
+                [
+                  -23.568634,
+                  -46.660637
+                ],
+                [
+                  -23.568681,
+                  -46.660684
+                ],
+                [
+                  -23.568711,
+                  -46.660714
+                ],
+                [
+                  -23.569207,
+                  -46.661198
+                ],
+                [
+                  -23.56924,
+                  -46.66123
+                ],
+                [
+                  -23.569904,
+                  -46.661879
+                ],
+                [
+                  -23.570104,
+                  -46.662075
+                ],
+                [
+                  -23.570116,
+                  -46.662087
+                ],
+                [
+                  -23.570358,
+                  -46.662323
+                ],
+                [
+                  -23.570447,
+                  -46.662411
+                ],
+                [
+                  -23.570561,
+                  -46.662527
+                ],
+                [
+                  -23.570692,
+                  -46.662675
+                ],
+                [
+                  -23.570873,
+                  -46.662917
+                ],
+                [
+                  -23.570973,
+                  -46.663051
+                ],
+                [
+                  -23.571035,
+                  -46.663135
+                ],
+                [
+                  -23.571214,
+                  -46.663373
+                ],
+                [
+                  -23.571281,
+                  -46.663463
+                ],
+                [
+                  -23.571367,
+                  -46.663587
+                ],
+                [
+                  -23.572251,
+                  -46.664851
+                ],
+                [
+                  -23.57232,
+                  -46.664942
+                ],
+                [
+                  -23.572348,
+                  -46.664979
+                ],
+                [
+                  -23.572397,
+                  -46.665046
+                ],
+                [
+                  -23.572435,
+                  -46.665099
+                ],
+                [
+                  -23.572471,
+                  -46.665146
+                ],
+                [
+                  -23.572873,
+                  -46.665699
+                ],
+                [
+                  -23.573192,
+                  -46.666136
+                ],
+                [
+                  -23.573286,
+                  -46.666265
+                ],
+                [
+                  -23.573442,
+                  -46.666481
+                ],
+                [
+                  -23.573575,
+                  -46.666661
+                ],
+                [
+                  -23.573827,
+                  -46.667006
+                ],
+                [
+                  -23.573904,
+                  -46.667107
+                ],
+                [
+                  -23.573944,
+                  -46.667162
+                ],
+                [
+                  -23.573982,
+                  -46.667214
+                ],
+                [
+                  -23.574034,
+                  -46.667287
+                ],
+                [
+                  -23.574881,
+                  -46.668453
+                ],
+                [
+                  -23.574915,
+                  -46.668501
+                ],
+                [
+                  -23.574986,
+                  -46.668598
+                ],
+                [
+                  -23.575048,
+                  -46.668682
+                ],
+                [
+                  -23.575072,
+                  -46.668714
+                ],
+                [
+                  -23.575398,
+                  -46.669159
+                ],
+                [
+                  -23.57587,
+                  -46.669823
+                ],
+                [
+                  -23.575877,
+                  -46.669899
+                ],
+                [
+                  -23.575882,
+                  -46.669962
+                ],
+                [
+                  -23.575883,
+                  -46.670017
+                ],
+                [
+                  -23.575877,
+                  -46.67009
+                ],
+                [
+                  -23.575854,
+                  -46.670226
+                ],
+                [
+                  -23.575774,
+                  -46.670361
+                ],
+                [
+                  -23.575716,
+                  -46.670444
+                ],
+                [
+                  -23.575666,
+                  -46.6705
+                ],
+                [
+                  -23.57563,
+                  -46.670565
+                ],
+                [
+                  -23.575566,
+                  -46.670628
+                ],
+                [
+                  -23.5755,
+                  -46.670675
+                ],
+                [
+                  -23.575413,
+                  -46.670684
+                ],
+                [
+                  -23.575369,
+                  -46.670713
+                ],
+                [
+                  -23.575295,
+                  -46.670751
+                ],
+                [
+                  -23.575204,
+                  -46.670934
+                ],
+                [
+                  -23.575146,
+                  -46.671003
+                ],
+                [
+                  -23.575086,
+                  -46.671059
+                ],
+                [
+                  -23.575012,
+                  -46.67111
+                ],
+                [
+                  -23.574901,
+                  -46.67117
+                ],
+                [
+                  -23.574774,
+                  -46.671197
+                ],
+                [
+                  -23.574691,
+                  -46.671362
+                ],
+                [
+                  -23.574625,
+                  -46.671453
+                ],
+                [
+                  -23.574501,
+                  -46.671582
+                ],
+                [
+                  -23.57441,
+                  -46.671658
+                ],
+                [
+                  -23.574362,
+                  -46.671699
+                ],
+                [
+                  -23.574303,
+                  -46.671744
+                ],
+                [
+                  -23.574223,
+                  -46.671797
+                ],
+                [
+                  -23.574143,
+                  -46.671838
+                ],
+                [
+                  -23.574065,
+                  -46.671869
+                ],
+                [
+                  -23.573977,
+                  -46.671891
+                ],
+                [
+                  -23.573897,
+                  -46.671899
+                ],
+                [
+                  -23.57382,
+                  -46.671899
+                ],
+                [
+                  -23.573748,
+                  -46.671889
+                ],
+                [
+                  -23.573661,
+                  -46.671864
+                ],
+                [
+                  -23.573589,
+                  -46.671832
+                ],
+                [
+                  -23.573524,
+                  -46.671794
+                ],
+                [
+                  -23.573393,
+                  -46.671694
+                ],
+                [
+                  -23.573177,
+                  -46.671488
+                ],
+                [
+                  -23.573015,
+                  -46.671307
+                ]
+              ]
+            },
+            {
+              "fromName": "NE SUPERMERCADO",
+              "toName": "Minha Casa",
+              "distanceKm": 4.06,
+              "durationMin": 7,
+              "coordinates": [
+                [
+                  -23.573015,
+                  -46.671307
+                ],
+                [
+                  -23.572841,
+                  -46.671113
+                ],
+                [
+                  -23.572706,
+                  -46.670957
+                ],
+                [
+                  -23.572608,
+                  -46.670812
+                ],
+                [
+                  -23.572549,
+                  -46.670698
+                ],
+                [
+                  -23.572437,
+                  -46.67023
+                ],
+                [
+                  -23.572398,
+                  -46.670011
+                ],
+                [
+                  -23.572345,
+                  -46.669812
+                ],
+                [
+                  -23.572275,
+                  -46.669654
+                ],
+                [
+                  -23.572077,
+                  -46.669343
+                ],
+                [
+                  -23.572044,
+                  -46.669292
+                ],
+                [
+                  -23.571937,
+                  -46.669183
+                ],
+                [
+                  -23.571875,
+                  -46.669128
+                ],
+                [
+                  -23.571853,
+                  -46.669109
+                ],
+                [
+                  -23.571798,
+                  -46.669058
+                ],
+                [
+                  -23.571706,
+                  -46.668989
+                ],
+                [
+                  -23.571565,
+                  -46.668902
+                ],
+                [
+                  -23.571442,
+                  -46.668849
+                ],
+                [
+                  -23.571334,
+                  -46.66882
+                ],
+                [
+                  -23.571213,
+                  -46.66879
+                ],
+                [
+                  -23.571134,
+                  -46.668771
+                ],
+                [
+                  -23.571151,
+                  -46.668626
+                ],
+                [
+                  -23.571152,
+                  -46.668617
+                ],
+                [
+                  -23.571333,
+                  -46.667095
+                ],
+                [
+                  -23.571382,
+                  -46.66678
+                ],
+                [
+                  -23.571411,
+                  -46.666593
+                ],
+                [
+                  -23.571457,
+                  -46.666251
+                ],
+                [
+                  -23.571477,
+                  -46.666107
+                ],
+                [
+                  -23.571484,
+                  -46.666086
+                ],
+                [
+                  -23.571504,
+                  -46.66603
+                ],
+                [
+                  -23.571553,
+                  -46.665966
+                ],
+                [
+                  -23.571761,
+                  -46.665792
+                ],
+                [
+                  -23.571938,
+                  -46.665643
+                ],
+                [
+                  -23.572041,
+                  -46.665544
+                ],
+                [
+                  -23.572132,
+                  -46.66544
+                ],
+                [
+                  -23.572265,
+                  -46.665243
+                ],
+                [
+                  -23.572397,
+                  -46.665046
+                ],
+                [
+                  -23.572445,
+                  -46.66484
+                ],
+                [
+                  -23.572416,
+                  -46.664801
+                ],
+                [
+                  -23.572382,
+                  -46.664754
+                ],
+                [
+                  -23.571479,
+                  -46.663491
+                ],
+                [
+                  -23.571389,
+                  -46.663362
+                ],
+                [
+                  -23.57132,
+                  -46.66327
+                ],
+                [
+                  -23.570796,
+                  -46.662573
+                ],
+                [
+                  -23.570572,
+                  -46.662326
+                ],
+                [
+                  -23.570339,
+                  -46.662102
+                ],
+                [
+                  -23.570193,
+                  -46.661965
+                ],
+                [
+                  -23.569951,
+                  -46.661738
+                ],
+                [
+                  -23.568796,
+                  -46.660609
+                ],
+                [
+                  -23.56877,
+                  -46.660583
+                ],
+                [
+                  -23.56873,
+                  -46.660544
+                ],
+                [
+                  -23.568662,
+                  -46.660477
+                ],
+                [
+                  -23.56862,
+                  -46.660437
+                ],
+                [
+                  -23.568234,
+                  -46.660066
+                ],
+                [
+                  -23.567967,
+                  -46.659808
+                ],
+                [
+                  -23.567673,
+                  -46.659525
+                ],
+                [
+                  -23.567236,
+                  -46.659105
+                ],
+                [
+                  -23.567218,
+                  -46.659087
+                ],
+                [
+                  -23.56715,
+                  -46.659022
+                ],
+                [
+                  -23.567052,
+                  -46.658927
+                ],
+                [
+                  -23.567038,
+                  -46.658914
+                ],
+                [
+                  -23.566789,
+                  -46.658673
+                ],
+                [
+                  -23.566421,
+                  -46.658317
+                ],
+                [
+                  -23.566361,
+                  -46.658258
+                ],
+                [
+                  -23.565905,
+                  -46.657817
+                ],
+                [
+                  -23.565595,
+                  -46.65754
+                ],
+                [
+                  -23.565367,
+                  -46.657346
+                ],
+                [
+                  -23.565167,
+                  -46.65721
+                ],
+                [
+                  -23.565014,
+                  -46.657132
+                ],
+                [
+                  -23.564925,
+                  -46.657101
+                ],
+                [
+                  -23.564704,
+                  -46.657025
+                ],
+                [
+                  -23.564542,
+                  -46.656964
+                ],
+                [
+                  -23.563485,
+                  -46.656599
+                ],
+                [
+                  -23.5631,
+                  -46.656471
+                ],
+                [
+                  -23.562477,
+                  -46.656193
+                ],
+                [
+                  -23.561506,
+                  -46.655687
+                ],
+                [
+                  -23.561198,
+                  -46.655513
+                ],
+                [
+                  -23.56063,
+                  -46.65511
+                ],
+                [
+                  -23.56029,
+                  -46.654885
+                ],
+                [
+                  -23.559933,
+                  -46.654632
+                ],
+                [
+                  -23.559163,
+                  -46.65409
+                ],
+                [
+                  -23.559088,
+                  -46.654036
+                ],
+                [
+                  -23.559032,
+                  -46.653996
+                ],
+                [
+                  -23.558716,
+                  -46.653778
+                ],
+                [
+                  -23.558698,
+                  -46.653766
+                ],
+                [
+                  -23.558435,
+                  -46.653595
+                ],
+                [
+                  -23.558309,
+                  -46.653495
+                ],
+                [
+                  -23.558274,
+                  -46.653355
+                ],
+                [
+                  -23.558051,
+                  -46.652986
+                ],
+                [
+                  -23.557836,
+                  -46.652597
+                ],
+                [
+                  -23.557575,
+                  -46.652124
+                ],
+                [
+                  -23.557085,
+                  -46.65127
+                ],
+                [
+                  -23.557018,
+                  -46.651153
+                ],
+                [
+                  -23.556522,
+                  -46.650321
+                ],
+                [
+                  -23.556419,
+                  -46.650194
+                ],
+                [
+                  -23.556339,
+                  -46.650133
+                ],
+                [
+                  -23.556256,
+                  -46.65013
+                ],
+                [
+                  -23.556227,
+                  -46.650157
+                ],
+                [
+                  -23.556213,
+                  -46.650171
+                ],
+                [
+                  -23.556154,
+                  -46.65027
+                ],
+                [
+                  -23.556089,
+                  -46.650411
+                ],
+                [
+                  -23.556078,
+                  -46.650433
+                ],
+                [
+                  -23.556075,
+                  -46.650502
+                ],
+                [
+                  -23.556092,
+                  -46.650591
+                ],
+                [
+                  -23.556659,
+                  -46.651489
+                ],
+                [
+                  -23.557224,
+                  -46.65242
+                ],
+                [
+                  -23.557399,
+                  -46.652701
+                ],
+                [
+                  -23.557648,
+                  -46.653008
+                ],
+                [
+                  -23.557881,
+                  -46.653289
+                ],
+                [
+                  -23.55799,
+                  -46.653328
+                ],
+                [
+                  -23.558061,
+                  -46.653432
+                ],
+                [
+                  -23.558123,
+                  -46.653503
+                ],
+                [
+                  -23.558233,
+                  -46.653612
+                ],
+                [
+                  -23.558332,
+                  -46.653699
+                ],
+                [
+                  -23.558553,
+                  -46.653887
+                ],
+                [
+                  -23.558788,
+                  -46.654055
+                ],
+                [
+                  -23.558884,
+                  -46.65412
+                ],
+                [
+                  -23.558946,
+                  -46.654162
+                ],
+                [
+                  -23.55922,
+                  -46.654358
+                ],
+                [
+                  -23.55927,
+                  -46.654394
+                ],
+                [
+                  -23.559818,
+                  -46.654789
+                ],
+                [
+                  -23.56021,
+                  -46.655061
+                ],
+                [
+                  -23.560354,
+                  -46.65517
+                ],
+                [
+                  -23.56049,
+                  -46.655261
+                ],
+                [
+                  -23.560848,
+                  -46.655451
+                ],
+                [
+                  -23.561162,
+                  -46.655662
+                ],
+                [
+                  -23.561416,
+                  -46.655805
+                ],
+                [
+                  -23.561442,
+                  -46.655819
+                ]
+              ]
+            }
+          ]
+        },
+        "splitStoreScenario": {
+          "mode": "SINGLE_STORE",
+          "title": "Mercado Único Otimizado: NE SUPERMERCADO",
+          "storesVisited": [
+            {
+              "storeId": "8f318514-d886-46bf-a053-d89a8165756b",
+              "storeName": "1º NE SUPERMERCADO",
+              "lat": -23.573414,
+              "lng": -46.670881,
+              "itemsCount": 3,
+              "subtotalProducts": 18.13,
+              "items": [
+                {
+                  "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+                  "productName": "LEITE CONDENSADO ITALAC",
+                  "packages": 1,
+                  "packagePrice": 5.59,
+                  "lineTotal": 5.59
+                },
+                {
+                  "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+                  "productName": "Suco de Limão (500ml)",
+                  "packages": 1,
+                  "packagePrice": 7.5,
+                  "lineTotal": 7.5
+                },
+                {
+                  "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+                  "productName": "CREME DE LEITE ITALAC",
+                  "packages": 2,
+                  "packagePrice": 2.52,
+                  "lineTotal": 5.04
+                }
+              ]
+            }
+          ],
+          "productsCost": 18.13,
+          "totalDistanceKm": 6.7,
+          "totalDurationMin": 11,
+          "gasCost": 3.76,
+          "uberCost": 21.14,
+          "totalWithGas": 21.89,
+          "totalWithUber": 39.27,
+          "routeLegs": [
+            {
+              "fromName": "Minha Casa",
+              "toName": "NE SUPERMERCADO",
+              "distanceKm": 2.64,
+              "durationMin": 4,
+              "coordinates": [
+                [
+                  -23.561442,
+                  -46.655819
+                ],
+                [
+                  -23.562456,
+                  -46.656357
+                ],
+                [
+                  -23.563043,
+                  -46.656627
+                ],
+                [
+                  -23.563455,
+                  -46.656765
+                ],
+                [
+                  -23.564495,
+                  -46.657137
+                ],
+                [
+                  -23.564773,
+                  -46.65722
+                ],
+                [
+                  -23.565029,
+                  -46.657306
+                ],
+                [
+                  -23.565188,
+                  -46.657389
+                ],
+                [
+                  -23.565336,
+                  -46.657472
+                ],
+                [
+                  -23.565492,
+                  -46.657597
+                ],
+                [
+                  -23.565597,
+                  -46.65769
+                ],
+                [
+                  -23.565816,
+                  -46.657917
+                ],
+                [
+                  -23.566149,
+                  -46.658239
+                ],
+                [
+                  -23.566272,
+                  -46.658359
+                ],
+                [
+                  -23.566334,
+                  -46.658419
+                ],
+                [
+                  -23.56695,
+                  -46.659015
+                ],
+                [
+                  -23.566966,
+                  -46.65903
+                ],
+                [
+                  -23.567059,
+                  -46.659121
+                ],
+                [
+                  -23.567128,
+                  -46.659187
+                ],
+                [
+                  -23.56735,
+                  -46.6594
+                ],
+                [
+                  -23.567585,
+                  -46.659626
+                ],
+                [
+                  -23.56786,
+                  -46.659891
+                ],
+                [
+                  -23.568532,
+                  -46.660539
+                ],
+                [
+                  -23.568573,
+                  -46.660578
+                ],
+                [
+                  -23.568634,
+                  -46.660637
+                ],
+                [
+                  -23.568681,
+                  -46.660684
+                ],
+                [
+                  -23.568711,
+                  -46.660714
+                ],
+                [
+                  -23.569207,
+                  -46.661198
+                ],
+                [
+                  -23.56924,
+                  -46.66123
+                ],
+                [
+                  -23.569904,
+                  -46.661879
+                ],
+                [
+                  -23.570104,
+                  -46.662075
+                ],
+                [
+                  -23.570116,
+                  -46.662087
+                ],
+                [
+                  -23.570358,
+                  -46.662323
+                ],
+                [
+                  -23.570447,
+                  -46.662411
+                ],
+                [
+                  -23.570561,
+                  -46.662527
+                ],
+                [
+                  -23.570692,
+                  -46.662675
+                ],
+                [
+                  -23.570873,
+                  -46.662917
+                ],
+                [
+                  -23.570973,
+                  -46.663051
+                ],
+                [
+                  -23.571035,
+                  -46.663135
+                ],
+                [
+                  -23.571214,
+                  -46.663373
+                ],
+                [
+                  -23.571281,
+                  -46.663463
+                ],
+                [
+                  -23.571367,
+                  -46.663587
+                ],
+                [
+                  -23.572251,
+                  -46.664851
+                ],
+                [
+                  -23.57232,
+                  -46.664942
+                ],
+                [
+                  -23.572348,
+                  -46.664979
+                ],
+                [
+                  -23.572397,
+                  -46.665046
+                ],
+                [
+                  -23.572435,
+                  -46.665099
+                ],
+                [
+                  -23.572471,
+                  -46.665146
+                ],
+                [
+                  -23.572873,
+                  -46.665699
+                ],
+                [
+                  -23.573192,
+                  -46.666136
+                ],
+                [
+                  -23.573286,
+                  -46.666265
+                ],
+                [
+                  -23.573442,
+                  -46.666481
+                ],
+                [
+                  -23.573575,
+                  -46.666661
+                ],
+                [
+                  -23.573827,
+                  -46.667006
+                ],
+                [
+                  -23.573904,
+                  -46.667107
+                ],
+                [
+                  -23.573944,
+                  -46.667162
+                ],
+                [
+                  -23.573982,
+                  -46.667214
+                ],
+                [
+                  -23.574034,
+                  -46.667287
+                ],
+                [
+                  -23.574881,
+                  -46.668453
+                ],
+                [
+                  -23.574915,
+                  -46.668501
+                ],
+                [
+                  -23.574986,
+                  -46.668598
+                ],
+                [
+                  -23.575048,
+                  -46.668682
+                ],
+                [
+                  -23.575072,
+                  -46.668714
+                ],
+                [
+                  -23.575398,
+                  -46.669159
+                ],
+                [
+                  -23.57587,
+                  -46.669823
+                ],
+                [
+                  -23.575877,
+                  -46.669899
+                ],
+                [
+                  -23.575882,
+                  -46.669962
+                ],
+                [
+                  -23.575883,
+                  -46.670017
+                ],
+                [
+                  -23.575877,
+                  -46.67009
+                ],
+                [
+                  -23.575854,
+                  -46.670226
+                ],
+                [
+                  -23.575774,
+                  -46.670361
+                ],
+                [
+                  -23.575716,
+                  -46.670444
+                ],
+                [
+                  -23.575666,
+                  -46.6705
+                ],
+                [
+                  -23.57563,
+                  -46.670565
+                ],
+                [
+                  -23.575566,
+                  -46.670628
+                ],
+                [
+                  -23.5755,
+                  -46.670675
+                ],
+                [
+                  -23.575413,
+                  -46.670684
+                ],
+                [
+                  -23.575369,
+                  -46.670713
+                ],
+                [
+                  -23.575295,
+                  -46.670751
+                ],
+                [
+                  -23.575204,
+                  -46.670934
+                ],
+                [
+                  -23.575146,
+                  -46.671003
+                ],
+                [
+                  -23.575086,
+                  -46.671059
+                ],
+                [
+                  -23.575012,
+                  -46.67111
+                ],
+                [
+                  -23.574901,
+                  -46.67117
+                ],
+                [
+                  -23.574774,
+                  -46.671197
+                ],
+                [
+                  -23.574691,
+                  -46.671362
+                ],
+                [
+                  -23.574625,
+                  -46.671453
+                ],
+                [
+                  -23.574501,
+                  -46.671582
+                ],
+                [
+                  -23.57441,
+                  -46.671658
+                ],
+                [
+                  -23.574362,
+                  -46.671699
+                ],
+                [
+                  -23.574303,
+                  -46.671744
+                ],
+                [
+                  -23.574223,
+                  -46.671797
+                ],
+                [
+                  -23.574143,
+                  -46.671838
+                ],
+                [
+                  -23.574065,
+                  -46.671869
+                ],
+                [
+                  -23.573977,
+                  -46.671891
+                ],
+                [
+                  -23.573897,
+                  -46.671899
+                ],
+                [
+                  -23.57382,
+                  -46.671899
+                ],
+                [
+                  -23.573748,
+                  -46.671889
+                ],
+                [
+                  -23.573661,
+                  -46.671864
+                ],
+                [
+                  -23.573589,
+                  -46.671832
+                ],
+                [
+                  -23.573524,
+                  -46.671794
+                ],
+                [
+                  -23.573393,
+                  -46.671694
+                ],
+                [
+                  -23.573177,
+                  -46.671488
+                ],
+                [
+                  -23.573015,
+                  -46.671307
+                ]
+              ]
+            },
+            {
+              "fromName": "NE SUPERMERCADO",
+              "toName": "Minha Casa",
+              "distanceKm": 4.06,
+              "durationMin": 7,
+              "coordinates": [
+                [
+                  -23.573015,
+                  -46.671307
+                ],
+                [
+                  -23.572841,
+                  -46.671113
+                ],
+                [
+                  -23.572706,
+                  -46.670957
+                ],
+                [
+                  -23.572608,
+                  -46.670812
+                ],
+                [
+                  -23.572549,
+                  -46.670698
+                ],
+                [
+                  -23.572437,
+                  -46.67023
+                ],
+                [
+                  -23.572398,
+                  -46.670011
+                ],
+                [
+                  -23.572345,
+                  -46.669812
+                ],
+                [
+                  -23.572275,
+                  -46.669654
+                ],
+                [
+                  -23.572077,
+                  -46.669343
+                ],
+                [
+                  -23.572044,
+                  -46.669292
+                ],
+                [
+                  -23.571937,
+                  -46.669183
+                ],
+                [
+                  -23.571875,
+                  -46.669128
+                ],
+                [
+                  -23.571853,
+                  -46.669109
+                ],
+                [
+                  -23.571798,
+                  -46.669058
+                ],
+                [
+                  -23.571706,
+                  -46.668989
+                ],
+                [
+                  -23.571565,
+                  -46.668902
+                ],
+                [
+                  -23.571442,
+                  -46.668849
+                ],
+                [
+                  -23.571334,
+                  -46.66882
+                ],
+                [
+                  -23.571213,
+                  -46.66879
+                ],
+                [
+                  -23.571134,
+                  -46.668771
+                ],
+                [
+                  -23.571151,
+                  -46.668626
+                ],
+                [
+                  -23.571152,
+                  -46.668617
+                ],
+                [
+                  -23.571333,
+                  -46.667095
+                ],
+                [
+                  -23.571382,
+                  -46.66678
+                ],
+                [
+                  -23.571411,
+                  -46.666593
+                ],
+                [
+                  -23.571457,
+                  -46.666251
+                ],
+                [
+                  -23.571477,
+                  -46.666107
+                ],
+                [
+                  -23.571484,
+                  -46.666086
+                ],
+                [
+                  -23.571504,
+                  -46.66603
+                ],
+                [
+                  -23.571553,
+                  -46.665966
+                ],
+                [
+                  -23.571761,
+                  -46.665792
+                ],
+                [
+                  -23.571938,
+                  -46.665643
+                ],
+                [
+                  -23.572041,
+                  -46.665544
+                ],
+                [
+                  -23.572132,
+                  -46.66544
+                ],
+                [
+                  -23.572265,
+                  -46.665243
+                ],
+                [
+                  -23.572397,
+                  -46.665046
+                ],
+                [
+                  -23.572445,
+                  -46.66484
+                ],
+                [
+                  -23.572416,
+                  -46.664801
+                ],
+                [
+                  -23.572382,
+                  -46.664754
+                ],
+                [
+                  -23.571479,
+                  -46.663491
+                ],
+                [
+                  -23.571389,
+                  -46.663362
+                ],
+                [
+                  -23.57132,
+                  -46.66327
+                ],
+                [
+                  -23.570796,
+                  -46.662573
+                ],
+                [
+                  -23.570572,
+                  -46.662326
+                ],
+                [
+                  -23.570339,
+                  -46.662102
+                ],
+                [
+                  -23.570193,
+                  -46.661965
+                ],
+                [
+                  -23.569951,
+                  -46.661738
+                ],
+                [
+                  -23.568796,
+                  -46.660609
+                ],
+                [
+                  -23.56877,
+                  -46.660583
+                ],
+                [
+                  -23.56873,
+                  -46.660544
+                ],
+                [
+                  -23.568662,
+                  -46.660477
+                ],
+                [
+                  -23.56862,
+                  -46.660437
+                ],
+                [
+                  -23.568234,
+                  -46.660066
+                ],
+                [
+                  -23.567967,
+                  -46.659808
+                ],
+                [
+                  -23.567673,
+                  -46.659525
+                ],
+                [
+                  -23.567236,
+                  -46.659105
+                ],
+                [
+                  -23.567218,
+                  -46.659087
+                ],
+                [
+                  -23.56715,
+                  -46.659022
+                ],
+                [
+                  -23.567052,
+                  -46.658927
+                ],
+                [
+                  -23.567038,
+                  -46.658914
+                ],
+                [
+                  -23.566789,
+                  -46.658673
+                ],
+                [
+                  -23.566421,
+                  -46.658317
+                ],
+                [
+                  -23.566361,
+                  -46.658258
+                ],
+                [
+                  -23.565905,
+                  -46.657817
+                ],
+                [
+                  -23.565595,
+                  -46.65754
+                ],
+                [
+                  -23.565367,
+                  -46.657346
+                ],
+                [
+                  -23.565167,
+                  -46.65721
+                ],
+                [
+                  -23.565014,
+                  -46.657132
+                ],
+                [
+                  -23.564925,
+                  -46.657101
+                ],
+                [
+                  -23.564704,
+                  -46.657025
+                ],
+                [
+                  -23.564542,
+                  -46.656964
+                ],
+                [
+                  -23.563485,
+                  -46.656599
+                ],
+                [
+                  -23.5631,
+                  -46.656471
+                ],
+                [
+                  -23.562477,
+                  -46.656193
+                ],
+                [
+                  -23.561506,
+                  -46.655687
+                ],
+                [
+                  -23.561198,
+                  -46.655513
+                ],
+                [
+                  -23.56063,
+                  -46.65511
+                ],
+                [
+                  -23.56029,
+                  -46.654885
+                ],
+                [
+                  -23.559933,
+                  -46.654632
+                ],
+                [
+                  -23.559163,
+                  -46.65409
+                ],
+                [
+                  -23.559088,
+                  -46.654036
+                ],
+                [
+                  -23.559032,
+                  -46.653996
+                ],
+                [
+                  -23.558716,
+                  -46.653778
+                ],
+                [
+                  -23.558698,
+                  -46.653766
+                ],
+                [
+                  -23.558435,
+                  -46.653595
+                ],
+                [
+                  -23.558309,
+                  -46.653495
+                ],
+                [
+                  -23.558274,
+                  -46.653355
+                ],
+                [
+                  -23.558051,
+                  -46.652986
+                ],
+                [
+                  -23.557836,
+                  -46.652597
+                ],
+                [
+                  -23.557575,
+                  -46.652124
+                ],
+                [
+                  -23.557085,
+                  -46.65127
+                ],
+                [
+                  -23.557018,
+                  -46.651153
+                ],
+                [
+                  -23.556522,
+                  -46.650321
+                ],
+                [
+                  -23.556419,
+                  -46.650194
+                ],
+                [
+                  -23.556339,
+                  -46.650133
+                ],
+                [
+                  -23.556256,
+                  -46.65013
+                ],
+                [
+                  -23.556227,
+                  -46.650157
+                ],
+                [
+                  -23.556213,
+                  -46.650171
+                ],
+                [
+                  -23.556154,
+                  -46.65027
+                ],
+                [
+                  -23.556089,
+                  -46.650411
+                ],
+                [
+                  -23.556078,
+                  -46.650433
+                ],
+                [
+                  -23.556075,
+                  -46.650502
+                ],
+                [
+                  -23.556092,
+                  -46.650591
+                ],
+                [
+                  -23.556659,
+                  -46.651489
+                ],
+                [
+                  -23.557224,
+                  -46.65242
+                ],
+                [
+                  -23.557399,
+                  -46.652701
+                ],
+                [
+                  -23.557648,
+                  -46.653008
+                ],
+                [
+                  -23.557881,
+                  -46.653289
+                ],
+                [
+                  -23.55799,
+                  -46.653328
+                ],
+                [
+                  -23.558061,
+                  -46.653432
+                ],
+                [
+                  -23.558123,
+                  -46.653503
+                ],
+                [
+                  -23.558233,
+                  -46.653612
+                ],
+                [
+                  -23.558332,
+                  -46.653699
+                ],
+                [
+                  -23.558553,
+                  -46.653887
+                ],
+                [
+                  -23.558788,
+                  -46.654055
+                ],
+                [
+                  -23.558884,
+                  -46.65412
+                ],
+                [
+                  -23.558946,
+                  -46.654162
+                ],
+                [
+                  -23.55922,
+                  -46.654358
+                ],
+                [
+                  -23.55927,
+                  -46.654394
+                ],
+                [
+                  -23.559818,
+                  -46.654789
+                ],
+                [
+                  -23.56021,
+                  -46.655061
+                ],
+                [
+                  -23.560354,
+                  -46.65517
+                ],
+                [
+                  -23.56049,
+                  -46.655261
+                ],
+                [
+                  -23.560848,
+                  -46.655451
+                ],
+                [
+                  -23.561162,
+                  -46.655662
+                ],
+                [
+                  -23.561416,
+                  -46.655805
+                ],
+                [
+                  -23.561442,
+                  -46.655819
+                ]
+              ]
+            }
+          ]
+        },
+        "splitStoreOrder": [
+          {
+            "stopOrder": 1,
+            "storeId": "8f318514-d886-46bf-a053-d89a8165756b",
+            "storeName": "NE SUPERMERCADO",
+            "address": "RODOVIA NILO MAXIMO, 836 JARDIM COLONIA JACAREI-SP",
+            "lat": -23.573414,
+            "lng": -46.670881,
+            "maxPerishabilityRank": 3,
+            "avgPerishabilityRank": 2,
+            "coldChainStageLabel": "Etapa 3 • Laticínios & Refrigerados",
+            "coldChainReason": "Última parada antes de casa para preservar a cadeia fria: concentra os itens mais perecíveis/delicados (CREME DE LEITE ITALAC).",
+            "subtotalCashCost": 18.13,
+            "subtotalProportionalCost": 10.87,
+            "items": [
+              {
+                "productId": "c0070a10-7d40-4e09-83fc-13efc5150d42",
+                "productName": "LEITE CONDENSADO ITALAC",
+                "category": "Laticínios",
+                "baseUnit": "g",
+                "requiredBaseQty": 395,
+                "packagesNeeded": 1,
+                "packagePrice": 5.59,
+                "cashOutlayCost": 5.59,
+                "proportionalCost": 5.59,
+                "perishabilityTier": "NON_PERISHABLE",
+                "perishabilityRank": 1,
+                "perishabilityLabel": "1º Não Perecível (Despensa)",
+                "perishabilityReason": "Estável em temperatura ambiente; pode permanecer no carro/sacola durante todo o trajeto sem perder qualidade.",
+                "hasRealPrice": true
+              },
+              {
+                "productId": "71e39968-c29e-4bfe-a171-5d355e3e17c7",
+                "productName": "Suco de Limão (500ml)",
+                "category": "Hortifruti",
+                "baseUnit": "ml",
+                "requiredBaseQty": 100,
+                "packagesNeeded": 1,
+                "packagePrice": 7.5,
+                "cashOutlayCost": 7.5,
+                "proportionalCost": 1.5,
+                "perishabilityTier": "SEMI_PERISHABLE",
+                "perishabilityRank": 2,
+                "perishabilityLabel": "2º Hortifruti & Ovos (Fresco)",
+                "perishabilityReason": "Sensível a calor prolongado e amassamento; ideal comprar após os itens secos da despensa.",
+                "hasRealPrice": false
+              },
+              {
+                "productId": "0fce4438-9163-45c2-87c6-1aaf27a5a3c3",
+                "productName": "CREME DE LEITE ITALAC",
+                "category": "Laticínios",
+                "baseUnit": "g",
+                "requiredBaseQty": 300,
+                "packagesNeeded": 2,
+                "packagePrice": 2.52,
+                "cashOutlayCost": 5.04,
+                "proportionalCost": 3.78,
+                "perishabilityTier": "REFRIGERATED",
+                "perishabilityRank": 3,
+                "perishabilityLabel": "3º Refrigerado / Laticínio",
+                "perishabilityReason": "Exige refrigeração constante; manter na etapa final da compra reduz aquecimento fora da geladeira.",
+                "hasRealPrice": true
+              }
+            ]
+          }
+        ],
+        "isMultiStoreSplitRecommended": false,
+        "splitSavingsAmount": 0,
+        "netSplitSavingsWithGas": 0,
+        "recommendedPurchaseOption": "SINGLE_STORE",
+        "coldChainProtectedMinutes": 10,
+        "coldChainScore": 94,
+        "coldChainSummary": "Compra concentrada no NE SUPERMERCADO: pegue primeiro os itens não perecíveis (despensa) e deixe carnes, laticínios e congelados para os últimos corredores antes do caixa."
+      }
+    },
     {
       "recipeId": "f5a23b82-a412-4d8a-b342-ac0e676f259d",
       "recipeName": "Pavê rápido e simples",
@@ -31450,6 +34576,21 @@
       },
       "similarRecipes": [
         {
+          "recipeId": "6a406455-361d-499f-ba85-4f0f4742b552",
+          "recipeName": "Mousse de Limão",
+          "sharedIngredients": [
+            "CREME DE LEITE ITALAC"
+          ],
+          "sharedCount": 1,
+          "similarityPct": 24,
+          "lowestPossibleCashCost": 18.13,
+          "proportionalCostPerPortion": 1.81,
+          "servings": 6,
+          "prepTimeMinutes": 35,
+          "difficulty": "Fácil",
+          "additionalOutlayEstimate": 18.13
+        },
+        {
           "recipeId": "f5a23b82-a412-4d8a-b342-ac0e676f259d",
           "recipeName": "Pavê rápido e simples",
           "sharedIngredients": [
@@ -31478,21 +34619,6 @@
           "prepTimeMinutes": 65,
           "difficulty": "Elaborada",
           "additionalOutlayEstimate": 81.58
-        },
-        {
-          "recipeId": "cca58da5-d887-4e21-8965-ac71f6394970",
-          "recipeName": "Pavê Simples de Chocolate",
-          "sharedIngredients": [
-            "CREME DE LEITE ITALAC"
-          ],
-          "sharedCount": 1,
-          "similarityPct": 9,
-          "lowestPossibleCashCost": 80.11,
-          "proportionalCostPerPortion": 6.04,
-          "servings": 8,
-          "prepTimeMinutes": 65,
-          "difficulty": "Elaborada",
-          "additionalOutlayEstimate": 80.11
         }
       ],
       "routeAnalysis": {
