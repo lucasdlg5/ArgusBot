@@ -654,6 +654,7 @@ export function getMockCurrentProductPrices() {
 
     for (const [sId, sKey] of storeKeys) {
       const pHistory = prod.prices[sKey];
+      if (!pHistory || pHistory[2] <= 0) continue;
       const latestPkgPrice = pHistory[2];
       const prevPkgPrice = pHistory[1];
       const minPkgPrice = Math.min(...pHistory);

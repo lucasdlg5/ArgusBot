@@ -2067,6 +2067,14 @@ export default function ArgusRecipesPage() {
                     <RecipeStoreComparisonCard
                       recipe={activeRecipe}
                       portionMultiplier={portionMultiplier}
+                      onRecipeUpdated={(updated) => {
+                        setRecipes((prev) =>
+                          prev.map((r) => (r.recipeId === updated.recipeId ? updated : r))
+                        );
+                        setSubmitFeedback(
+                          `Ingrediente atualizado e custos de "${updated.recipeName}" recalculados!`
+                        );
+                      }}
                     />
 
                     {/* PAINEL DO MAPA & LINHA DO TEMPO DA CADEIA FRIA ("MOSTRAR NO MAPA") */}

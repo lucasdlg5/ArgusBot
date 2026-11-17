@@ -3,7 +3,8 @@ import { env } from '@/config/env';
 import { queryArgus } from '@/lib/db';
 import {
   ArgusRecipeService,
-  type ExtractedRecipeInput
+  type ExtractedRecipeInput,
+  type UpdateRecipeIngredientInput
 } from '@/services/ArgusRecipeService';
 import { RecipeFetchError, UnsafeUrlError } from '@/lib/url-security';
 
@@ -104,6 +105,32 @@ export async function POST(request: NextRequest) {
         { status: err.statusCode || 422 }
       );
     }
+    return NextResponse.json(
+      { status: 'error', message: (err as Error).message },
+      { status: 400 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = (await request.json().catch(() => ({}))) as Partial<UpdateRecipeIngredientInput>;
+    if (!body.recipeId || !body.productId || !body.productName) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          message: 'Campos obrigatórios ausentes (recipeId, productId, productName).'
+        },
+        { status: 400 }
+      );
+    }
+
+    const recipeService = new ArgusRecipeService();
+    const { updatedRecipe } = await recipeService.updateRecipeIngredient(
+      body as UpdateRecipeIngredientInput
+    );
+    return NextResponse.json({ status: 'ok', recipe: updatedRecipe });
+  } catch (err) {
     return NextResponse.json(
       { status: 'error', message: (err as Error).message },
       { status: 400 }

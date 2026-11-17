@@ -177,6 +177,24 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     return [{ id: newId }] as unknown as T[];
   }
 
+  if (/UPDATE\s+argus\.canonical_products/i.test(norm) && params && params.length >= 5) {
+    const name = String(params[0] ?? '').trim();
+    const category = String(params[1] ?? 'Mercearia') as (typeof MOCK_PRODUCTS)[number]['category'];
+    const baseUnit = String(params[2] ?? 'g') as (typeof MOCK_PRODUCTS)[number]['base_unit'];
+    const stdPkg = Math.max(0.01, Number(params[3] ?? 1) || 1);
+    const prodId = String(params[4] ?? '');
+    const existing = MOCK_PRODUCTS.find((p) => p.id === prodId);
+    if (existing) {
+      existing.name = name;
+      existing.category = category;
+      existing.base_unit = baseUnit;
+      existing.standard_package_size = stdPkg;
+      existing.seen_package_size = stdPkg;
+      existing.unit_type = baseUnit === 'ml' ? 'LT' : baseUnit === 'un' ? 'UN' : 'KG';
+    }
+    return [] as unknown as T[];
+  }
+
   if (/FROM\s+argus\.canonical_products/i.test(norm)) {
     let prods = MOCK_PRODUCTS;
     if (/is_essential\s*=\s*TRUE/i.test(norm)) {
@@ -291,6 +309,19 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
         canonical_product_id: canonicalProductId,
         quantity_in_base_unit: qty
       });
+    }
+    return [] as unknown as T[];
+  }
+
+  if (/UPDATE\s+argus\.recipe_ingredients/i.test(norm) && params && params.length >= 3) {
+    const qty = Math.max(0.01, Number(params[0] ?? 1) || 1);
+    const recipeId = String(params[1] ?? '');
+    const productId = String(params[2] ?? '');
+    const existing = MOCK_RECIPE_INGREDIENTS.find(
+      (i) => i.recipe_id === recipeId && i.canonical_product_id === productId
+    );
+    if (existing) {
+      existing.quantity_in_base_unit = qty;
     }
     return [] as unknown as T[];
   }
@@ -427,6 +458,33 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
   }
 
   // 15. collected_prices (observações históricas de flyers e fotos)
+  if (/INSERT\s+INTO\s+argus\.collected_prices/i.test(norm) && params && params.length >= 10) {
+    const storeId = String(params[0] ?? 'store-ne-supermercado');
+    const canonicalProductId = String(params[1] ?? '');
+    const storeName = String(params[2] ?? 'NE SUPERMERCADO');
+    const pkgPrice = Number(params[8] ?? 0);
+    const normPrice = Number(params[9] ?? 0);
+    MOCK_COLLECTED_PRICES.push({
+      id: `col-manual-${Date.now()}`,
+      canonical_product_id: canonicalProductId,
+      store_id: storeId,
+      store_name: storeName,
+      collected_at: new Date().toISOString(),
+      normalized_price_per_base_unit: normPrice,
+      package_price: pkgPrice,
+      source_type: 'SHELF_PHOTO'
+    });
+    const prod = MOCK_PRODUCTS.find((p) => p.id === canonicalProductId);
+    if (prod) {
+      prod.has_price_observations = true;
+      const storeKey = storeName.toUpperCase().includes('SOUZA')
+        ? 'mercadoSouza'
+        : 'neSupermercado';
+      prod.prices[storeKey] = [pkgPrice, pkgPrice, pkgPrice];
+    }
+    return [] as unknown as T[];
+  }
+
   if (/FROM\s+argus\.collected_prices/i.test(norm)) {
     if (/AS\s+observed_at/i.test(norm)) {
       return MOCK_COLLECTED_PRICES.map((c) => ({

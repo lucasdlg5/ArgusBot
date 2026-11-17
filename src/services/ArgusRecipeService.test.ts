@@ -290,5 +290,48 @@ describe('ArgusRecipeService — Cadeia Fria, Custos & Persistência de Receitas
 
     await queryArgus('DELETE FROM argus.recipes WHERE id = $1', [first.recipeId]);
   });
+
+  it('atualiza unidade, pacote padrão, quantidade e preço de referência de um ingrediente e recalcula os custos da receita', async () => {
+    const saved = await recipeService.saveRecipeToDatabase({
+      name: 'Pão Caseiro Teste Edição',
+      servings: 4,
+      instructions: '1. Misture os ingredientes e asse.',
+      ingredients: [
+        {
+          name: 'FERMENTO BIOLOGICO FLEISCHMANN',
+          quantityInBaseUnit: 90,
+          baseUnit: 'un',
+          category: 'Mercearia',
+          standardPackageSize: 1
+        }
+      ]
+    });
+
+    const targetIng = saved.evaluation?.ingredientsBreakdown[0];
+    expect(targetIng).toBeDefined();
+    expect(targetIng?.packagesNeeded).toBe(90);
+
+    const { updatedRecipe } = await recipeService.updateRecipeIngredient({
+      recipeId: saved.recipeId,
+      productId: targetIng!.productId,
+      productName: 'FERMENTO BIOLOGICO FLEISCHMANN',
+      category: 'Mercearia',
+      baseUnit: 'g',
+      standardPackageSize: 10,
+      quantityInBaseUnit: 10,
+      manualPackagePrice: 2.5,
+      manualStoreName: 'NE_SUPERMERCADO'
+    });
+
+    expect(updatedRecipe).not.toBeNull();
+    const updatedIng = updatedRecipe!.ingredientsBreakdown[0];
+    expect(updatedIng.baseUnit).toBe('g');
+    expect(updatedIng.standardPackageSize).toBe(10);
+    expect(updatedIng.requiredBaseQty).toBe(10);
+    expect(updatedIng.packagesNeeded).toBe(1);
+    expect(updatedIng.cashOutlayCost).toBeCloseTo(2.5, 2);
+
+    await queryArgus('DELETE FROM argus.recipes WHERE id = $1', [saved.recipeId]);
+  });
 });
 

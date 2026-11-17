@@ -65,6 +65,18 @@ export interface SavedRecipeResult {
   evaluation: RecipeCostEvaluation | null;
 }
 
+export interface UpdateRecipeIngredientInput {
+  recipeId: string;
+  productId: string;
+  productName: string;
+  category: ProductCategory;
+  baseUnit: BaseUnit;
+  standardPackageSize: number;
+  quantityInBaseUnit: number;
+  manualPackagePrice?: number | null;
+  manualStoreName?: 'MERCADO_SOUZA' | 'NE_SUPERMERCADO' | null;
+}
+
 const VALID_CATEGORIES = new Set<ProductCategory>([
   'Carnes',
   'Laticínios',
@@ -1182,6 +1194,79 @@ export class ArgusRecipeService {
       extractionMethod: extracted.extractionMethod || (extracted.usedAi ? 'TEXT' : 'TEXT'),
       evaluation: evaluatedFirst
     };
+  }
+
+  /**
+   * Atualiza os metadados de um ingrediente (nome, categoria, unidade base, pacote padrão,
+   * quantidade na receita e preço de referência opcional) e retorna a receita recalculada.
+   */
+  async updateRecipeIngredient(input: UpdateRecipeIngredientInput): Promise<{
+    updatedRecipe: RecipeCostEvaluation | null;
+  }> {
+    const cleanName = input.productName.trim().slice(0, 120);
+    if (!cleanName) {
+      throw new Error('O nome do ingrediente é obrigatório.');
+    }
+    const category = sanitizeCategory(input.category);
+    const baseUnit = sanitizeBaseUnit(input.baseUnit);
+    const stdPkg = Math.max(0.01, Number(input.standardPackageSize) || 1);
+    const qtyInBase = Math.max(0.01, Number(input.quantityInBaseUnit) || 1);
+
+    await queryArgus(
+      `UPDATE argus.canonical_products
+       SET name = $1, category = $2, base_unit = $3, standard_package_size = $4
+       WHERE id = $5`,
+      [cleanName, category, baseUnit, stdPkg, input.productId]
+    );
+
+    await queryArgus(
+      `UPDATE argus.recipe_ingredients
+       SET quantity_in_base_unit = $1
+       WHERE recipe_id = $2 AND canonical_product_id = $3`,
+      [qtyInBase, input.recipeId, input.productId]
+    );
+
+    const manualPrice = Number(input.manualPackagePrice || 0);
+    if (Number.isFinite(manualPrice) && manualPrice > 0) {
+      const stores = await queryArgus<{ id: string; trading_name: string }>(
+        `SELECT id, trading_name FROM argus.stores ORDER BY trading_name ASC`
+      );
+      if (stores.length > 0) {
+        const wantSouza = input.manualStoreName === 'MERCADO_SOUZA';
+        const targetStore =
+          stores.find((s) =>
+            wantSouza
+              ? s.trading_name.toUpperCase().includes('SOUZA')
+              : s.trading_name.toUpperCase().includes('NE')
+          ) || stores[0];
+        const unitType = baseUnit === 'ml' ? 'LT' : baseUnit === 'un' ? 'UN' : 'KG';
+        const normPrice = Number((manualPrice / stdPkg).toFixed(6));
+
+        await queryArgus(
+          `INSERT INTO argus.collected_prices (
+             store_id, canonical_product_id, source_type, store_name_detected,
+             raw_product_description, canonical_product_name, category,
+             unit_type, base_unit, package_size_in_base_unit,
+             collected_price, normalized_price_per_base_unit, confidence_score_pct
+           ) VALUES ($1, $2, 'SHELF_PHOTO', $3, $4, $4, $5, $6, $7, $8, $9, $10, 100)`,
+          [
+            targetStore.id,
+            input.productId,
+            targetStore.trading_name,
+            cleanName,
+            category,
+            unitType,
+            baseUnit,
+            stdPkg,
+            Number(manualPrice.toFixed(2)),
+            normPrice
+          ]
+        );
+      }
+    }
+
+    const evaluated = await this.evaluateRecipesWithRoutes({ recipeId: input.recipeId });
+    return { updatedRecipe: evaluated[0] ?? null };
   }
 
   private async getCachedOsrmLeg(

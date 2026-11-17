@@ -9,10 +9,13 @@ import {
   CheckCircle2,
   ChevronDown,
   History,
+  Pencil,
+  Save,
   Scale,
   Store,
   TrendingDown,
-  TrendingUp
+  TrendingUp,
+  X
 } from 'lucide-react';
 import {
   Area,
@@ -27,8 +30,11 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
+import { resolvePublicApiUrl } from '@/lib/public-bi-client';
 import { CANONICAL_STORE_NE, CANONICAL_STORE_SOUZA, classifyStoreForCurrentSweep } from '@/lib/store-normalization';
 import type {
+  BaseUnit,
+  ProductCategory,
   RecipeCostEvaluation,
   RecipeStorePairComparisonItem,
   RecipeTwoStoreComparison
@@ -42,6 +48,7 @@ type TrendWindow = '6M' | '3M';
 interface RecipeStoreComparisonCardProps {
   recipe: RecipeCostEvaluation;
   portionMultiplier?: number;
+  onRecipeUpdated?: (updated: RecipeCostEvaluation) => void;
 }
 
 const PT_MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -326,13 +333,103 @@ function buildFallbackComparisonFromQuotes(recipe: RecipeCostEvaluation): Recipe
 
 export default function RecipeStoreComparisonCard({
   recipe,
-  portionMultiplier = 1
+  portionMultiplier = 1,
+  onRecipeUpdated
 }: RecipeStoreComparisonCardProps) {
   const [costBasis, setCostBasis] = useState<CostBasis>('CASH');
   const [historyLens, setHistoryLens] = useState<HistoryLens>('WEIGHTED');
   const [scopeMode, setScopeMode] = useState<ScopeMode>('FULL');
   const [trendWindow, setTrendWindow] = useState<TrendWindow>('6M');
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [editingIngredient, setEditingIngredient] = useState<{
+    productId: string;
+    productName: string;
+    category: ProductCategory;
+    baseUnit: BaseUnit;
+    standardPackageSize: string;
+    quantityInBaseUnit: string;
+    manualPackagePrice: string;
+    manualStoreName: 'NE_SUPERMERCADO' | 'MERCADO_SOUZA';
+  } | null>(null);
+  const [savingIngredient, setSavingIngredient] = useState(false);
+  const [saveIngredientError, setSaveIngredientError] = useState<string | null>(null);
+
+  const openEditIngredient = (item: RecipeStorePairComparisonItem) => {
+    setSaveIngredientError(null);
+    const defaultPrice = item.neSupermercado.hasRealHistory
+      ? item.neSupermercado.weightedPackagePrice
+      : item.mercadoSouza.hasRealHistory
+        ? item.mercadoSouza.weightedPackagePrice
+        : '';
+    setEditingIngredient({
+      productId: item.productId,
+      productName: item.productName,
+      category: item.category || 'Mercearia',
+      baseUnit: item.baseUnit,
+      standardPackageSize: String(item.standardPackageSize),
+      quantityInBaseUnit: String(item.requiredBaseQty),
+      manualPackagePrice: defaultPrice ? String(defaultPrice) : '',
+      manualStoreName: 'NE_SUPERMERCADO'
+    });
+  };
+
+  const handleSaveIngredient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingIngredient) return;
+    setSavingIngredient(true);
+    setSaveIngredientError(null);
+
+    try {
+      const stdPkg = Number(editingIngredient.standardPackageSize);
+      const qtyInBase = Number(editingIngredient.quantityInBaseUnit);
+      const manualPriceRaw = editingIngredient.manualPackagePrice.trim();
+      const manualPrice = manualPriceRaw ? Number(manualPriceRaw.replace(',', '.')) : null;
+
+      if (!editingIngredient.productName.trim()) {
+        throw new Error('Informe o nome do ingrediente.');
+      }
+      if (!Number.isFinite(stdPkg) || stdPkg <= 0) {
+        throw new Error('Informe um tamanho de pacote padrão válido (> 0).');
+      }
+      if (!Number.isFinite(qtyInBase) || qtyInBase <= 0) {
+        throw new Error('Informe uma quantidade na receita válida (> 0).');
+      }
+      if (manualPrice !== null && (!Number.isFinite(manualPrice) || manualPrice < 0)) {
+        throw new Error('Informe um preço de referência válido.');
+      }
+
+      const res = await fetch(resolvePublicApiUrl('/api/recipes'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipeId: recipe.recipeId,
+          productId: editingIngredient.productId,
+          productName: editingIngredient.productName.trim(),
+          category: editingIngredient.category,
+          baseUnit: editingIngredient.baseUnit,
+          standardPackageSize: stdPkg,
+          quantityInBaseUnit: qtyInBase,
+          manualPackagePrice: manualPrice && manualPrice > 0 ? manualPrice : null,
+          manualStoreName: editingIngredient.manualStoreName
+        })
+      });
+      const json = (await res.json()) as {
+        status?: string;
+        message?: string;
+        recipe?: RecipeCostEvaluation;
+      };
+      if (!res.ok || json.status === 'error' || !json.recipe) {
+        throw new Error(json.message || 'Falha ao salvar alterações do ingrediente.');
+      }
+
+      setEditingIngredient(null);
+      onRecipeUpdated?.(json.recipe);
+    } catch (err) {
+      setSaveIngredientError((err as Error).message || 'Erro ao atualizar ingrediente.');
+    } finally {
+      setSavingIngredient(false);
+    }
+  };
 
   const comparison = useMemo(
     () => recipe.historicalStoreComparison ?? buildFallbackComparisonFromQuotes(recipe),
@@ -1361,9 +1458,22 @@ export default function RecipeStoreComparisonCard({
                               Registros históricos no banco para{' '}
                               <strong className="text-white">{item.productName}</strong>
                             </span>
-                            <span className="text-slate-400 tabular-nums">
-                              Pacote padrão: {item.standardPackageSize} {item.baseUnit}
-                            </span>
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-slate-400 tabular-nums">
+                                Pacote padrão: {item.standardPackageSize} {item.baseUnit}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditIngredient(item);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 px-2.5 py-1 text-[11px] font-semibold text-sky-200 transition-colors"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                Editar
+                              </button>
+                            </div>
                           </div>
 
                           {mergedTimelineRows.length === 0 ? (
@@ -1418,6 +1528,225 @@ export default function RecipeStoreComparisonCard({
           </div>
         </div>
       </div>
+
+      {/* MODAL POPUP DE EDIÇÃO DO INGREDIENTE */}
+      {editingIngredient && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+          onClick={() => !savingIngredient && setEditingIngredient(null)}
+        >
+          <form
+            onSubmit={handleSaveIngredient}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-sky-400" />
+                  Editar Ingrediente da Receita
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Ajuste unidade, tamanho do pacote padrão, quantidade usada ou preço de referência sem recarregar a página.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={savingIngredient}
+                onClick={() => setEditingIngredient(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {saveIngredientError && (
+              <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-xs text-rose-200">
+                {saveIngredientError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-slate-300 font-medium">Nome do Ingrediente</span>
+                <input
+                  type="text"
+                  required
+                  value={editingIngredient.productName}
+                  onChange={(e) =>
+                    setEditingIngredient((prev) =>
+                      prev ? { ...prev, productName: e.target.value } : prev
+                    )
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-sky-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">Categoria</span>
+                <select
+                  value={editingIngredient.category}
+                  onChange={(e) =>
+                    setEditingIngredient((prev) =>
+                      prev
+                        ? { ...prev, category: e.target.value as ProductCategory }
+                        : prev
+                    )
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-sky-500 focus:outline-none"
+                >
+                  {[
+                    'Mercearia',
+                    'Carnes',
+                    'Laticínios',
+                    'Hortifruti',
+                    'Bebidas',
+                    'Limpeza',
+                    'Higiene',
+                    'Besteiras/Impulso'
+                  ].map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">Unidade Base</span>
+                <select
+                  value={editingIngredient.baseUnit}
+                  onChange={(e) =>
+                    setEditingIngredient((prev) =>
+                      prev ? { ...prev, baseUnit: e.target.value as BaseUnit } : prev
+                    )
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-sky-500 focus:outline-none"
+                >
+                  <option value="g">g (gramas)</option>
+                  <option value="ml">ml (mililitros)</option>
+                  <option value="un">un (unidades)</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">
+                  Pacote Padrão ({editingIngredient.baseUnit})
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  value={editingIngredient.standardPackageSize}
+                  onChange={(e) =>
+                    setEditingIngredient((prev) =>
+                      prev ? { ...prev, standardPackageSize: e.target.value } : prev
+                    )
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white tabular-nums focus:border-sky-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">
+                  Qtd. usada na Receita ({editingIngredient.baseUnit})
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  value={editingIngredient.quantityInBaseUnit}
+                  onChange={(e) =>
+                    setEditingIngredient((prev) =>
+                      prev ? { ...prev, quantityInBaseUnit: e.target.value } : prev
+                    )
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white tabular-nums focus:border-sky-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">
+                  Preço do Pacote (R$) — opcional
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Ex: 2.50"
+                  value={editingIngredient.manualPackagePrice}
+                  onChange={(e) =>
+                    setEditingIngredient((prev) =>
+                      prev ? { ...prev, manualPackagePrice: e.target.value } : prev
+                    )
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white tabular-nums placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-slate-300 font-medium">Mercado do Preço</span>
+                <select
+                  value={editingIngredient.manualStoreName}
+                  onChange={(e) =>
+                    setEditingIngredient((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            manualStoreName: e.target.value as
+                              | 'NE_SUPERMERCADO'
+                              | 'MERCADO_SOUZA'
+                          }
+                        : prev
+                    )
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-sky-500 focus:outline-none"
+                >
+                  <option value="NE_SUPERMERCADO">NE Supermercado</option>
+                  <option value="MERCADO_SOUZA">Mercado Souza</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-300 tabular-nums">
+              Cálculo previsto:{' '}
+              <strong className="text-emerald-300">
+                {Math.max(
+                  1,
+                  Math.ceil(
+                    (Number(editingIngredient.quantityInBaseUnit) || 1) /
+                      Math.max(0.01, Number(editingIngredient.standardPackageSize) || 1)
+                  )
+                )}{' '}
+                emb. padrão
+              </strong>{' '}
+              de {editingIngredient.standardPackageSize || '1'} {editingIngredient.baseUnit} para atender{' '}
+              {editingIngredient.quantityInBaseUnit || '1'} {editingIngredient.baseUnit} na receita.
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={savingIngredient}
+                onClick={() => setEditingIngredient(null)}
+                className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={savingIngredient}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 px-4 py-2 text-xs font-semibold text-slate-950 transition-colors"
+              >
+                <Save className="h-3.5 w-3.5" />
+                {savingIngredient ? 'Salvando...' : 'Salvar e Recalcular'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </section>
   );
 }

@@ -14,7 +14,8 @@ import { ArgusDashboardBuilderService } from '../services/ArgusDashboardBuilderS
 import { ArgusPantryGuideService } from '../services/ArgusPantryGuideService';
 import {
   ArgusRecipeService,
-  type ExtractedRecipeInput
+  type ExtractedRecipeInput,
+  type UpdateRecipeIngredientInput
 } from '../services/ArgusRecipeService';
 import { RecipeFetchError, UnsafeUrlError } from '../lib/url-security';
 import { createArgusBot } from './index';
@@ -203,6 +204,34 @@ async function main() {
               : 400;
         logger.error({ err }, '[ArgusRender] Erro ao salvar receita em POST /api/recipes');
         res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    if (req.method === 'PATCH' && urlPath === '/api/recipes') {
+      applyCorsHeaders(res);
+      try {
+        const body = await readJsonBody<Partial<UpdateRecipeIngredientInput>>(req);
+        if (!body?.recipeId || !body?.productId || !body?.productName) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              message: 'Campos obrigatórios ausentes (recipeId, productId, productName).'
+            })
+          );
+          return;
+        }
+        const { updatedRecipe } = await recipeService.updateRecipeIngredient(
+          body as UpdateRecipeIngredientInput
+        );
+        dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', recipe: updatedRecipe }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro ao atualizar ingrediente em PATCH /api/recipes');
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
       }
       return;
