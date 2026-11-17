@@ -133,6 +133,7 @@ export default function ArgusVisionDashboard() {
   );
   const [telegramFeedback, setTelegramFeedback] = useState<string | null>(null);
   const [syncingReconcile, setSyncingReconcile] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [localNow, setLocalNow] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -145,6 +146,7 @@ export default function ArgusVisionDashboard() {
 
   async function loadDashboard() {
     setLoading(true);
+    setLoadError(null);
     try {
       const isGitHubPages =
         typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
@@ -170,6 +172,12 @@ export default function ArgusVisionDashboard() {
         await fetchPublicDashboardFallback<DashboardPayload>(basePath);
       setData(fallbackData);
       setDataSourceLabel(sourceLabel);
+    } catch (err) {
+      setLoadError(
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível conectar ao servidor agora.'
+      );
     } finally {
       setLoading(false);
     }
@@ -246,8 +254,26 @@ export default function ArgusVisionDashboard() {
     setTimeout(() => setTelegramFeedback(null), 7000);
   }
 
-  if (loading || !data) {
+  if (loading) {
     return <ArgusWakeupLoading fullScreen initialSeconds={95} />;
+  }
+
+  if (loadError || !data) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#090d16] px-4 text-slate-200">
+        <div className="w-full max-w-md rounded-2xl border border-rose-500/30 bg-slate-900/90 p-6 shadow-2xl space-y-4 text-center">
+          <p className="font-semibold text-white">Servidor ainda iniciando ou indisponível</p>
+          <p className="text-xs text-slate-400">{loadError || 'Tente novamente em alguns segundos.'}</p>
+          <button
+            type="button"
+            onClick={() => void loadDashboard()}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+          >
+            🔄 Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Agregações do Módulo 1: "O Que Realmente Compramos"

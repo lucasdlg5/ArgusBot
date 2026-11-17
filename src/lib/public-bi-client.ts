@@ -21,40 +21,78 @@ export function resolvePublicApiUrl(apiPath: string): string {
   return isGitHubPages ? `${getPublicBotApiBaseUrl()}${cleanPath}` : cleanPath;
 }
 
-const SNAPSHOT_CACHE_TTL_MS = 45000;
+const SNAPSHOT_CACHE_TTL_MS = 60000;
+const SESSION_CACHE_KEY = 'argus_public_snapshot_v1';
 let clientSnapshotCache: { result: PublicBiFetchResult<unknown>; expiresAt: number } | null = null;
 let inFlightSnapshotPromise: Promise<PublicBiFetchResult<unknown>> | null = null;
 
+function readSessionCache<T>(): PublicBiFetchResult<T> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { result: PublicBiFetchResult<T>; expiresAt: number };
+    if (parsed && parsed.expiresAt > Date.now() && parsed.result?.data) {
+      return parsed.result;
+    }
+  } catch {
+    // Ignora erro de JSON/storage
+  }
+  return null;
+}
+
+function writeSessionCache(result: PublicBiFetchResult<unknown>, expiresAt: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ result, expiresAt }));
+  } catch {
+    // Ignora se exceder cota do sessionStorage
+  }
+}
+
 export function invalidatePublicSnapshotCache(): void {
   clientSnapshotCache = null;
+  if (typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.removeItem(SESSION_CACHE_KEY);
+    } catch {
+      // Ignora
+    }
+  }
 }
 
 /**
  * Busca o snapshot público do Argus Vision BI em ordem de frescor:
- * 1) Cache em memória (45s) para navegação instantânea entre abas
+ * 1) Cache em memória / sessionStorage (60s) para F5 e navegação instantânea (0ms)
  * 2) Render Live API (/api/public-snapshot direto do PostgreSQL com Gzip)
- * 3) Supabase Storage (public-bi/dashboard-live.json)
- * 4) Snapshot estático empacotado no GitHub Pages (/data/dashboard-snapshot.json)
+ * 3) Supabase Live (apenas fallback em tempo real)
  */
 export async function fetchPublicDashboardFallback<T>(
   basePath: string,
   options?: { forceRefresh?: boolean }
 ): Promise<PublicBiFetchResult<T>> {
   const now = Date.now();
-  if (!options?.forceRefresh && clientSnapshotCache && clientSnapshotCache.expiresAt > now) {
-    return clientSnapshotCache.result as PublicBiFetchResult<T>;
+  if (!options?.forceRefresh) {
+    if (clientSnapshotCache && clientSnapshotCache.expiresAt > now) {
+      return clientSnapshotCache.result as PublicBiFetchResult<T>;
+    }
+    const sessionHit = readSessionCache<T>();
+    if (sessionHit) {
+      clientSnapshotCache = { result: sessionHit, expiresAt: now + SNAPSHOT_CACHE_TTL_MS };
+      return sessionHit;
+    }
   }
 
   if (!options?.forceRefresh && inFlightSnapshotPromise) {
-    return inFlightSnapshotPromise as Promise<PublicBiFetchResult<T>>;
+    return (await inFlightSnapshotPromise) as PublicBiFetchResult<T>;
   }
 
   const runFetch = async (): Promise<PublicBiFetchResult<T>> => {
     const botApiBase = getPublicBotApiBaseUrl();
     if (botApiBase) {
       // Aguarda até ~95s o wake-up (cold start) do servidor no Render para NUNCA exibir valores antigos do snapshot estático
-      const maxAttempts = 4;
-      const attemptTimeoutMs = 22000;
+      const maxAttempts = 6;
+      const attemptTimeoutMs = 15000;
       let lastError: unknown = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -69,7 +107,9 @@ export async function fetchPublicDashboardFallback<T>(
           if (resBot.ok) {
             const data = (await resBot.json()) as T;
             const resObj = { data, sourceLabel: '🟢 PostgreSQL (Tempo Real)' };
-            clientSnapshotCache = { result: resObj, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
+            const expiresAt = Date.now() + SNAPSHOT_CACHE_TTL_MS;
+            clientSnapshotCache = { result: resObj, expiresAt };
+            writeSessionCache(resObj, expiresAt);
             return resObj;
           }
           lastError = new Error(`HTTP ${resBot.status} do servidor`);
@@ -79,7 +119,7 @@ export async function fetchPublicDashboardFallback<T>(
         }
 
         if (attempt < maxAttempts) {
-          await new Promise((r) => setTimeout(r, 2500));
+          await new Promise((r) => setTimeout(r, 1500));
         }
       }
 
@@ -95,7 +135,9 @@ export async function fetchPublicDashboardFallback<T>(
           if (resLive.ok) {
             const data = (await resLive.json()) as T;
             const resObj = { data, sourceLabel: '☁️ Nuvem (Tempo Real)' };
-            clientSnapshotCache = { result: resObj, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
+            const expiresAt = Date.now() + SNAPSHOT_CACHE_TTL_MS;
+            clientSnapshotCache = { result: resObj, expiresAt };
+            writeSessionCache(resObj, expiresAt);
             return resObj;
           }
         } catch {
@@ -113,7 +155,9 @@ export async function fetchPublicDashboardFallback<T>(
     });
     const data = (await snapRes.json()) as T;
     const resObj = { data, sourceLabel: '📦 Snapshot Local' };
-    clientSnapshotCache = { result: resObj, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
+    const expiresAt = Date.now() + SNAPSHOT_CACHE_TTL_MS;
+    clientSnapshotCache = { result: resObj, expiresAt };
+    writeSessionCache(resObj, expiresAt);
     return resObj;
   };
 

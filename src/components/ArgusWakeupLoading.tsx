@@ -15,10 +15,14 @@ export function ArgusWakeupLoading({
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
 
   useEffect(() => {
-    setSecondsLeft(initialSeconds);
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
+    const deadline = Date.now() + initialSeconds * 1000;
+    const updateRemaining = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+    };
+
+    updateRemaining();
+    const timer = setInterval(updateRemaining, 250);
     return () => clearInterval(timer);
   }, [initialSeconds]);
 
@@ -60,7 +64,7 @@ export function ArgusWakeupLoading({
 
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
           <div
-            className="h-full rounded-full bg-emerald-500 transition-all duration-1000 ease-linear"
+            className="h-full rounded-full bg-emerald-500 transition-all duration-300 ease-linear"
             style={{ width: `${elapsedPct}%` }}
           />
         </div>
