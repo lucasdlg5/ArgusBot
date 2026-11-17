@@ -152,6 +152,65 @@ export function createArgusBot(): Bot {
     await next();
   });
 
+  // 0.5 Reengajamento após pausa >= 1h: envia botão com link para o site do Argus na primeira nova interação
+  const INACTIVITY_DASHBOARD_MS = 60 * 60 * 1000;
+  const lastChatInteractionMs = new Map<number, number>();
+  let sessionTableEnsured = false;
+
+  bot.use(async (ctx, next) => {
+    const chatId = ctx.chat?.id;
+    const publicUrl = env.PUBLIC_DASHBOARD_URL.trim();
+
+    if (chatId && /^https?:\/\//i.test(publicUrl)) {
+      const now = Date.now();
+      let prevMs = lastChatInteractionMs.get(chatId) ?? null;
+
+      if (prevMs === null) {
+        try {
+          if (!sessionTableEnsured) {
+            await queryArgus(
+              `CREATE TABLE IF NOT EXISTS argus.bot_chat_sessions (
+                 chat_id BIGINT PRIMARY KEY,
+                 last_interaction_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+               )`
+            );
+            sessionTableEnsured = true;
+          }
+          const rows = await queryArgus<{ last_interaction_at: string | Date }>(
+            `SELECT last_interaction_at FROM argus.bot_chat_sessions WHERE chat_id = $1 LIMIT 1`,
+            [chatId]
+          );
+          if (rows.length > 0 && rows[0].last_interaction_at) {
+            prevMs = new Date(rows[0].last_interaction_at).getTime();
+          }
+        } catch {
+          // Segue apenas com cache em memória se o banco estiver indisponível
+        }
+      }
+
+      // Atualiza imediatamente em memória para evitar envio duplicado em álbuns/rajadas
+      lastChatInteractionMs.set(chatId, now);
+      void queryArgus(
+        `INSERT INTO argus.bot_chat_sessions (chat_id, last_interaction_at)
+         VALUES ($1, NOW())
+         ON CONFLICT (chat_id) DO UPDATE SET last_interaction_at = NOW()`,
+        [chatId]
+      ).catch(() => {});
+
+      const pausedLongEnough = prevMs === null || now - prevMs >= INACTIVITY_DASHBOARD_MS;
+      if (pausedLongEnough) {
+        const kb = new InlineKeyboard().url('🌐 Abrir Painel Web do Argus', publicUrl);
+        await bot.api
+          .sendMessage(chatId, '👁️ Bem-vindo de volta! Acesse o painel web do Argus:', {
+            reply_markup: kb
+          })
+          .catch(() => {});
+      }
+    }
+
+    await next();
+  });
+
   // 1. /start — Apresentação oficial da persona Argus (@MonetaArgusBot - "O Olho Fiscal")
   async function handleStart(ctx: {
     api: Bot['api'];
