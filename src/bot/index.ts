@@ -1465,10 +1465,10 @@ export function createArgusBot(): Bot {
             () =>
               reject(
                 new Error(
-                  'Tempo limite de processamento (85s) excedido.'
+                  'Tempo limite de processamento (165s) excedido.'
                 )
               ),
-            85000
+            165000
           );
         });
 

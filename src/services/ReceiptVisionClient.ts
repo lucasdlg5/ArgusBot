@@ -91,9 +91,71 @@ export class ReceiptVisionClient {
   private consecutiveFailures = 0;
   private circuitOpenUntil = 0;
   private readonly circuitCooldownMs = 5 * 60 * 1000;
+  private warmUpPromise: Promise<boolean> | null = null;
 
   isEnabled(): boolean {
     return Boolean(env.RECEIPT_VISION_API_URL);
+  }
+
+  /**
+   * Quando o serviço OpenCV no Render Free Tier está hibernando (HTTP 502/503/504),
+   * pausa a fila por até 2 minutos fazendo polling em /health a cada 5s.
+   * Assim que responder 200 OK, retoma o processamento; se após 2 min continuar indisponível,
+   * abre o circuit breaker por 5 min e segue com o fallback local.
+   */
+  private async waitForWakeUp(maxWaitMs = 120_000): Promise<boolean> {
+    if (this.warmUpPromise) {
+      return this.warmUpPromise;
+    }
+
+    const healthUrl = `${env.RECEIPT_VISION_API_URL}/health`;
+    this.warmUpPromise = (async () => {
+      const deadline = Date.now() + maxWaitMs;
+      let probe = 0;
+      logger.warn(
+        { healthUrl, maxWaitSec: Math.round(maxWaitMs / 1000) },
+        '[ReceiptVisionClient] OpenCV hibernando/indisponível (502); pausando fila por até 2 min aguardando wake-up...'
+      );
+
+      while (Date.now() < deadline) {
+        probe += 1;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        try {
+          const res = await fetch(healthUrl, { method: 'GET', signal: controller.signal });
+          if (res.ok) {
+            logger.info(
+              { probe, elapsedMs: maxWaitMs - (deadline - Date.now()) },
+              '[ReceiptVisionClient] OpenCV acordou (/health 200 OK); retomando processamento!'
+            );
+            this.consecutiveFailures = 0;
+            this.circuitOpenUntil = 0;
+            return true;
+          }
+        } catch {
+          // Segue tentando até o deadline de 2 minutos
+        } finally {
+          clearTimeout(timer);
+        }
+
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) break;
+        await new Promise((r) => setTimeout(r, Math.min(5000, remaining)));
+      }
+
+      this.circuitOpenUntil = Date.now() + this.circuitCooldownMs;
+      logger.warn(
+        { healthUrl, circuitCooldownMin: 5 },
+        '[ReceiptVisionClient] OpenCV não respondeu após 2 min; abrindo circuit breaker (5 min) e seguindo fallback local'
+      );
+      return false;
+    })();
+
+    try {
+      return await this.warmUpPromise;
+    } finally {
+      this.warmUpPromise = null;
+    }
   }
 
   /**
@@ -156,6 +218,7 @@ export class ReceiptVisionClient {
         err && typeof err === 'object' && 'httpStatus' in err
           ? Number((err as { httpStatus: number }).httpStatus)
           : null,
+      shouldRetry: () => Date.now() >= this.circuitOpenUntil,
       fn: async () => {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), env.RECEIPT_VISION_TIMEOUT_MS);
@@ -167,35 +230,25 @@ export class ReceiptVisionClient {
             signal: controller.signal
           });
 
-          if (!res.ok) {
-            const errBody = await res.text().catch(() => '');
-            const httpErr = new Error(
-              `HTTP ${res.status} de ${endpoint}: ${errBody.slice(0, 220)}`
-            ) as Error & { httpStatus?: number };
-            httpErr.httpStatus = res.status;
-            throw httpErr;
-          }
-
-          const data = (await res.json()) as RawVisionApiResponse;
-          const outcome: VisionProcessOutcome = {
-            enhancedImageBuffer: data.final_image_base64
-              ? Buffer.from(data.final_image_base64, 'base64')
+          const mapVisionResponse = (raw: RawVisionApiResponse): VisionProcessOutcome => ({
+            enhancedImageBuffer: raw.final_image_base64
+              ? Buffer.from(raw.final_image_base64, 'base64')
               : null,
-            binaryImageBuffer: data.final_binary_base64
-              ? Buffer.from(data.final_binary_base64, 'base64')
+            binaryImageBuffer: raw.final_binary_base64
+              ? Buffer.from(raw.final_binary_base64, 'base64')
               : null,
-            qrCodeUrl: data.totals?.qr_code_url ?? null,
-            sefazAccessKey: data.totals?.sefaz_access_key ?? null,
-            documentType: data.header?.document_type ?? 'unknown',
-            qualityReports: Array.isArray(data.quality_reports) ? data.quality_reports : [],
-            stitchSummary: data.stitch_summary ?? {
+            qrCodeUrl: raw.totals?.qr_code_url ?? null,
+            sefazAccessKey: raw.totals?.sefaz_access_key ?? null,
+            documentType: raw.header?.document_type ?? 'unknown',
+            qualityReports: Array.isArray(raw.quality_reports) ? raw.quality_reports : [],
+            stitchSummary: raw.stitch_summary ?? {
               parts_received: images.length,
               ordered_indices: images.map((_, i) => i),
               stitch_mode: images.length > 1 ? 'sequential_fallback' : 'single',
               overlaps_detected: 0,
               deduplicated_items_count: 0
             },
-            mathValidation: data.math_validation ?? {
+            mathValidation: raw.math_validation ?? {
               items_sum: 0,
               expected_total: 0,
               declared_total: 0,
@@ -204,8 +257,36 @@ export class ReceiptVisionClient {
               confidence_warning: false,
               suspect_items: []
             },
-            rawOcrText: data.raw_ocr_text ?? null
-          };
+            rawOcrText: raw.raw_ocr_text ?? null
+          });
+
+          if (!res.ok) {
+            const errBody = await res.text().catch(() => '');
+            if (res.status === 502 || res.status === 503 || res.status === 504) {
+              const wokeUp = await this.waitForWakeUp(120_000);
+              if (wokeUp) {
+                const retryRes = await fetch(endpoint, {
+                  method: 'POST',
+                  body: buildFormData(),
+                  signal: AbortSignal.timeout(env.RECEIPT_VISION_TIMEOUT_MS)
+                });
+                if (retryRes.ok) {
+                  const retryData = (await retryRes.json()) as RawVisionApiResponse;
+                  this.consecutiveFailures = 0;
+                  this.circuitOpenUntil = 0;
+                  return mapVisionResponse(retryData);
+                }
+              }
+            }
+            const httpErr = new Error(
+              `HTTP ${res.status} de ${endpoint}: ${errBody.slice(0, 220)}`
+            ) as Error & { httpStatus?: number };
+            httpErr.httpStatus = res.status;
+            throw httpErr;
+          }
+
+          const data = (await res.json()) as RawVisionApiResponse;
+          const outcome = mapVisionResponse(data);
 
           logger.info(
             {
