@@ -11,7 +11,11 @@ import {
 } from '../services/ArgusCatalogBiService';
 import { ArgusDashboardBuilderService } from '../services/ArgusDashboardBuilderService';
 import { ArgusPantryGuideService } from '../services/ArgusPantryGuideService';
-import { ArgusRecipeService } from '../services/ArgusRecipeService';
+import {
+  ArgusRecipeService,
+  type ExtractedRecipeInput
+} from '../services/ArgusRecipeService';
+import { RecipeFetchError, UnsafeUrlError } from '../lib/url-security';
 import { createArgusBot } from './index';
 
 const PORT = Number(process.env.PORT || env.PORT || 3000);
@@ -19,7 +23,7 @@ const WEBHOOK_PATH = '/telegram/webhook';
 
 function applyCorsHeaders(res: http.ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -99,7 +103,16 @@ async function main() {
     if (req.method === 'GET' && urlPath === '/api/recipes') {
       applyCorsHeaders(res);
       try {
-        const recipes = await recipeService.evaluateRecipesWithRoutes();
+        const searchParams = new URL(req.url || '/api/recipes', 'http://localhost').searchParams;
+        const id = searchParams.get('id') || undefined;
+        const q = searchParams.get('q') || undefined;
+        const portionsParam = searchParams.get('portions');
+        const requestedPortions = portionsParam ? Math.max(1, Number(portionsParam)) : undefined;
+        const recipes = await recipeService.evaluateRecipesWithRoutes({
+          recipeId: id,
+          nameQuery: q,
+          requestedPortions
+        });
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(
           JSON.stringify({
@@ -114,6 +127,101 @@ async function main() {
         );
       } catch (err) {
         logger.error({ err }, '[ArgusRender] Erro ao consultar /api/recipes');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && urlPath === '/api/recipes') {
+      applyCorsHeaders(res);
+      try {
+        const body = await readJsonBody<{
+          rawText?: string;
+          recipeUrl?: string;
+          previewOnly?: boolean;
+          imageBase64?: string;
+          mimeType?: string;
+          recipe?: ExtractedRecipeInput;
+        }>(req);
+
+        let extracted: ExtractedRecipeInput;
+        if (body.recipeUrl && body.recipeUrl.trim().length > 0) {
+          extracted = await recipeService.extractRecipeFromUrl(body.recipeUrl);
+        } else if (body.imageBase64 && body.imageBase64.trim().length > 0) {
+          const cleanBase64 = body.imageBase64.replace(/^data:[^;]+;base64,/, '').trim();
+          const buffer = Buffer.from(cleanBase64, 'base64');
+          extracted = await recipeService.extractRecipeFromImage(
+            buffer,
+            body.mimeType || 'image/jpeg',
+            body.rawText
+          );
+          if (extracted.isRecipe === false || extracted.ingredients.length === 0) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(
+              JSON.stringify({
+                status: 'error',
+                message:
+                  'A imagem enviada não parece conter uma receita com ingredientes legíveis.'
+              })
+            );
+            return;
+          }
+        } else if (body.rawText && body.rawText.trim().length > 0) {
+          extracted = await recipeService.extractRecipeFromText(body.rawText);
+        } else if (body.recipe && body.recipe.name && Array.isArray(body.recipe.ingredients)) {
+          extracted = body.recipe;
+        } else {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              message:
+                'Envie o texto da receita (rawText), um link (recipeUrl), uma imagem (imageBase64) ou o objeto estruturado recipe.'
+            })
+          );
+          return;
+        }
+
+        if (body.previewOnly) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'ok', preview: extracted }));
+          return;
+        }
+
+        const saved = await recipeService.saveRecipeToDatabase(extracted);
+        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        res.writeHead(201, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', saved }));
+      } catch (err) {
+        const statusCode =
+          err instanceof UnsafeUrlError
+            ? 400
+            : err instanceof RecipeFetchError
+              ? err.statusCode || 422
+              : 400;
+        logger.error({ err }, '[ArgusRender] Erro ao salvar receita em POST /api/recipes');
+        res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    if (req.method === 'DELETE' && urlPath === '/api/recipes') {
+      applyCorsHeaders(res);
+      try {
+        const id = new URL(req.url || '/api/recipes', 'http://localhost').searchParams.get('id');
+        if (!id) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Parâmetro id é obrigatório.' }));
+          return;
+        }
+        await queryArgus(`DELETE FROM argus.recipes WHERE id = $1`, [id]);
+        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', deletedId: id }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro ao remover receita em DELETE /api/recipes');
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
       }

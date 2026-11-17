@@ -176,10 +176,11 @@ export class ArgusOptimizerService {
         name: string;
         servings: number;
         instructions: string;
+        source_url?: string | null;
       }>(
         recipeId
-          ? `SELECT id, name, servings, instructions FROM argus.recipes WHERE id = $1`
-          : `SELECT id, name, servings, instructions FROM argus.recipes ORDER BY name ASC`,
+          ? `SELECT * FROM argus.recipes WHERE id = $1`
+          : `SELECT * FROM argus.recipes ORDER BY name ASC`,
         recipeId ? [recipeId] : []
       ),
       queryArgus<{
@@ -513,6 +514,7 @@ export class ArgusOptimizerService {
         servings: recipe.servings,
         requestedPortions,
         instructions: recipe.instructions,
+        sourceUrl: recipe.source_url ?? null,
         instructionSteps: meta.instructionSteps,
         prepTimeMinutes: meta.prepTimeMinutes,
         difficulty: meta.difficulty,

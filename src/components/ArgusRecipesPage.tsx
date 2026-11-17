@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
+import { fetchPublicDashboardFallback, resolvePublicApiUrl } from '@/lib/public-bi-client';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   AlertTriangle,
@@ -17,7 +17,6 @@ import {
   ChevronDown,
   Clock,
   Copy,
-  Eye,
   FileText,
   Flame,
   Gauge,
@@ -200,23 +199,6 @@ export default function ArgusRecipesPage() {
   const [inputTab, setInputTab] = useState<'TEXT' | 'IMAGE' | 'URL'>('TEXT');
   const [rawRecipeText, setRawRecipeText] = useState('');
   const [recipeUrl, setRecipeUrl] = useState('');
-  const [previewingUrl, setPreviewingUrl] = useState(false);
-  const [urlPreview, setUrlPreview] = useState<{
-    name: string;
-    servings: number;
-    instructions: string;
-    extractionMethod?: string;
-    sourceUrl?: string;
-    previewedForUrl?: string;
-    ingredients: Array<{
-      name: string;
-      quantityInBaseUnit: number;
-      baseUnit: string;
-      rawQuantityText?: string;
-      category?: string;
-      standardPackageSize?: number;
-    }>;
-  } | null>(null);
   const [lastUrlError, setLastUrlError] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -231,11 +213,14 @@ export default function ArgusRecipesPage() {
       setLoading(true);
       setErrorMsg(null);
       try {
-        const isGitHubPages =
-          typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
-
-        if (!isGitHubPages) {
-          const res = await fetch(`/api/recipes?t=${Date.now()}`, { cache: 'no-store' });
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 12000);
+          const res = await fetch(`${resolvePublicApiUrl('/api/recipes')}?t=${Date.now()}`, {
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          clearTimeout(timer);
           if (res.ok) {
             const json = (await res.json()) as RecipesApiResponse;
             setRecipes(json.recipes || []);
@@ -253,6 +238,8 @@ export default function ArgusRecipesPage() {
             }
             return;
           }
+        } catch {
+          // Segue para fallback do snapshot público
         }
 
         const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -368,62 +355,6 @@ export default function ArgusRecipesPage() {
     }
   }
 
-  async function handlePreviewRecipeUrl() {
-    const cleanUrl = recipeUrl.trim();
-    if (!cleanUrl) {
-      setErrorMsg('Informe uma URL completa (https://...) para pré-visualizar.');
-      setLastUrlError(true);
-      return;
-    }
-
-    setPreviewingUrl(true);
-    setErrorMsg(null);
-    setSubmitFeedback(null);
-    setLastUrlError(false);
-
-    try {
-      const res = await fetch('/api/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipeUrl: cleanUrl, previewOnly: true })
-      });
-      const json = await res.json();
-      if (!res.ok || json.status === 'error' || !json.preview) {
-        throw new Error(json.message || 'Não foi possível extrair os ingredientes desse link.');
-      }
-      setUrlPreview({
-        ...json.preview,
-        previewedForUrl: cleanUrl
-      });
-    } catch (err) {
-      setUrlPreview(null);
-      setLastUrlError(true);
-      setErrorMsg((err as Error).message || 'Não foi possível ler o link informado.');
-    } finally {
-      setPreviewingUrl(false);
-    }
-  }
-
-  function handleEditUrlPreviewAsText() {
-    if (!urlPreview) return;
-    const ingLines = urlPreview.ingredients.map((ing) =>
-      `- ${ing.rawQuantityText || `${ing.quantityInBaseUnit}${ing.baseUnit}`} de ${ing.name}`
-    );
-    const assembled = [
-      `${urlPreview.name} (${urlPreview.servings} porções)`,
-      'Ingredientes:',
-      ...ingLines,
-      'Modo de preparo:',
-      urlPreview.instructions
-    ].join('\n');
-
-    setRawRecipeText(assembled);
-    setUrlPreview(null);
-    setLastUrlError(false);
-    setErrorMsg(null);
-    setInputTab('TEXT');
-  }
-
   async function handleSaveRecipe(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -437,12 +368,10 @@ export default function ArgusRecipesPage() {
         inputTab === 'IMAGE'
           ? { imageBase64, mimeType: imageMimeType, rawText: imageNote }
           : inputTab === 'URL'
-            ? urlPreview && urlPreview.previewedForUrl === cleanUrl
-              ? { recipe: urlPreview }
-              : { recipeUrl: cleanUrl }
+            ? { recipeUrl: cleanUrl }
             : { rawText: rawRecipeText };
 
-      const res = await fetch('/api/recipes', {
+      const res = await fetch(resolvePublicApiUrl('/api/recipes'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -455,7 +384,6 @@ export default function ArgusRecipesPage() {
       const savedId = json.saved?.recipeId as string | undefined;
       setRawRecipeText('');
       setRecipeUrl('');
-      setUrlPreview(null);
       setLastUrlError(false);
       setImagePreviewUrl(null);
       setImageBase64(null);
@@ -477,7 +405,7 @@ export default function ArgusRecipesPage() {
 
   async function handleDeleteRecipe(id: string) {
     try {
-      const res = await fetch(`/api/recipes?id=${encodeURIComponent(id)}`, {
+      const res = await fetch(`${resolvePublicApiUrl('/api/recipes')}?id=${encodeURIComponent(id)}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -874,102 +802,24 @@ export default function ArgusRecipesPage() {
                     />
                   </div>
                 ) : inputTab === 'URL' ? (
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-medium text-slate-300">
-                        URL Pública da Receita (TudoGostoso, Panelinha, Receitas Globo, blogs culinários...)
-                      </label>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="relative flex-1">
-                          <Link2 className="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="url"
-                            required
-                            value={recipeUrl}
-                            onChange={(e) => {
-                              setRecipeUrl(e.target.value);
-                              if (urlPreview && urlPreview.previewedForUrl !== e.target.value.trim()) {
-                                setUrlPreview(null);
-                              }
-                            }}
-                            placeholder="https://www.exemplo.com.br/receitas/bolo-de-cenoura"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-950 pl-9 pr-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handlePreviewRecipeUrl}
-                          disabled={previewingUrl || submitting || !recipeUrl.trim()}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-950/30 hover:bg-emerald-950/60 disabled:opacity-50 px-4 py-2.5 text-xs font-semibold text-emerald-300 transition-colors whitespace-nowrap"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          {previewingUrl ? 'Analisando Link...' : 'Pré-visualizar antes de salvar'}
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-slate-500">
-                        Proteção ativa: validação anti-SSRF (bloqueia IPs privados/locais), leitura segura JSON-LD/Microdata/HTML e limite máximo de 2 MB.
-                      </p>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-slate-300">
+                      URL Pública da Receita (TudoGostoso, Panelinha, Receitas Globo, blogs culinários...)
+                    </label>
+                    <div className="relative">
+                      <Link2 className="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="url"
+                        required
+                        value={recipeUrl}
+                        onChange={(e) => setRecipeUrl(e.target.value)}
+                        placeholder="https://www.exemplo.com.br/receitas/bolo-de-cenoura"
+                        className="w-full rounded-lg border border-slate-700 bg-slate-950 pl-9 pr-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
+                      />
                     </div>
-
-                    <AnimatePresence>
-                      {urlPreview && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          className="rounded-xl border border-emerald-500/40 bg-slate-950/80 p-4 space-y-3"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-800 pb-2.5">
-                            <div>
-                              <span className="text-[11px] font-semibold text-emerald-400">
-                                Pré-visualização Extraída ({urlPreview.extractionMethod || 'HTML'}) ·{' '}
-                                {urlPreview.servings} porções
-                              </span>
-                              <h3 className="text-sm font-bold text-white mt-0.5">
-                                {urlPreview.name}
-                              </h3>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleEditUrlPreviewAsText}
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-700 hover:border-emerald-500/60 px-2.5 py-1 text-[11px] font-medium text-slate-300 hover:text-emerald-300 transition-colors"
-                            >
-                              <FileText className="h-3 w-3" />
-                              Editar no modo Texto
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                            <div className="space-y-1">
-                              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                                Ingredientes detectados ({urlPreview.ingredients.length})
-                              </p>
-                              <ul className="space-y-1 max-h-40 overflow-y-auto pr-1 text-slate-200">
-                                {urlPreview.ingredients.map((ing, idx) => (
-                                  <li
-                                    key={`${ing.name}-${idx}`}
-                                    className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-1"
-                                  >
-                                    <span className="truncate">{ing.name}</span>
-                                    <span className="text-emerald-300 font-semibold tabular-nums shrink-0">
-                                      {ing.rawQuantityText || formatQty(ing.quantityInBaseUnit, ing.baseUnit)}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                                Modo de Preparo Resumido
-                              </p>
-                              <p className="text-xs text-slate-300 leading-relaxed max-h-40 overflow-y-auto whitespace-pre-line">
-                                {urlPreview.instructions}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <p className="text-[11px] text-slate-500">
+                      Proteção ativa: validação anti-SSRF, leitura segura JSON-LD/Microdata/HTML e adição automática ao painel em caso de sucesso.
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1036,15 +886,13 @@ export default function ArgusRecipesPage() {
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     type="submit"
-                    disabled={submitting || previewingUrl}
+                    disabled={submitting}
                     className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 px-5 py-2 text-xs font-semibold text-slate-950 transition-colors"
                   >
                     {submitting
                       ? 'Processando e Consultando Mercados...'
                       : inputTab === 'URL'
-                        ? urlPreview && urlPreview.previewedForUrl === recipeUrl.trim()
-                          ? 'Confirmar e Salvar Receita'
-                          : 'Importar & Salvar Direto'
+                        ? 'Importar e Adicionar Receita'
                         : 'Salvar Receita e Calcular Preços'}
                   </motion.button>
                 </div>
@@ -1383,6 +1231,18 @@ export default function ArgusRecipesPage() {
                                       <MapPin className="h-3 w-3" />
                                       <span>Ver no Mapa</span>
                                     </motion.button>
+
+                                    {rec.sourceUrl && /^https?:\/\//i.test(rec.sourceUrl) && (
+                                      <a
+                                        href={rec.sourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 px-2.5 py-1.5 text-[11px] font-semibold text-sky-300 transition-colors"
+                                      >
+                                        <Link2 className="h-3 w-3" />
+                                        <span>Fonte</span>
+                                      </a>
+                                    )}
                                   </div>
                                 </div>
                               </motion.div>
@@ -1445,6 +1305,22 @@ export default function ArgusRecipesPage() {
                                   {tag}
                                 </span>
                               ))}
+                            </div>
+                          )}
+                          {activeRecipe.sourceUrl && /^https?:\/\//i.test(activeRecipe.sourceUrl) && (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+                              <span className="inline-flex items-center gap-1 text-slate-400">
+                                <Link2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                Fonte da receita:
+                              </span>
+                              <a
+                                href={activeRecipe.sourceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-300 hover:text-emerald-200 underline underline-offset-2 break-all"
+                              >
+                                {activeRecipe.sourceUrl}
+                              </a>
                             </div>
                           )}
                         </div>
@@ -1687,18 +1563,32 @@ export default function ArgusRecipesPage() {
 
                             {/* RESUMO RÁPIDO DE PREPARO + RECEITAS SIMILARES */}
                             <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-4">
-                              <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                                   Resumo do Preparo
                                 </h3>
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveDetailTab('COOKING')}
-                                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1"
-                                >
-                                  Abrir Modo Cozinha Interativo
-                                  <ArrowRight className="h-3.5 w-3.5" />
-                                </button>
+                                <div className="flex flex-wrap items-center gap-3">
+                                  {activeRecipe.sourceUrl &&
+                                    /^https?:\/\//i.test(activeRecipe.sourceUrl) && (
+                                      <a
+                                        href={activeRecipe.sourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
+                                      >
+                                        <Link2 className="h-3.5 w-3.5" />
+                                        Abrir fonte original
+                                      </a>
+                                    )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveDetailTab('COOKING')}
+                                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1"
+                                  >
+                                    Abrir Modo Cozinha Interativo
+                                    <ArrowRight className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
                                 {activeRecipe.instructions}

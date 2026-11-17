@@ -202,7 +202,7 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
     })) as unknown as T[];
   }
 
-  // 8. recipes (INSERT/UPSERT + DELETE + SELECT)
+  // 8. recipes (INSERT/UPSERT + UPDATE + DELETE + SELECT)
   if (/INSERT\s+INTO\s+argus\.recipes/i.test(norm)) {
     const name = String(params?.[0] ?? '').trim();
     const servings = Math.max(1, Math.round(Number(params?.[1] ?? 4)));
@@ -216,8 +216,20 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
       return [{ id: existing.id }] as unknown as T[];
     }
     const newId = `recipe-custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    MOCK_RECIPES.push({ id: newId, name, servings, instructions });
+    MOCK_RECIPES.push({ id: newId, name, servings, instructions, source_url: null });
     return [{ id: newId }] as unknown as T[];
+  }
+
+  if (/UPDATE\s+argus\.recipes/i.test(norm)) {
+    if (/source_url/i.test(norm) && params && params.length >= 2) {
+      const recipeId = String(params[params.length - 1] ?? '');
+      const sourceUrl = params.length >= 6 ? params[4] : params[0];
+      const existing = MOCK_RECIPES.find((r) => r.id === recipeId);
+      if (existing && typeof sourceUrl === 'string' && sourceUrl.trim()) {
+        existing.source_url = sourceUrl.trim();
+      }
+    }
+    return [] as unknown as T[];
   }
 
   if (/DELETE\s+FROM\s+argus\.recipes/i.test(norm)) {
@@ -248,7 +260,8 @@ export function executeMockQuery<T extends QueryResultRow = QueryResultRow>(
       name: r.name,
       yield_portions: r.servings,
       servings: r.servings,
-      instructions: r.instructions
+      instructions: r.instructions,
+      source_url: r.source_url ?? null
     })) as unknown as T[];
   }
 

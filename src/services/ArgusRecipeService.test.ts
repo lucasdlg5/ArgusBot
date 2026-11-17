@@ -204,7 +204,9 @@ describe('ArgusRecipeService — Cadeia Fria, Custos & Persistência de Receitas
 
     const saved = await recipeService.saveRecipeToDatabase(extracted);
     expect(saved.extractionMethod).toBe('JSON_LD');
+    expect(saved.sourceUrl).toBe('https://receitas.exemplo.com.br/bolo-de-cenoura');
     expect(saved.evaluation).not.toBeNull();
+    expect(saved.evaluation?.sourceUrl).toBe('https://receitas.exemplo.com.br/bolo-de-cenoura');
 
     await queryArgus('DELETE FROM argus.recipes WHERE id = $1', [saved.recipeId]);
   });

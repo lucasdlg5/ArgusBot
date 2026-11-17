@@ -198,6 +198,10 @@ export class ArgusRecipeService {
       throw new Error('Texto da receita vazio.');
     }
 
+    const isInternalHtmlText = rawText.includes('=== CONTEUDO DA PAGINA');
+    const urlMatch = !isInternalHtmlText ? cleaned.match(/https?:\/\/[^\s<>"']+/i) : null;
+    const detectedSourceUrl = urlMatch ? urlMatch[0].replace(/[),.;!?]+$/, '') : undefined;
+
     if (this.ai) {
       const candidateModels = Array.from(
         new Set(['gemini-4-hydrogen', env.GEMINI_MODEL, 'gemini-3.6-flash', 'gemini-3.5-flash-lite'])
@@ -257,6 +261,7 @@ export class ArgusRecipeService {
                       classifyIngredientPerishability(i.name, category).tier
                   };
                 }),
+              ...(detectedSourceUrl ? { sourceUrl: detectedSourceUrl } : {}),
               usedAi: true
             };
           }
@@ -272,6 +277,7 @@ export class ArgusRecipeService {
 
     return {
       ...this.parseRecipeTextDeterministic(cleaned),
+      ...(detectedSourceUrl ? { sourceUrl: detectedSourceUrl } : {}),
       extractionMethod: 'TEXT'
     };
   }
@@ -1127,6 +1133,8 @@ export class ArgusRecipeService {
       ).catch(() => {});
     }
 
+    const cleanSourceUrl = (extracted.sourceUrl || '').trim() || null;
+
     const meta = deriveRecipeMetadata({
       name: cleanName,
       servings,
@@ -1138,20 +1146,31 @@ export class ArgusRecipeService {
         requiredBaseQty: i.quantityInBaseUnit
       }))
     });
+    await queryArgus('ALTER TABLE argus.recipes ADD COLUMN IF NOT EXISTS source_url TEXT').catch(
+      () => {}
+    );
     await queryArgus(
       `UPDATE argus.recipes
-       SET prep_time_minutes = $1, difficulty = $2, cuisine_tags = $3, estimated_calories_per_portion = $4
-       WHERE id = $5`,
+       SET prep_time_minutes = $1, difficulty = $2, cuisine_tags = $3, estimated_calories_per_portion = $4, source_url = COALESCE($5, source_url)
+       WHERE id = $6`,
       [
         meta.prepTimeMinutes,
         meta.difficulty,
         meta.cuisineTags,
         meta.estimatedCaloriesPerPortion,
+        cleanSourceUrl,
         recipeId
       ]
     ).catch(() => {});
 
     const evaluated = await this.evaluateRecipesWithRoutes({ recipeId });
+    const evaluatedFirst = evaluated[0]
+      ? {
+          ...evaluated[0],
+          sourceUrl: evaluated[0].sourceUrl ?? cleanSourceUrl
+        }
+      : null;
+
     return {
       recipeId,
       recipeName: cleanName,
@@ -1159,9 +1178,9 @@ export class ArgusRecipeService {
       instructions,
       matchedExistingProductsCount,
       createdNewProductsCount,
-      sourceUrl: extracted.sourceUrl,
+      sourceUrl: evaluatedFirst?.sourceUrl ?? cleanSourceUrl ?? undefined,
       extractionMethod: extracted.extractionMethod || (extracted.usedAi ? 'TEXT' : 'TEXT'),
-      evaluation: evaluated[0] ?? null
+      evaluation: evaluatedFirst
     };
   }
 

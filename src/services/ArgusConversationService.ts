@@ -139,7 +139,8 @@ Opções e comandos reais disponíveis no bot:
 Regras para os campos JSON:
 - replyText: resposta curta em português do Brasil (sem markdown complexo), respondendo de forma básica e terminando com uma orientação clara ou exemplo (ex: "Experimente enviar /produto arroz").
 - suggestedAction: escolha exatamente a opção mais próxima:
-  * SAVE_RECIPE_TEXT: quando o usuário enviou ingredientes/quantidades e preparo para adicionar/salvar uma receita no sistema.
+  * SAVE_RECIPE_TEXT: quando o usuário enviou ingredientes/quantidades e preparo para adicionar/salvar uma receita no sistema (receitas enviadas por texto ou link são salvas automaticamente sem pedir confirmação).
+  * SAVE_RECIPE_URL: quando o usuário enviou um link (http/https) para importar e salvar uma receita automaticamente no sistema.
   * WAIT_RECIPE: quando o usuário pede ou pergunta como adicionar/cadastrar uma receita, mas ainda não enviou os ingredientes nem a foto.
   * ASK_RECIPE_PRICE: quando o usuário pergunta quanto custa fazer uma receita específica ou onde comprar os ingredientes de um prato específico (ex: "quanto custa fazer strogonoff?").
   * RECEITA: perguntas gerais sobre receitas/marmitas sem pedir adição ou nome de prato específico.
@@ -345,19 +346,14 @@ export class ArgusConversationService {
     const detectedUrl = this.extractFirstUrl(msg);
     if (detectedUrl) {
       const lowerUrl = detectedUrl.toLowerCase();
-      const isKnownRecipeDomain =
-        /(tudogostoso|panelinha|receitas\.globo|cybercook|tastemade|allrecipes|cookpad|guiadacozinha|tudoreceitas|receiteria|receitasedelicias|anamariabraga)/i.test(
-          lowerUrl
-        ) || /\/receitas?\b/i.test(lowerUrl);
-      const hasRecipeIntentText =
-        /(receita|ingredientes?|adicion|cadastr|salv|import|quanto\s+custa|fazer|preparo)/i.test(
-          norm
-        );
+      const isSefazFiscalUrl = /fazenda|sefaz|nfce|nfe|sat\.|cfe|portalcf|dec\.fazenda/i.test(
+        lowerUrl
+      );
 
-      if (isKnownRecipeDomain || hasRecipeIntentText) {
+      if (!isSefazFiscalUrl) {
         return {
           replyText:
-            '🔗 Link de receita identificado! Estou acessando a página com segurança para extrair os ingredientes e calcular os preços.',
+            '🔗 Link de receita identificado! Estou acessando a página com segurança para extrair os ingredientes, salvar automaticamente e calcular os preços.',
           suggestedAction: 'SAVE_RECIPE_URL',
           suggestedCommand: '/receita',
           suggestedRecipeUrl: detectedUrl,
@@ -367,7 +363,7 @@ export class ArgusConversationService {
     }
 
     const measurementMatches = msg.match(
-      /\b\d+[\d.,/]*\s*(kg|quilos?|g|gr|gramas?|ml|l|lt|litros?|x[ií]caras?|colher(?:es)?|unidades?|un|ovos?|latas?|caixinhas?)\b/gi
+      /\b\d+[\d.,/]*\s*(kg|quilos?|g|gr|gramas?|ml|l|lt|litros?|x[ií]caras?|colher(?:es)?|unidades?|un|ovos?|latas?|caixinhas?|pacotes?|dentes?|fatias?|copos?|sach[eê]s?|tabletes?|pitadas?|ma[cç]os?|ramos?)\b/gi
     );
     const hasRecipeSubmissionStructure =
       (measurementMatches && measurementMatches.length >= 2) ||
@@ -561,6 +557,15 @@ export class ArgusConversationService {
       return ruleFallback;
     }
 
+    // Receitas enviadas por texto ou URL são processadas e salvas automaticamente sem passar por confirmação da IA
+    if (
+      ruleFallback.suggestedAction === 'SAVE_RECIPE_URL' ||
+      ruleFallback.suggestedAction === 'SAVE_RECIPE_TEXT'
+    ) {
+      this.pushHistory(chatKey, trimmed, ruleFallback.replyText);
+      return ruleFallback;
+    }
+
     const recentHistory = this.getRecentHistoryText(chatKey);
     const prompt = recentHistory
       ? `Histórico recente:\n${recentHistory}\n\nMensagem atual do usuário: "${trimmed}"`
@@ -663,6 +668,7 @@ export class ArgusConversationService {
           suggestedCommand: (parsed.suggestedCommand || '/produto arroz').trim().slice(0, 60),
           suggestedProductQuery: cleanProduct || ruleFallback.suggestedProductQuery,
           suggestedRecipeQuery: cleanRecipe || ruleFallback.suggestedRecipeQuery,
+          suggestedRecipeUrl: ruleFallback.suggestedRecipeUrl,
           usedAi: true
         };
 

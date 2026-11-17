@@ -31,5 +31,8 @@ ALTER TABLE argus.recipes
 ALTER TABLE argus.recipes
   ADD COLUMN IF NOT EXISTS estimated_calories_per_portion INTEGER;
 
+ALTER TABLE argus.recipes
+  ADD COLUMN IF NOT EXISTS source_url TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_argus_recipes_name ON argus.recipes(name);
 

@@ -74,6 +74,7 @@ export interface ArgusRecipe {
   name: string;
   servings: number;
   instructions: string;
+  source_url?: string | null;
   ingredients: ArgusRecipeIngredient[];
 }
 
@@ -417,6 +418,7 @@ export interface RecipeCostEvaluation {
   servings: number;
   requestedPortions: number;
   instructions: string;
+  sourceUrl?: string | null;
   instructionSteps: string[];
   prepTimeMinutes: number;
   difficulty: RecipeDifficulty;

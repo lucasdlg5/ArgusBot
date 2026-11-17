@@ -64,7 +64,7 @@ describe('ArgusConversationService — Conversa natural e guia de comandos', () 
     expect(askPriceRes.suggestedRecipeQuery).toContain('strogonoff');
   });
 
-  it('extrai primeira URL limpando pontuação final e detecta SAVE_RECIPE_URL em links de receita', () => {
+  it('extrai primeira URL limpando pontuação final e detecta SAVE_RECIPE_URL automaticamente mesmo em domínio genérico sem confirmação', async () => {
     const cleanUrl = service.extractFirstUrl(
       'Olha esse bolo (https://www.tudogostoso.com.br/receita/23-bolo-de-cenoura.html)!'
     );
@@ -78,10 +78,24 @@ describe('ArgusConversationService — Conversa natural e guia de comandos', () 
       'https://www.tudogostoso.com.br/receita/23-bolo-de-cenoura.html'
     );
 
+    const genericUrlOnlyReply = await service.replyToMessage('https://meublog.com.br/prato-especial');
+    expect(genericUrlOnlyReply.suggestedAction).toBe('SAVE_RECIPE_URL');
+    expect(genericUrlOnlyReply.suggestedRecipeUrl).toBe('https://meublog.com.br/prato-especial');
+
     const intentReply = service.buildRuleBasedReply(
       'adiciona essa receita https://exemplo.com/bolo'
     );
     expect(intentReply.suggestedAction).toBe('SAVE_RECIPE_URL');
     expect(intentReply.suggestedRecipeUrl).toBe('https://exemplo.com/bolo');
+
+    const sefazReply = service.buildRuleBasedReply(
+      'https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=3524'
+    );
+    expect(sefazReply.suggestedAction).not.toBe('SAVE_RECIPE_URL');
+
+    const textRecipeReply = await service.replyToMessage(
+      'Bolo Rápido\nIngredientes:\n- 3 ovos\n- 200g açúcar\nModo de preparo: misture e asse.'
+    );
+    expect(textRecipeReply.suggestedAction).toBe('SAVE_RECIPE_TEXT');
   });
 });

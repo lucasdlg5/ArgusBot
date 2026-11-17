@@ -70,6 +70,7 @@ export interface MockRecipe {
   name: string;
   servings: number;
   instructions: string;
+  source_url?: string | null;
 }
 
 export interface MockRecipeIngredient {
