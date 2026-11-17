@@ -95,9 +95,6 @@ async function main() {
       .digest('hex')
       .slice(0, 32);
 
-  // Inicializa informações do bot (bot.botInfo) antes de receber webhooks
-  await bot.init();
-
   const handleWebhook = webhookCallback(bot, 'http', {
     secretToken: webhookSecret,
     timeoutMilliseconds: 85000,
@@ -439,6 +436,9 @@ async function main() {
       return;
     }
 
+    if (urlPath.startsWith('/api/')) {
+      applyCorsHeaders(res);
+    }
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));
   });
@@ -449,6 +449,12 @@ async function main() {
       `[ArgusRender] Servidor HTTP escutando em 0.0.0.0:${PORT}`
     );
 
+    try {
+      await bot.init();
+    } catch (initErr) {
+      logger.error({ err: initErr }, '[ArgusRender] Falha em bot.init() (tentando continuar)');
+    }
+
     if (useWebhook) {
       const targetWebhookUrl = `${publicBaseUrl}${WEBHOOK_PATH}`;
       try {
@@ -458,14 +464,14 @@ async function main() {
           allowed_updates: ['message', 'callback_query']
         });
         console.log(
-          `✅ @${bot.botInfo.username} ONLINE em modo WEBHOOK no Render: ${targetWebhookUrl}`
+          `✅ @${bot.botInfo?.username || 'MonetaArgusBot'} ONLINE em modo WEBHOOK no Render: ${targetWebhookUrl}`
         );
       } catch (err) {
         logger.error({ err, targetWebhookUrl }, '[ArgusRender] Falha ao registrar Webhook no Telegram');
       }
     } else {
       await bot.api.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
-      console.log(`👁️  @${bot.botInfo.username} ONLINE em modo LONG POLLING (+ HTTP /health na porta ${PORT})`);
+      console.log(`👁️  @${bot.botInfo?.username || 'MonetaArgusBot'} ONLINE em modo LONG POLLING (+ HTTP /health na porta ${PORT})`);
       bot.start({
         onStart: (info) => {
           console.log(`✅ @${info.username} escutando comandos no Telegram!`);
