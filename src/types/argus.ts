@@ -615,6 +615,7 @@ export interface StoreBiReceiptSummary {
   discountAmount: number;
   paymentMethod: PaymentMethod;
   reconciled: boolean;
+  hasOfficialAccessKey?: boolean;
   itemsCount: number;
 }
 
@@ -684,6 +685,7 @@ export interface ReceiptDetailEntry {
   discountAmount: number;
   paymentMethod: PaymentMethod;
   reconciled: boolean;
+  hasOfficialAccessKey?: boolean;
   itemsCount: number;
   items: ReceiptDetailItem[];
 }

@@ -136,6 +136,7 @@ interface RawReceiptRow {
   discount_amount?: string | number;
   payment_method: PaymentMethod;
   reconciled: boolean;
+  has_official_access_key?: boolean;
 }
 
 interface RawReceiptItemRow {
@@ -230,7 +231,8 @@ export class ArgusCatalogBiService {
              r.total_amount::float8 AS total_amount,
              r.discount_amount::float8 AS discount_amount,
              r.payment_method,
-             r.reconciled
+             r.reconciled,
+             r.has_official_access_key
            FROM argus.receipts r
            JOIN argus.stores s ON s.id = r.store_id
            ORDER BY r.purchase_date DESC`
@@ -775,6 +777,7 @@ export class ArgusCatalogBiService {
         discountAmount: Number(r.discount_amount) || 0,
         paymentMethod: r.payment_method,
         reconciled: Boolean(r.reconciled),
+        hasOfficialAccessKey: Boolean(r.has_official_access_key),
         itemsCount: items.length,
         items
       };

@@ -16,6 +16,7 @@ import {
   Receipt,
   Search,
   Store,
+  Tag,
   X
 } from 'lucide-react';
 import {
@@ -471,10 +472,15 @@ export default function ArgusReceiptsPage() {
           <section className="space-y-3">
             {filteredReceipts.map((rec) => {
               const isOpen = expandedId === rec.receiptId;
+              const isPossibleFlyer = rec.totalAmount <= 0;
               return (
                 <div
                   key={rec.receiptId}
-                  className="rounded-xl border border-slate-800/90 bg-slate-900/60 overflow-hidden"
+                  className={`rounded-xl border overflow-hidden ${
+                    isPossibleFlyer
+                      ? 'border-amber-500/40 bg-amber-950/15'
+                      : 'border-slate-800/90 bg-slate-900/60'
+                  }`}
                 >
                   <button
                     type="button"
@@ -487,6 +493,22 @@ export default function ArgusReceiptsPage() {
                           <Store className="h-4 w-4 text-emerald-400 shrink-0" />
                           {rec.storeName}
                         </span>
+                        {isPossibleFlyer ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                            <Tag className="h-3 w-3" />
+                            Possível Flyer
+                          </span>
+                        ) : rec.hasOfficialAccessKey ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                            <Receipt className="h-3 w-3" />
+                            Nota Fiscal (NFC-e)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
+                            <Receipt className="h-3 w-3" />
+                            Nota Fiscal
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950 px-2 py-0.5 text-[11px] text-slate-300">
                           <CreditCard className="h-3 w-3 text-sky-400" />
                           {PAYMENT_LABELS[rec.paymentMethod] || rec.paymentMethod}
@@ -516,7 +538,11 @@ export default function ArgusReceiptsPage() {
 
                     <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
                       <div className="text-right tabular-nums">
-                        <p className="text-base font-bold text-emerald-400">
+                        <p
+                          className={`text-base font-bold ${
+                            isPossibleFlyer ? 'text-amber-400' : 'text-emerald-400'
+                          }`}
+                        >
                           {formatCurrency(rec.totalAmount)}
                         </p>
                         <p className="text-[11px] text-slate-400">
