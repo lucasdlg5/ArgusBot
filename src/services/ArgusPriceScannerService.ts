@@ -9,6 +9,7 @@ import { ArgusStorageService } from './ArgusStorageService';
 import { ArgusReceiptProcessor, type ExtractedReceiptData } from './ArgusReceiptProcessor';
 import { ArgusReconciliationService } from './ArgusReconciliationService';
 import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
+import { receiptVisionClient } from './ReceiptVisionClient';
 import type { ReceiptUnitType } from '../types/argus';
 
 export type MediaScanKind = 'RECEIPT_PHOTO' | 'SHELF_PHOTO' | 'MARKET_FLYER' | 'AISLE_VIDEO';
@@ -467,11 +468,29 @@ export class ArgusPriceScannerService {
     }
 
     try {
-      // 4. Chama o Gemini Multimodal para analisar a foto/vídeo
+      // 4. Para vídeos de gôndola, aciona também o pipeline OpenCV (Anti-Blur + CLAHE LAB + Tracking)
+      let openCvVideoNotes = '';
+      if (params.mimeType.startsWith('video/') && receiptVisionClient.isEnabled()) {
+        const cvVideo = await receiptVisionClient
+          .analyzeShelfVideo(params.mediaBuffer, params.mimeType)
+          .catch(() => null);
+        if (cvVideo && cvVideo.items.length > 0) {
+          const sample = cvVideo.items
+            .slice(0, 12)
+            .map(
+              (it) =>
+                `${it.nome_produto} (Reg: R$${it.preco_regular ?? '-'} / Promo: R$${it.preco_promocional ?? '-'})`
+            )
+            .join('; ');
+          openCvVideoNotes = `\n[Pré-leitura OpenCV/Tracking (${cvVideo.metadata?.sampled_keyframes ?? 0} keyframes, ${cvVideo.metadata?.discarded_blur_frames ?? 0} blur descartados): ${sample}]`;
+        }
+      }
+
+      // 5. Chama o Gemini Multimodal para analisar a foto/vídeo (enriquecido com pré-leitura OpenCV quando houver)
       const extraction = await this.analyzeMediaWithGemini(
         params.mediaBuffer,
         params.mimeType,
-        params.userCaption
+        [params.userCaption, openCvVideoNotes].filter(Boolean).join(' ').trim() || undefined
       );
 
       // Se a mídia era uma foto e a IA detectou que na verdade é um Cupom Fiscal (NFC-e/SAT),

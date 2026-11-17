@@ -11,17 +11,24 @@ Endpoints principais:
 from __future__ import annotations
 
 import base64
+import tempfile
 import uuid
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional
 
 from celery.result import AsyncResult
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app.config import settings
-from app.schemas import ReceiptProcessResponse
+from app.pipeline.video_pipeline import analyze_shelf_video
+from app.schemas import (
+    ReceiptProcessResponse,
+    VideoFilterConfig,
+    VideoJobSubmitResponse,
+    VideoStatusResponse,
+)
 from app.workers.celery_app import (
     celery_app,
     process_receipt_batch_sync,
@@ -123,3 +130,83 @@ async def get_artifact(filename: str):
     if not target.exists():
         raise HTTPException(status_code=404, detail="Artefato não encontrado.")
     return FileResponse(target, media_type="image/png")
+
+
+# --- Endpoints de Análise de Vídeos de Gôndola ---
+VIDEO_JOBS: Dict[str, VideoStatusResponse] = {}
+
+
+def _run_video_job(job_id: str, temp_video_path: str, cfg: VideoFilterConfig) -> None:
+    try:
+        metadata, items = analyze_shelf_video(temp_video_path, config=cfg)
+        VIDEO_JOBS[job_id] = VideoStatusResponse(
+            job_id=job_id,
+            status="completed",
+            metadata=metadata,
+            items=items,
+        )
+    except Exception as exc:
+        VIDEO_JOBS[job_id] = VideoStatusResponse(
+            job_id=job_id,
+            status="failed",
+            error=str(exc)[:400],
+        )
+    finally:
+        try:
+            Path(temp_video_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+@app.post("/api/v1/videos/analyze", response_model=VideoJobSubmitResponse, status_code=202)
+async def analyze_shelf_video_endpoint(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(..., description="Vídeo da gôndola (.mp4, .mov, .avi)"),
+    clahe_clip_limit: float = Form(2.4),
+    gamma: Optional[float] = Form(None),
+    denoise_strength: int = Form(7),
+    sharpen_amount: float = Form(1.35),
+    blur_threshold: float = Form(85.0),
+    use_adaptive_threshold: bool = Form(True),
+):
+    ext = Path(file.filename or "video.mp4").suffix.lower() or ".mp4"
+    if ext not in {".mp4", ".mov", ".avi", ".mkv"}:
+        raise HTTPException(
+            status_code=415,
+            detail="Formato não suportado. Envie .mp4, .mov ou .avi.",
+        )
+
+    raw_bytes = await file.read()
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Arquivo de vídeo vazio.")
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+    tmp.write(raw_bytes)
+    tmp.close()
+
+    cfg = VideoFilterConfig(
+        clahe_clip_limit=clahe_clip_limit,
+        gamma=gamma,
+        denoise_strength=denoise_strength,
+        sharpen_amount=sharpen_amount,
+        blur_threshold=blur_threshold,
+        use_adaptive_threshold=use_adaptive_threshold,
+    )
+
+    job_id = uuid.uuid4().hex
+    VIDEO_JOBS[job_id] = VideoStatusResponse(job_id=job_id, status="processing")
+    background_tasks.add_task(_run_video_job, job_id, tmp.name, cfg)
+
+    return VideoJobSubmitResponse(
+        job_id=job_id,
+        status="processing",
+        status_url=f"/api/v1/videos/status/{job_id}",
+    )
+
+
+@app.get("/api/v1/videos/status/{job_id}", response_model=VideoStatusResponse)
+async def get_video_job_status(job_id: str):
+    job = VIDEO_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job de vídeo não encontrado.")
+    return job

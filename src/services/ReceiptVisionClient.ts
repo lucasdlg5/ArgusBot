@@ -62,6 +62,31 @@ interface RawVisionApiResponse {
   raw_ocr_text?: string | null;
 }
 
+export interface VideoShelfItemResult {
+  item_id: string;
+  nome_produto: string;
+  preco_regular: number | null;
+  preco_promocional: number | null;
+  confianca_deteccao: number;
+  confianca_ocr: number;
+  timestamp_melhor_frame: number;
+  filtros_aplicados: string[];
+}
+
+export interface VideoShelfAnalysisResult {
+  job_id: string;
+  status: 'processing' | 'completed' | 'failed';
+  metadata?: {
+    duration_sec: number;
+    fps: number;
+    total_frames: number;
+    sampled_keyframes: number;
+    discarded_blur_frames: number;
+    detector_engine: string;
+  } | null;
+  items: VideoShelfItemResult[];
+}
+
 export class ReceiptVisionClient {
   isEnabled(): boolean {
     return Boolean(env.RECEIPT_VISION_API_URL);
@@ -195,6 +220,72 @@ export class ReceiptVisionClient {
         return null;
       }
     });
+  }
+
+  /**
+   * Envia vídeo de gôndola (.mp4/.mov/.avi) para o pipeline OpenCV (Anti-Blur + CLAHE LAB + Tracking)
+   * em POST /api/v1/videos/analyze e acompanha o job até concluir.
+   */
+  async analyzeShelfVideo(
+    videoBuffer: Buffer,
+    mimeType = 'video/mp4',
+    filename = 'shelf_video.mp4'
+  ): Promise<VideoShelfAnalysisResult | null> {
+    if (!this.isEnabled()) return null;
+
+    const analyzeUrl = `${env.RECEIPT_VISION_API_URL}/api/v1/videos/analyze`;
+    const startedAt = Date.now();
+    logger.info(
+      { analyzeUrl, bytes: videoBuffer.length, mimeType },
+      '[INÍCIO] [ReceiptVisionClient] [1/2] Enviando vídeo de gôndola para análise OpenCV'
+    );
+
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(videoBuffer)], { type: mimeType }), filename);
+
+    try {
+      const submitRes = await fetch(analyzeUrl, {
+        method: 'POST',
+        body: form,
+        signal: AbortSignal.timeout(env.RECEIPT_VISION_TIMEOUT_MS)
+      });
+      if (!submitRes.ok) {
+        logger.warn({ status: submitRes.status }, '[ReceiptVisionClient] Falha ao enviar vídeo');
+        return null;
+      }
+      const submitted = (await submitRes.json()) as { job_id: string };
+      const statusUrl = `${env.RECEIPT_VISION_API_URL}/api/v1/videos/status/${submitted.job_id}`;
+
+      // Polling leve por até 45s
+      for (let i = 0; i < 18; i++) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const pollRes = await fetch(statusUrl, { signal: AbortSignal.timeout(10000) });
+        if (!pollRes.ok) continue;
+        const statusData = (await pollRes.json()) as VideoShelfAnalysisResult;
+        if (statusData.status === 'completed') {
+          logger.info(
+            {
+              elapsedMs: Date.now() - startedAt,
+              keyframes: statusData.metadata?.sampled_keyframes,
+              discardedBlur: statusData.metadata?.discarded_blur_frames,
+              items: statusData.items.length
+            },
+            '[FIM] [ReceiptVisionClient] [2/2] Análise de vídeo de gôndola concluída'
+          );
+          return statusData;
+        }
+        if (statusData.status === 'failed') {
+          return null;
+        }
+      }
+      return null;
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        '[ReceiptVisionClient] Erro no pipeline de vídeo OpenCV; seguindo fallback Gemini'
+      );
+      return null;
+    }
   }
 }
 

@@ -94,3 +94,52 @@ class ReceiptProcessResponse(BaseModel):
     )
     final_image_url: Optional[str] = None
     raw_ocr_text: Optional[str] = None
+
+
+class VideoFilterConfig(BaseModel):
+    clahe_clip_limit: float = Field(2.4, ge=0.5, le=8.0)
+    clahe_grid_size: int = Field(8, ge=2, le=16)
+    gamma: Optional[float] = Field(
+        None, ge=0.3, le=3.0, description="None = ajuste dinâmico automático pela luminância"
+    )
+    denoise_strength: int = Field(7, ge=1, le=20)
+    sharpen_amount: float = Field(1.35, ge=0.0, le=3.0)
+    blur_threshold: float = Field(85.0, ge=10.0, le=500.0)
+    scene_diff_threshold: float = Field(0.18, ge=0.02, le=0.9)
+    use_adaptive_threshold: bool = True
+    max_keyframes: int = Field(35, ge=5, le=120)
+
+
+class VideoShelfItem(BaseModel):
+    item_id: str
+    nome_produto: str
+    preco_regular: Optional[float] = None
+    preco_promocional: Optional[float] = None
+    confianca_deteccao: float = Field(ge=0.0, le=1.0)
+    confianca_ocr: float = Field(ge=0.0, le=1.0)
+    timestamp_melhor_frame: float
+    filtros_aplicados: List[str] = Field(default_factory=list)
+
+
+class VideoMetadata(BaseModel):
+    duration_sec: float = 0.0
+    fps: float = 0.0
+    total_frames: int = 0
+    sampled_keyframes: int = 0
+    discarded_blur_frames: int = 0
+    detector_engine: str = "opencv_hsv_shelf"
+
+
+class VideoJobSubmitResponse(BaseModel):
+    job_id: str
+    status: str = "processing"
+    status_url: str
+
+
+class VideoStatusResponse(BaseModel):
+    job_id: str
+    status: str = Field(description="processing | completed | failed")
+    error: Optional[str] = None
+    metadata: Optional[VideoMetadata] = None
+    items: List[VideoShelfItem] = Field(default_factory=list)
+
