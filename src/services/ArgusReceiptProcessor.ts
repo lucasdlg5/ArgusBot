@@ -9,6 +9,7 @@ import { queryArgus, withArgusTransaction } from '../lib/db';
 import { classifyAndNormalizeStoreName } from '../lib/store-normalization';
 import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
 import { receiptVisionClient } from './ReceiptVisionClient';
+import { failureAuditService } from './ArgusFailureAuditService';
 import type {
   BaseUnit,
   PaymentMethod,
@@ -1038,21 +1039,35 @@ export class ArgusReceiptProcessor {
 
     logger.info(
       { model: env.GEMINI_MODEL },
-      '[3/4] [ArgusReceiptProcessor] Chamando Gemini Vision (qualidade + multi-documentos)'
+      '[3/4] [ArgusReceiptProcessor] Chamando Gemini Vision (qualidade + multi-documentos | até 3 tentativas)'
     );
 
-    const response = await this.generateWithModelFallback(
-      {
+    const response = await failureAuditService.executeWithRetryAndAudit({
+      serviceName: 'ArgusReceiptProcessor',
+      operationName: 'gemini_extract',
+      maxAttempts: 3,
+      baseDelayMs: 1500,
+      payloadSummary: {
         model: env.GEMINI_MODEL,
-        contents: [
+        mimeType: optimizedMime,
+        sourceBytes: sourceBuffer.length,
+        optimizedBytes: optimizedBuffer.length,
+        usedOpenCvImage: sourceBuffer !== imageBuffer,
+        imageSha256: crypto.createHash('sha256').update(imageBuffer).digest('hex')
+      },
+      fn: () =>
+        this.generateWithModelFallback(
           {
-            inlineData: {
-              data: optimizedBuffer.toString('base64'),
-              mimeType: optimizedMime
-            }
-          },
-          {
-            text: `Você é o Argus (@MonetaArgusBot), auditor fiscal e classificador multimodal de documentos de supermercado.
+            model: env.GEMINI_MODEL,
+            contents: [
+              {
+                inlineData: {
+                  data: optimizedBuffer.toString('base64'),
+                  mimeType: optimizedMime
+                }
+              },
+              {
+                text: `Você é o Argus (@MonetaArgusBot), auditor fiscal e classificador multimodal de documentos de supermercado.
 
 TAREFA 1 — QUALIDADE DA IMAGEM (OBRIGATÓRIO):
 Avalie imageQuality:
@@ -1076,30 +1091,31 @@ REGRAS ESTRITAS:
 2. Em receiptNumber, extraia APENAS o código/número do Pedido, COO ou Extrato (ex: "2596437", "2593977").
 3. Se o CNPJ não estiver visível, retorne "" em storeCnpj.
 4. Se imageQuality = 'UNREADABLE', retorne documents: [] e documentsCount: 0.`
-          }
-        ],
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              imageQuality: {
-                type: Type.STRING,
-                enum: ['GOOD', 'ACCEPTABLE', 'UNREADABLE']
-              },
-              qualityReason: { type: Type.STRING },
-              documentsCount: { type: Type.NUMBER },
-              documents: {
-                type: Type.ARRAY,
-                items: documentSchema
               }
-            },
-            required: ['imageQuality', 'qualityReason', 'documentsCount', 'documents']
-          }
-        }
-      },
-      25000
-    );
+            ],
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  imageQuality: {
+                    type: Type.STRING,
+                    enum: ['GOOD', 'ACCEPTABLE', 'UNREADABLE']
+                  },
+                  qualityReason: { type: Type.STRING },
+                  documentsCount: { type: Type.NUMBER },
+                  documents: {
+                    type: Type.ARRAY,
+                    items: documentSchema
+                  }
+                },
+                required: ['imageQuality', 'qualityReason', 'documentsCount', 'documents']
+              }
+            }
+          },
+          25000
+        )
+    });
 
     const parsed = JSON.parse(response.text || '{}') as {
       imageQuality?: ImageQualityLevel;
@@ -1437,7 +1453,21 @@ REGRAS ESTRITAS:
 
     const shrinkflationAlerts: string[] = [];
 
-    return withArgusTransaction(async (client) => {
+    return failureAuditService.executeWithRetryAndAudit({
+      serviceName: 'ArgusReceiptProcessor',
+      operationName: 'ingest_receipt',
+      maxAttempts: 3,
+      baseDelayMs: 800,
+      payloadSummary: {
+        store: data.storeTradingName,
+        cnpj: data.storeCnpj,
+        totalAmount: data.totalAmount,
+        itemsCount: data.items.length,
+        receiptNumber: data.receiptNumber ?? null,
+        accessKey: data.accessKey,
+        imageSha256: data.imageSha256 ?? null
+      },
+      fn: () => withArgusTransaction(async (client) => {
       // [2/3] Garante que a loja exista de forma canônica (respeitando store_aliases e variantes)
       logger.info({ rawStore: data.storeRawName }, '[2/3] [ArgusReceiptProcessor] Resolvendo mercado canônico');
       const canonicalStore = await this.storeNormalizer.resolveOrUpsertCanonicalStore(client, {
@@ -1531,6 +1561,7 @@ REGRAS ESTRITAS:
         itemsProcessed: data.items.length,
         shrinkflationAlerts
       };
+    })
     });
   }
 
