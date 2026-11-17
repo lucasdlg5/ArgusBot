@@ -920,7 +920,14 @@ export class ArgusReceiptProcessor {
       );
     }
 
-    // Camada OpenCV (quando RECEIPT_VISION_API_URL configurada): corrige rotação 180°, recupera contraste CLAHE e tenta QR Code SEFAZ
+    const startedAt = Date.now();
+    logger.info(
+      { mimeType, bytes: imageBuffer.length, openCvEnabled: receiptVisionClient.isEnabled() },
+      '[INÍCIO] [ArgusReceiptProcessor] Extração Multimodal de Cupom'
+    );
+
+    // [1/4] Camada OpenCV (quando RECEIPT_VISION_API_URL configurada): corrige rotação 180°, recupera contraste CLAHE e tenta QR Code SEFAZ
+    logger.info('[1/4] [ArgusReceiptProcessor] Verificando pré-processamento OpenCV + QR SEFAZ');
     const visionPre = receiptVisionClient.isEnabled()
       ? await receiptVisionClient.processImages([{ buffer: imageBuffer, mimeType }])
       : null;
@@ -928,6 +935,10 @@ export class ArgusReceiptProcessor {
     if (visionPre?.qrCodeUrl && this.isGenuineSefazQrUrl(visionPre.qrCodeUrl)) {
       const scraped = await this.scrapeSefazReceipt(visionPre.qrCodeUrl).catch(() => null);
       if (scraped) {
+        logger.info(
+          { elapsedMs: Date.now() - startedAt, store: scraped.storeTradingName, total: scraped.totalAmount },
+          '[FIM] [ArgusReceiptProcessor] Cupom extraído via QR Code SEFAZ recuperado pelo OpenCV'
+        );
         return {
           imageQuality: 'GOOD',
           qualityReason: 'QR Code SEFAZ recuperado via camada OpenCV (CLAHE/Orientação)',
@@ -947,7 +958,7 @@ export class ArgusReceiptProcessor {
         : imageBuffer;
     const sourceMime = sourceBuffer === imageBuffer ? mimeType : 'image/png';
 
-    // Otimiza a imagem mantendo alta resolução (1800x2600) para preservar legibilidade de múltiplas notas lado a lado
+    // [2/4] Otimiza a imagem mantendo alta resolução (1800x2600) para preservar legibilidade de múltiplas notas lado a lado
     let optimizedBuffer = sourceBuffer;
     let optimizedMime = sourceMime;
     if (sourceMime.startsWith('image/')) {
@@ -962,6 +973,10 @@ export class ArgusReceiptProcessor {
         optimizedBuffer = sourceBuffer;
       }
     }
+    logger.info(
+      { sourceBytes: sourceBuffer.length, optimizedBytes: optimizedBuffer.length, usedOpenCvImage: sourceBuffer !== imageBuffer },
+      '[2/4] [ArgusReceiptProcessor] Imagem preparada para Gemini Vision'
+    );
 
     const documentSchema = {
       type: Type.OBJECT,
@@ -1020,6 +1035,11 @@ export class ArgusReceiptProcessor {
         'items'
       ]
     };
+
+    logger.info(
+      { model: env.GEMINI_MODEL },
+      '[3/4] [ArgusReceiptProcessor] Chamando Gemini Vision (qualidade + multi-documentos)'
+    );
 
     const response = await this.generateWithModelFallback(
       {
@@ -1101,6 +1121,17 @@ REGRAS ESTRITAS:
       const finalized = this.finalizeReceiptIdentifiers(enriched);
       return this.applySelfHealingMathWarning(finalized);
     });
+
+    const totalItemsExtracted = finalizedDocs.reduce((acc, d) => acc + d.items.length, 0);
+    logger.info(
+      {
+        elapsedMs: Date.now() - startedAt,
+        imageQuality: parsed.imageQuality || 'ACCEPTABLE',
+        documentsCount: finalizedDocs.length,
+        totalItemsExtracted
+      },
+      '[FIM] [ArgusReceiptProcessor] [4/4] Extração Multimodal finalizada com Self-Healing matemático'
+    );
 
     return {
       imageQuality: parsed.imageQuality || 'ACCEPTABLE',
@@ -1370,11 +1401,30 @@ REGRAS ESTRITAS:
     itemsProcessed: number;
     shrinkflationAlerts: string[];
   }> {
+    const startedAt = Date.now();
     const data = this.finalizeReceiptIdentifiers(rawInput);
+    logger.info(
+      {
+        store: data.storeTradingName,
+        totalAmount: data.totalAmount,
+        itemsCount: data.items.length,
+        hasOfficialKey: data.hasOfficialAccessKey
+      },
+      '[INÍCIO] [ArgusReceiptProcessor] Ingestão de Nota Fiscal no PostgreSQL'
+    );
 
-    // Verifica duplicidade nas Camadas 2 a 5 contra o banco argus.receipts
+    // [1/3] Verifica duplicidade nas Camadas 2 a 5 contra o banco argus.receipts
+    logger.info('[1/3] [ArgusReceiptProcessor] Verificando camadas de deduplicação no banco');
     const dupCheck = await this.checkPostOcrDuplicateLayers(data);
     if (dupCheck.isDuplicate && dupCheck.existingReceiptId) {
+      logger.info(
+        {
+          elapsedMs: Date.now() - startedAt,
+          existingReceiptId: dupCheck.existingReceiptId,
+          layer: dupCheck.layer
+        },
+        '[FIM] [ArgusReceiptProcessor] Nota fiscal já registrada (duplicata evitada)'
+      );
       return {
         receiptId: dupCheck.existingReceiptId,
         alreadyExisted: true,
@@ -1388,7 +1438,8 @@ REGRAS ESTRITAS:
     const shrinkflationAlerts: string[] = [];
 
     return withArgusTransaction(async (client) => {
-      // 1. Garante que a loja exista de forma canônica (respeitando store_aliases e variantes)
+      // [2/3] Garante que a loja exista de forma canônica (respeitando store_aliases e variantes)
+      logger.info({ rawStore: data.storeRawName }, '[2/3] [ArgusReceiptProcessor] Resolvendo mercado canônico');
       const canonicalStore = await this.storeNormalizer.resolveOrUpsertCanonicalStore(client, {
         cnpj: data.storeCnpj,
         rawName: data.storeRawName,
@@ -1462,6 +1513,17 @@ REGRAS ESTRITAS:
           ]
         );
       }
+
+      logger.info(
+        {
+          elapsedMs: Date.now() - startedAt,
+          receiptId,
+          store: canonicalStore.canonicalTradingName,
+          itemsProcessed: data.items.length,
+          shrinkflationAlerts: shrinkflationAlerts.length
+        },
+        '[FIM] [ArgusReceiptProcessor] [3/3] Ingestão e normalização de itens concluídas'
+      );
 
       return {
         receiptId,

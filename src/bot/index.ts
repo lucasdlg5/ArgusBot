@@ -199,6 +199,10 @@ export function createArgusBot(): Bot {
 
       const pausedLongEnough = prevMs === null || now - prevMs >= INACTIVITY_DASHBOARD_MS;
       if (pausedLongEnough) {
+        logger.info(
+          { chatId, pausedMinutes: prevMs ? Math.round((now - prevMs) / 60000) : null },
+          '[Sessão] Pausa >= 1h detectada; enviando botão do painel web do Argus'
+        );
         const kb = new InlineKeyboard().url('🌐 Abrir Painel Web do Argus', publicUrl);
         await bot.api
           .sendMessage(chatId, '👁️ Bem-vindo de volta! Acesse o painel web do Argus:', {
@@ -1158,6 +1162,18 @@ export function createArgusBot(): Bot {
     let downloadedFileId: string | undefined;
     let downloadedFileUniqueId: string | undefined;
 
+    logger.info(
+      {
+        chatId: ctx.chat.id,
+        messageId: originalMessageId,
+        isVideoDocument,
+        isExplicitPriceScanCaption,
+        isExplicitRecipeCaption,
+        captionPreview: caption ? caption.slice(0, 60) : null
+      },
+      '[INÍCIO] [BotMedia] [1/3] Recebida mídia para download e análise'
+    );
+
     try {
       await withTypingIndicator(ctx, async () => {
         let timeoutHandle: NodeJS.Timeout | undefined;
@@ -1694,6 +1710,11 @@ export function createArgusBot(): Bot {
         `❌ FALHA NO PROCESSAMENTO DA IMAGEM\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}\n• Você pode reenviar a foto ou consultar /fila.`
       );
       await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
+    } finally {
+      logger.info(
+        { chatId: ctx.chat.id, messageId: originalMessageId, elapsedMs: Date.now() - startMs },
+        '[FIM] [BotMedia] Fluxo de processamento de mídia encerrado'
+      );
     }
   });
 

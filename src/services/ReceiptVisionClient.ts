@@ -80,6 +80,13 @@ export class ReceiptVisionClient {
     }
 
     const endpoint = `${env.RECEIPT_VISION_API_URL}/v1/receipts/process`;
+    const totalBytes = images.reduce((acc, im) => acc + im.buffer.length, 0);
+    const startedAt = Date.now();
+    logger.info(
+      { endpoint, parts: images.length, totalBytes },
+      '[INÍCIO] [ReceiptVisionClient] [1/2] Enviando imagem(ns) para microsserviço OpenCV'
+    );
+
     const form = new FormData();
 
     images.forEach((img, idx) => {
@@ -105,14 +112,14 @@ export class ReceiptVisionClient {
       if (!res.ok) {
         const errBody = await res.text().catch(() => '');
         logger.warn(
-          { status: res.status, body: errBody.slice(0, 200) },
-          '[ReceiptVisionClient] Microsserviço retornou erro; seguindo fallback local'
+          { status: res.status, endpoint, elapsedMs: Date.now() - startedAt, body: errBody.slice(0, 200) },
+          '[FIM-FALLBACK] [ReceiptVisionClient] [2/2] Microsserviço retornou erro HTTP; seguindo fallback local'
         );
         return null;
       }
 
       const data = (await res.json()) as RawVisionApiResponse;
-      return {
+      const outcome: VisionProcessOutcome = {
         enhancedImageBuffer: data.final_image_base64
           ? Buffer.from(data.final_image_base64, 'base64')
           : null,
@@ -141,10 +148,28 @@ export class ReceiptVisionClient {
         },
         rawOcrText: data.raw_ocr_text ?? null
       };
+
+      logger.info(
+        {
+          elapsedMs: Date.now() - startedAt,
+          stitchMode: outcome.stitchSummary.stitch_mode,
+          overlaps: outcome.stitchSummary.overlaps_detected,
+          hasQrUrl: Boolean(outcome.qrCodeUrl),
+          hasSefazKey: Boolean(outcome.sefazAccessKey),
+          docType: outcome.documentType
+        },
+        '[FIM] [ReceiptVisionClient] [2/2] Pré-processamento OpenCV concluído com sucesso'
+      );
+
+      return outcome;
     } catch (err) {
       logger.warn(
-        { err: err instanceof Error ? err.message : String(err) },
-        '[ReceiptVisionClient] Falha ao contatar microsserviço OpenCV; seguindo fallback local'
+        {
+          endpoint,
+          elapsedMs: Date.now() - startedAt,
+          err: err instanceof Error ? err.message : String(err)
+        },
+        '[FIM-FALLBACK] [ReceiptVisionClient] [2/2] Falha ao contatar microsserviço OpenCV; seguindo fallback local'
       );
       return null;
     } finally {

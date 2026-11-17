@@ -18,10 +18,13 @@ Inclui também:
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import List, Optional, Tuple
 import cv2
 import numpy as np
+
+logger = logging.getLogger("uvicorn.error")
 
 from app.config import settings
 from app.pipeline.qr_decoder import QrExtractionResult, extract_access_key_from_text
@@ -280,10 +283,21 @@ def extract_structured_receipt(
                 header = ReceiptHeader(**(parsed.get("header") or {}))
                 items = [ReceiptItem(**it) for it in (parsed.get("items") or [])]
                 totals = ReceiptTotals(**(parsed.get("totals") or {}))
-        except Exception:
+                logger.info(
+                    "[SemanticParser] Extracao via Gemini (%s) bem-sucedida | itens=%d",
+                    settings.gemini_model,
+                    len(items),
+                )
+        except Exception as exc:
+            logger.warning(
+                "[SemanticParser] Falha no Gemini (%s); acionando fallback deterministico: %s",
+                settings.gemini_model,
+                str(exc)[:180],
+            )
             header = None
 
     if header is None or totals is None:
+        logger.info("[SemanticParser] Usando parser deterministico local (OCR Tesseract)")
         header, items, totals = _parse_receipt_text_deterministic(ocr_text, qr_info)
 
     # Injeta dados de QR Code / SEFAZ se o parser textual não os capturou
