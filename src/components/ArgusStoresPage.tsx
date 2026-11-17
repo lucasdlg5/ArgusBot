@@ -7,6 +7,7 @@ import {
   fetchPublicDashboardFallback,
   resolvePublicApiUrl
 } from '@/lib/public-bi-client';
+import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { motion } from 'motion/react';
 import {
@@ -489,14 +490,7 @@ export default function ArgusStoresPage() {
         )}
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-56 rounded-xl border border-slate-800 bg-slate-900/50 animate-pulse"
-              />
-            ))}
-          </div>
+          <ArgusWakeupLoading initialSeconds={95} />
         ) : selectedStore ? (
           /* ===================================================================
              VISÃO B.I. INDIVIDUAL DO MERCADO SELECIONADO

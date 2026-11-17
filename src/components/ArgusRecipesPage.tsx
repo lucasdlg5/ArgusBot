@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { fetchPublicDashboardFallback, resolvePublicApiUrl } from '@/lib/public-bi-client';
+import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
@@ -918,10 +919,7 @@ export default function ArgusRecipesPage() {
 
         {/* CONTEÚDO PRINCIPAL */}
         {loading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-4 h-96 rounded-xl border border-slate-800 bg-slate-900/50 animate-pulse" />
-            <div className="lg:col-span-8 h-96 rounded-xl border border-slate-800 bg-slate-900/50 animate-pulse" />
-          </div>
+          <ArgusWakeupLoading initialSeconds={95} />
         ) : recipes.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-10 text-center space-y-3">
             <ChefHat className="h-10 w-10 text-emerald-400 mx-auto" />

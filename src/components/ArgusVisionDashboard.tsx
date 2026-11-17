@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
+import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
@@ -246,19 +247,7 @@ export default function ArgusVisionDashboard() {
   }
 
   if (loading || !data) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#090d16] text-slate-200">
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-slate-900/90 px-6 py-4 shadow-2xl">
-          <Eye className="h-7 w-7 animate-pulse text-emerald-400" />
-          <div>
-            <p className="font-semibold text-white">Conectando ao Argus...</p>
-            <p className="text-xs text-slate-400">
-              Buscando dados atualizados do banco. Se o servidor estava em repouso, pode levar até 45 segundos.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <ArgusWakeupLoading fullScreen initialSeconds={95} />;
   }
 
   // Agregações do Módulo 1: "O Que Realmente Compramos"

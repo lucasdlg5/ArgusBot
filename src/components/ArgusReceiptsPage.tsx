@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
+import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
 import type {
   PaymentMethod,
@@ -333,14 +334,7 @@ export default function ArgusReceiptsPage() {
 
         {/* LISTA DE NOTAS FISCAIS */}
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-24 rounded-xl border border-slate-800 bg-slate-900/50 animate-pulse"
-              />
-            ))}
-          </div>
+          <ArgusWakeupLoading initialSeconds={95} />
         ) : filteredReceipts.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-10 text-center space-y-2">
             <Receipt className="h-10 w-10 text-slate-600 mx-auto" />

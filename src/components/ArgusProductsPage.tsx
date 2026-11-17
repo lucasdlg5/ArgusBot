@@ -7,6 +7,7 @@ import {
   fetchPublicDashboardFallback,
   resolvePublicApiUrl
 } from '@/lib/public-bi-client';
+import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -602,14 +603,7 @@ export default function ArgusProductsPage() {
 
         {/* TABELA / LISTA PRINCIPAL DE PRODUTOS ESCANEADOS */}
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="h-16 rounded-xl border border-slate-800 bg-slate-900/50 animate-pulse"
-              />
-            ))}
-          </div>
+          <ArgusWakeupLoading initialSeconds={95} />
         ) : filteredProducts.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-10 text-center space-y-3">
             <Package className="h-10 w-10 text-slate-600 mx-auto" />
