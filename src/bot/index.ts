@@ -1213,7 +1213,7 @@ export function createArgusBot(): Bot {
               ].join('\n')
             )
             .catch(() => {});
-          await stickers.sendEmotionalSticker(firstCtx, 'THUMBS_UP');
+          await stickers.sendEmotionalSticker(firstCtx, 'DETECTIVE');
           logger.info(
             {
               chatId: firstCtx.chat.id,
