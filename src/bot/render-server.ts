@@ -1,5 +1,6 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { webhookCallback } from 'grammy';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
@@ -28,6 +29,28 @@ function applyCorsHeaders(res: http.ServerResponse) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
+}
+
+function sendJsonCompressed(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  statusCode: number,
+  payload: unknown
+) {
+  const jsonBuf = Buffer.from(JSON.stringify(payload), 'utf8');
+  const acceptEncoding = String(req.headers['accept-encoding'] || '');
+  if (jsonBuf.length > 1024 && /\bgzip\b/i.test(acceptEncoding)) {
+    const gz = zlib.gzipSync(jsonBuf, { level: 6 });
+    res.writeHead(statusCode, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Encoding': 'gzip',
+      Vary: 'Accept-Encoding'
+    });
+    res.end(gz);
+    return;
+  }
+  res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(jsonBuf);
 }
 
 async function readJsonBody<T>(req: http.IncomingMessage): Promise<T> {
@@ -78,8 +101,14 @@ async function main() {
     timeoutMilliseconds: 55000
   });
 
+  let snapshotCache: { data: unknown; expiresAt: number } | null = null;
+
   const server = http.createServer(async (req, res) => {
     const urlPath = (req.url || '/').split('?')[0];
+
+    if (req.method !== 'GET' && urlPath.startsWith('/api/')) {
+      snapshotCache = null;
+    }
 
     if (req.method === 'OPTIONS' && urlPath.startsWith('/api/')) {
       applyCorsHeaders(res);
@@ -91,9 +120,14 @@ async function main() {
     if (req.method === 'GET' && urlPath === '/api/public-snapshot') {
       applyCorsHeaders(res);
       try {
+        const now = Date.now();
+        if (snapshotCache && snapshotCache.expiresAt > now) {
+          sendJsonCompressed(req, res, 200, snapshotCache.data);
+          return;
+        }
         const payload = await dashboardBuilder.buildSanitizedPublicPayload();
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify(payload));
+        snapshotCache = { data: payload, expiresAt: now + 15000 };
+        sendJsonCompressed(req, res, 200, payload);
       } catch (err) {
         logger.error({ err }, '[ArgusRender] Erro ao gerar /api/public-snapshot');
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -115,18 +149,15 @@ async function main() {
           nameQuery: q,
           requestedPortions
         });
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(
-          JSON.stringify({
-            status: 'ok',
-            recipes,
-            homeLocation: {
-              lat: -23.305,
-              lng: -45.965,
-              address: 'Jacareí / São Paulo - SP (Coordenadas Protegidas OpSec)'
-            }
-          })
-        );
+        sendJsonCompressed(req, res, 200, {
+          status: 'ok',
+          recipes,
+          homeLocation: {
+            lat: -23.305,
+            lng: -45.965,
+            address: 'Jacareí / São Paulo - SP (Coordenadas Protegidas OpSec)'
+          }
+        });
       } catch (err) {
         logger.error({ err }, '[ArgusRender] Erro ao consultar /api/recipes');
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
