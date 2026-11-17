@@ -7,6 +7,7 @@ import {
   fetchPublicDashboardFallback,
   resolvePublicApiUrl
 } from '@/lib/public-bi-client';
+import { APP_VERSION_LABEL } from '@/config/version';
 import { motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -427,6 +428,12 @@ export default function ArgusStoresPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <span
+              title={`Versão atual do site: ${APP_VERSION_LABEL}`}
+              className="inline-flex items-center rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-2 text-xs font-semibold font-mono text-emerald-300"
+            >
+              {APP_VERSION_LABEL}
+            </span>
             {selectedStore ? (
               <>
                 <Link

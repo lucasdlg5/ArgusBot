@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { fetchPublicDashboardFallback, resolvePublicApiUrl } from '@/lib/public-bi-client';
+import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   AlertTriangle,
@@ -521,13 +522,21 @@ export default function ArgusRecipesPage() {
       {/* TOP BAR CONTRACT: 3 ZONAS EM UMA LINHA */}
       <header className="sticky top-0 z-30 border-b border-slate-800/90 bg-slate-950/90 backdrop-blur-md px-6 py-3.5">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-8">
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white whitespace-nowrap shrink-0"
-          >
-            <Utensils className="h-5 w-5 text-emerald-400" />
-            <span>Argus Vision BI</span>
-          </Link>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white whitespace-nowrap shrink-0"
+            >
+              <Utensils className="h-5 w-5 text-emerald-400" />
+              <span>Argus Vision BI</span>
+            </Link>
+            <span
+              title={`Versão atual do site: ${APP_VERSION_LABEL}`}
+              className="rounded-full border border-emerald-500/35 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold font-mono text-emerald-300 whitespace-nowrap"
+            >
+              {APP_VERSION_LABEL}
+            </span>
+          </div>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
             <Link
@@ -564,6 +573,12 @@ export default function ArgusRecipesPage() {
           </nav>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <span
+              title={`Versão atual do site: ${APP_VERSION_LABEL}`}
+              className="hidden sm:inline-flex items-center rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-semibold font-mono text-emerald-300 whitespace-nowrap"
+            >
+              {APP_VERSION_LABEL}
+            </span>
             <motion.button
               whileTap={{ scale: 0.96 }}
               type="button"

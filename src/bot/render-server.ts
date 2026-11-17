@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { webhookCallback } from 'grammy';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
+import { APP_VERSION } from '../config/version';
 import { queryArgus } from '../lib/db';
 import {
   ArgusCatalogBiService,
@@ -260,6 +261,7 @@ async function main() {
       res.end(
         JSON.stringify({
           status: 'ok',
+          version: APP_VERSION,
           service: 'moneta-argus-bot',
           bot: `@${bot.botInfo.username}`,
           mode: useWebhook ? 'webhook' : 'polling',

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
+import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   Eye,
@@ -342,8 +343,8 @@ export default function ArgusVisionDashboard() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold tracking-tight text-white">Argus Vision BI</h1>
-                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30">
-                  v1.0
+                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30 font-mono">
+                  {APP_VERSION_LABEL}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
@@ -481,6 +482,12 @@ export default function ArgusVisionDashboard() {
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-300">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
               {data.reconciliation.sheetsSyncedRows} linhas no Argus Ledger
+            </span>
+            <span
+              title={`Versão atual do site: ${APP_VERSION_LABEL}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold font-mono text-emerald-300"
+            >
+              Versão {APP_VERSION_LABEL}
             </span>
           </div>
         </header>
