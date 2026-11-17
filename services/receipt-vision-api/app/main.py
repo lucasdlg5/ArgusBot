@@ -47,7 +47,13 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check() -> dict:
-    return {"status": "ok", "service": settings.app_name, "version": settings.app_version}
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "version": settings.app_version,
+        "gemini_configured": bool(settings.gemini_api_key.strip()),
+        "gemini_model": settings.gemini_model,
+    }
 
 
 @app.post("/v1/receipts/process", response_model=ReceiptProcessResponse)

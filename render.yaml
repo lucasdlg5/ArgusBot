@@ -54,7 +54,7 @@ services:
         fromService:
           type: web
           name: argus-receipt-vision
-          property: hostport
+          property: host
 
   - type: web
     name: argus-receipt-vision

@@ -118,9 +118,10 @@ const envSchema = z.object({
     .transform((v) => {
       const cleaned = v.trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '');
       if (!cleaned) return '';
-      return /^https?:\/\//i.test(cleaned) ? cleaned : `http://${cleaned}`;
+      if (/^https?:\/\//i.test(cleaned)) return cleaned;
+      return cleaned.includes('.onrender.com') ? `https://${cleaned}` : `http://${cleaned}`;
     }),
-  RECEIPT_VISION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(25000)
+  RECEIPT_VISION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(35000)
 });
 
 const parsed = envSchema.safeParse(process.env);
