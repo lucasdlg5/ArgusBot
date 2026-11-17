@@ -60,6 +60,7 @@ async def health_check() -> dict:
 async def process_receipt(
     files: List[UploadFile] = File(..., description="Uma ou mais partes da mesma nota fiscal"),
     include_images_base64: bool = Form(True),
+    extract_semantic: bool = Form(True),
     async_mode: bool = Form(False),
 ):
     if not files:
@@ -86,7 +87,9 @@ async def process_receipt(
 
     try:
         response = process_receipt_batch_sync(
-            images_bytes, include_images_base64=include_images_base64
+            images_bytes,
+            include_images_base64=include_images_base64,
+            extract_semantic=extract_semantic,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

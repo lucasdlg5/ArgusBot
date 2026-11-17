@@ -17,7 +17,13 @@ from app.pipeline.image_pipeline import run_image_pipeline
 from app.pipeline.qr_decoder import QrExtractionResult, decode_qr_from_image
 from app.pipeline.receipt_stitcher import stitch_receipt_parts
 from app.pipeline.semantic_parser import extract_structured_receipt
-from app.schemas import ReceiptProcessResponse
+from app.schemas import (
+    MathValidationReport,
+    ReceiptDocumentType,
+    ReceiptHeader,
+    ReceiptProcessResponse,
+    ReceiptTotals,
+)
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -30,7 +36,9 @@ celery_app.conf.update(task_serializer="json", result_serializer="json", accept_
 
 
 def process_receipt_batch_sync(
-    images_bytes: List[bytes], include_images_base64: bool = True
+    images_bytes: List[bytes],
+    include_images_base64: bool = True,
+    extract_semantic: bool = True,
 ) -> ReceiptProcessResponse:
     """Executa o pipeline completo de ponta a ponta (usado no modo síncrono ou pelo worker Celery)."""
     t0 = time.perf_counter()
@@ -85,22 +93,42 @@ def process_receipt_batch_sync(
         qr_info.is_contingency,
     )
 
-    logger.info("[4/4] Executando extracao semantica multi-layout e validacao matematica Self-Healing")
-    header, items, totals, math_report, ocr_text = extract_structured_receipt(
-        unified_grayscale=stitch_res.unified_grayscale,
-        unified_binary=stitch_res.unified_binary,
-        qr_info=qr_info,
-        stitch_mode=stitch_res.summary.stitch_mode,
-    )
-    logger.info(
-        "[4/4] Extracao concluida | loja=%s | doc_type=%s | itens=%d | total=R$%.2f | divergencia=R$%.2f | warning=%s",
-        header.store_name or "N/A",
-        header.document_type.value,
-        len(items),
-        totals.total_paid,
-        math_report.discrepancy_brl,
-        math_report.confidence_warning,
-    )
+    if extract_semantic:
+        logger.info("[4/4] Executando extracao semantica multi-layout e validacao matematica Self-Healing")
+        header, items, totals, math_report, ocr_text = extract_structured_receipt(
+            unified_grayscale=stitch_res.unified_grayscale,
+            unified_binary=stitch_res.unified_binary,
+            qr_info=qr_info,
+            stitch_mode=stitch_res.summary.stitch_mode,
+        )
+        logger.info(
+            "[4/4] Extracao concluida | loja=%s | doc_type=%s | itens=%d | total=R$%.2f | divergencia=R$%.2f | warning=%s",
+            header.store_name or "N/A",
+            header.document_type.value,
+            len(items),
+            totals.total_paid,
+            math_report.discrepancy_brl,
+            math_report.confidence_warning,
+        )
+    else:
+        logger.info("[4/4] Modo pre-processamento OpenCV + QR apenas (extract_semantic=false)")
+        doc_type = (
+            ReceiptDocumentType.NFCE_CONTINGENCY
+            if qr_info.is_contingency
+            else (ReceiptDocumentType.NFCE if (qr_info.qr_url or qr_info.access_key_44) else ReceiptDocumentType.UNKNOWN)
+        )
+        header = ReceiptHeader(document_type=doc_type)
+        items = []
+        totals = ReceiptTotals(sefaz_access_key=qr_info.access_key_44, qr_code_url=qr_info.qr_url)
+        math_report = MathValidationReport(
+            items_sum=0.0,
+            expected_total=0.0,
+            declared_total=0.0,
+            discrepancy_brl=0.0,
+            is_consistent=True,
+            confidence_warning=False,
+        )
+        ocr_text = ""
 
     gray_b64 = None
     bin_b64 = None

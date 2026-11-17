@@ -97,17 +97,31 @@ export class ReceiptVisionClient {
       form.append('files', blob, name);
     });
     form.append('include_images_base64', 'true');
+    form.append('extract_semantic', 'false');
     form.append('async_mode', 'false');
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), env.RECEIPT_VISION_TIMEOUT_MS);
 
     try {
-      const res = await fetch(endpoint, {
+      let res = await fetch(endpoint, {
         method: 'POST',
         body: form,
         signal: controller.signal
       });
+
+      if (res.status === 502 || res.status === 503) {
+        logger.warn(
+          { status: res.status, endpoint },
+          '[ReceiptVisionClient] Recebido 502/503 transitório (deploy/wake-up); tentando novamente em 1.5s'
+        );
+        await new Promise((r) => setTimeout(r, 1500));
+        res = await fetch(endpoint, {
+          method: 'POST',
+          body: form,
+          signal: controller.signal
+        });
+      }
 
       if (!res.ok) {
         const errBody = await res.text().catch(() => '');

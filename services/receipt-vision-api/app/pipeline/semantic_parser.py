@@ -246,8 +246,9 @@ def extract_structured_receipt(
     """
     Executa extração semântica via Gemini Multimodal (quando configurado) com fallback
     para OCR local + parser determinístico, seguida de deduplicação e validação matemática.
+    Evita rodar Tesseract em memória quando o Gemini já está disponível.
     """
-    ocr_text = _extract_ocr_text_local(unified_binary)
+    ocr_text = ""
 
     header: Optional[ReceiptHeader] = None
     items: List[ReceiptItem] = []
@@ -298,6 +299,7 @@ def extract_structured_receipt(
 
     if header is None or totals is None:
         logger.info("[SemanticParser] Usando parser deterministico local (OCR Tesseract)")
+        ocr_text = _extract_ocr_text_local(unified_binary)
         header, items, totals = _parse_receipt_text_deterministic(ocr_text, qr_info)
 
     # Injeta dados de QR Code / SEFAZ se o parser textual não os capturou
