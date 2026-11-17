@@ -1392,7 +1392,7 @@ export default function ArgusRecipesPage() {
                         <div className="inline-flex flex-wrap gap-1 rounded-xl border border-slate-800 bg-slate-950 p-1">
                           {(
                             [
-                              { id: 'OVERVIEW', label: 'Custos & Similares', icon: Sparkles },
+                              { id: 'OVERVIEW', label: 'Receita & Custos', icon: Sparkles },
                               {
                                 id: 'SHOPPING',
                                 label: `Lista de Compras (${shoppingProgress.checkedCount}/${shoppingProgress.total})`,
@@ -1467,7 +1467,7 @@ export default function ArgusRecipesPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div className="rounded-lg border border-emerald-500/35 bg-emerald-950/15 p-4">
                                 <p className="text-xs font-medium text-emerald-300">
-                                  Menor Preço Possível (Compra Otimizada)
+                                  Preço Total da Receita (Melhor Combinação)
                                 </p>
                                 <p className="text-2xl font-bold text-emerald-400 mt-1 tabular-nums">
                                   R${' '}
@@ -1476,7 +1476,7 @@ export default function ArgusRecipesPage() {
                                   )}
                                 </p>
                                 <p className="text-[11px] text-slate-300 mt-1 tabular-nums">
-                                  Proporcional no prato: R${' '}
+                                  Na receita (proporcional): R${' '}
                                   {(
                                     activeRecipe.lowestPossibleProportionalCost * portionMultiplier
                                   ).toFixed(2)}{' '}
@@ -1487,7 +1487,7 @@ export default function ArgusRecipesPage() {
 
                               <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
                                 <p className="text-xs font-medium text-slate-300">
-                                  Melhor Lugar para Comprar Tudo
+                                  Melhor Mercado para Comprar Tudo
                                 </p>
                                 <p className="text-lg font-bold text-white mt-1 flex items-center gap-1.5">
                                   <Store className="h-4 w-4 text-amber-400 shrink-0" />
@@ -1499,7 +1499,7 @@ export default function ArgusRecipesPage() {
                                     2
                                   )}{' '}
                                   <span className="text-[11px] font-normal text-slate-400">
-                                    ({activeRecipe.bestSingleStoreCoveragePct}% cobertura)
+                                    ({activeRecipe.bestSingleStoreCoveragePct}% dos itens encontrados)
                                   </span>
                                 </p>
                               </div>
@@ -1515,72 +1515,153 @@ export default function ArgusRecipesPage() {
                               </div>
                             </div>
 
-                            {/* BARRA VISUAL: APROVEITAMENTO NO PRATO vs SOBRA DE DESPENSA */}
-                            <div className="rounded-lg border border-slate-800/90 bg-slate-950/60 p-4 space-y-2.5">
-                              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                                <span className="font-semibold text-white">
-                                  Eficiência da Compra: Uso na Receita vs. Estoque de Sobras na Despensa
-                                </span>
-                                <span className="tabular-nums text-slate-300">
-                                  <strong className="text-emerald-400">
-                                    {activeRecipe.pantryUtilizationPct}%
-                                  </strong>{' '}
-                                  consumido agora ·{' '}
-                                  <strong className="text-amber-300">
-                                    R${' '}
-                                    {(
-                                      activeRecipe.totalLeftoverPantryValue * portionMultiplier
-                                    ).toFixed(2)}
-                                  </strong>{' '}
-                                  em embalagens sobrando para próximas receitas
-                                </span>
+                            {/* INGREDIENTES & PREÇO TOTAL DA RECEITA (ANTES DO MODO DE PREPARO) */}
+                            <div className="rounded-xl border border-slate-800 bg-slate-950/70 overflow-hidden">
+                              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 px-4 py-3.5 bg-slate-900/50">
+                                <div>
+                                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                    <ShoppingCart className="h-4 w-4 text-emerald-400" />
+                                    Ingredientes &amp; Preço Total
+                                  </h3>
+                                  <p className="text-xs text-slate-400 mt-0.5">
+                                    {activeRecipe.ingredientsBreakdown.length} ingredientes para{' '}
+                                    {Math.max(1, Math.round(activeRecipe.servings * portionMultiplier))}{' '}
+                                    porções · marque o que já tem em casa
+                                  </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <div className="text-right">
+                                    <span className="text-[10px] uppercase tracking-wider text-slate-400 block">
+                                      Total da Receita
+                                    </span>
+                                    <span className="text-lg font-bold text-emerald-400 tabular-nums">
+                                      R${' '}
+                                      {(
+                                        activeRecipe.lowestPossibleCashCost * portionMultiplier
+                                      ).toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveDetailTab('MARKETS')}
+                                    className="rounded-lg border border-slate-700 hover:border-emerald-500/60 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-emerald-300 transition-colors whitespace-nowrap"
+                                  >
+                                    Comparar mercados
+                                  </button>
+                                </div>
                               </div>
-                              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800 flex">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${activeRecipe.pantryUtilizationPct}%` }}
-                                  transition={{ duration: 0.45, ease: 'easeOut' }}
-                                  className="h-full bg-emerald-500"
-                                />
-                                <div className="h-full flex-1 bg-amber-500/60" />
+
+                              <div className="divide-y divide-slate-800/70">
+                                {activeRecipe.ingredientsBreakdown.map((ing) => {
+                                  const checked = activeCartIds.includes(ing.productId);
+                                  const scaledQty = formatQty(
+                                    ing.requiredBaseQty * portionMultiplier,
+                                    ing.baseUnit
+                                  );
+                                  const scaledPackages = Math.max(
+                                    1,
+                                    Math.ceil(ing.packagesNeeded * portionMultiplier)
+                                  );
+                                  return (
+                                    <button
+                                      key={ing.productId}
+                                      type="button"
+                                      onClick={() => toggleCartItem(activeRecipe.recipeId, ing.productId)}
+                                      className={`w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-colors hover:bg-slate-900/60 ${
+                                        checked ? 'bg-emerald-950/15 opacity-70' : ''
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <span
+                                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
+                                            checked
+                                              ? 'border-emerald-400 bg-emerald-500 text-slate-950'
+                                              : 'border-slate-600 bg-slate-950'
+                                          }`}
+                                        >
+                                          {checked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                                        </span>
+                                        <div className="min-w-0">
+                                          <p
+                                            className={`text-sm leading-snug ${
+                                              checked ? 'line-through text-slate-400' : 'text-slate-100'
+                                            }`}
+                                          >
+                                            <strong className="text-emerald-300 font-bold tabular-nums mr-1.5">
+                                              {scaledQty}
+                                            </strong>
+                                            <span className="font-medium">{ing.productName}</span>
+                                          </p>
+                                          <p className="text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-1.5">
+                                            <span>
+                                              {scaledPackages} emb. · {ing.bestStoreName}
+                                            </span>
+                                            {ing.hasRealPrice === false && (
+                                              <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 text-[10px] text-amber-300">
+                                                preço estimado
+                                              </span>
+                                            )}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="text-right shrink-0 tabular-nums">
+                                        <p className="text-sm font-bold text-white">
+                                          R$ {(ing.cashOutlayCost * portionMultiplier).toFixed(2)}
+                                        </p>
+                                        <p className="text-[11px] text-slate-400">
+                                          no prato: R${' '}
+                                          {(ing.proportionalCost * portionMultiplier).toFixed(2)}
+                                        </p>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
                               </div>
-                              {activeRecipe.routeAnalysis && (
-                                <p className="text-[11px] text-slate-400">
-                                  {activeRecipe.routeAnalysis.splitSavingsAmount > 0 ? (
-                                    <>
-                                      Economia bruta dividindo mercados:{' '}
-                                      <strong className="text-emerald-300">
-                                        R${' '}
-                                        {(
-                                          activeRecipe.routeAnalysis.splitSavingsAmount *
-                                          portionMultiplier
-                                        ).toFixed(2)}
-                                      </strong>{' '}
-                                      · Saldo líquido descontando combustível extra:{' '}
-                                      <strong
-                                        className={
-                                          activeRecipe.routeAnalysis.netSplitSavingsWithGas > 0
-                                            ? 'text-emerald-400'
-                                            : 'text-amber-300'
-                                        }
-                                      >
-                                        R${' '}
-                                        {activeRecipe.routeAnalysis.netSplitSavingsWithGas.toFixed(2)}
-                                      </strong>
-                                      .
-                                    </>
-                                  ) : (
-                                    'O melhor mercado único já empata com o menor custo possível para esta receita.'
-                                  )}
-                                </p>
-                              )}
+
+                              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/80 bg-slate-900/40 px-4 py-3 text-xs">
+                                <div className="flex flex-wrap items-center gap-4 text-slate-300 tabular-nums">
+                                  <span>
+                                    Compra total:{' '}
+                                    <strong className="text-emerald-400">
+                                      R${' '}
+                                      {(
+                                        activeRecipe.lowestPossibleCashCost * portionMultiplier
+                                      ).toFixed(2)}
+                                    </strong>
+                                  </span>
+                                  <span>
+                                    Custo proporcional:{' '}
+                                    <strong className="text-white">
+                                      R${' '}
+                                      {(
+                                        activeRecipe.lowestPossibleProportionalCost *
+                                        portionMultiplier
+                                      ).toFixed(2)}
+                                    </strong>{' '}
+                                    <span className="text-slate-400">
+                                      (R$ {activeRecipe.proportionalCostPerPortion.toFixed(2)}/porção)
+                                    </span>
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveDetailTab('SHOPPING')}
+                                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1"
+                                >
+                                  Abrir Lista de Compras
+                                  <ArrowRight className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             </div>
 
-                            {/* RESUMO RÁPIDO DE PREPARO + RECEITAS SIMILARES */}
-                            <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-4">
-                              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                                  Resumo do Preparo
+                            {/* MODO DE PREPARO (EXIBIDO APÓS INGREDIENTES E PREÇO TOTAL) */}
+                            <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 p-4 space-y-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                  <ChefHat className="h-4 w-4 text-amber-400" />
+                                  Modo de Preparo
                                 </h3>
                                 <div className="flex flex-wrap items-center gap-3">
                                   {activeRecipe.sourceUrl &&
@@ -1605,9 +1686,87 @@ export default function ArgusRecipesPage() {
                                   </button>
                                 </div>
                               </div>
-                              <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
-                                {activeRecipe.instructions}
-                              </p>
+                              {activeRecipe.instructionSteps &&
+                              activeRecipe.instructionSteps.length > 0 ? (
+                                <ol className="space-y-2.5">
+                                  {activeRecipe.instructionSteps.map((stepText, idx) => (
+                                    <li
+                                      key={idx}
+                                      className="flex items-start gap-3 text-sm text-slate-200 leading-relaxed"
+                                    >
+                                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-emerald-300 tabular-nums">
+                                        {idx + 1}
+                                      </span>
+                                      <span>{stepText}</span>
+                                    </li>
+                                  ))}
+                                </ol>
+                              ) : (
+                                <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+                                  {activeRecipe.instructions}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* BARRA VISUAL: APROVEITAMENTO NO PRATO vs SOBRA DE DESPENSA */}
+                            <div className="rounded-lg border border-slate-800/90 bg-slate-950/60 p-4 space-y-2.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                                <span className="font-semibold text-white">
+                                  Quanto você usa na receita vs. o que sobra na despensa
+                                </span>
+                                <span className="tabular-nums text-slate-300">
+                                  <strong className="text-emerald-400">
+                                    {activeRecipe.pantryUtilizationPct}%
+                                  </strong>{' '}
+                                  usado nesta receita ·{' '}
+                                  <strong className="text-amber-300">
+                                    R${' '}
+                                    {(
+                                      activeRecipe.totalLeftoverPantryValue * portionMultiplier
+                                    ).toFixed(2)}
+                                  </strong>{' '}
+                                  em embalagens sobrando para próximas receitas
+                                </span>
+                              </div>
+                              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800 flex">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${activeRecipe.pantryUtilizationPct}%` }}
+                                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                                  className="h-full bg-emerald-500"
+                                />
+                                <div className="h-full flex-1 bg-amber-500/60" />
+                              </div>
+                              {activeRecipe.routeAnalysis && (
+                                <p className="text-[11px] text-slate-400">
+                                  {activeRecipe.routeAnalysis.splitSavingsAmount > 0 ? (
+                                    <>
+                                      Economia dividindo entre mercados:{' '}
+                                      <strong className="text-emerald-300">
+                                        R${' '}
+                                        {(
+                                          activeRecipe.routeAnalysis.splitSavingsAmount *
+                                          portionMultiplier
+                                        ).toFixed(2)}
+                                      </strong>{' '}
+                                      · Saldo após combustível extra:{' '}
+                                      <strong
+                                        className={
+                                          activeRecipe.routeAnalysis.netSplitSavingsWithGas > 0
+                                            ? 'text-emerald-400'
+                                            : 'text-amber-300'
+                                        }
+                                      >
+                                        R${' '}
+                                        {activeRecipe.routeAnalysis.netSplitSavingsWithGas.toFixed(2)}
+                                      </strong>
+                                      .
+                                    </>
+                                  ) : (
+                                    'Comprar tudo em um único mercado já garante o menor preço para esta receita.'
+                                  )}
+                                </p>
+                              )}
                             </div>
 
                             {/* RECEITAS SIMILARES & APROVEITAMENTO DE SOBRAS */}
