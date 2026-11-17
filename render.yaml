@@ -50,3 +50,24 @@ services:
         sync: false
       - key: USER_SHARE_EMAIL
         sync: false
+      - key: RECEIPT_VISION_API_URL
+        fromService:
+          type: web
+          name: argus-receipt-vision
+          property: hostport
+
+  - type: web
+    name: argus-receipt-vision
+    runtime: docker
+    plan: free
+    region: ohio
+    branch: main
+    rootDir: services/receipt-vision-api
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash

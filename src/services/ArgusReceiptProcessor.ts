@@ -8,6 +8,7 @@ import { logger } from '../config/logger';
 import { queryArgus, withArgusTransaction } from '../lib/db';
 import { classifyAndNormalizeStoreName } from '../lib/store-normalization';
 import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
+import { receiptVisionClient } from './ReceiptVisionClient';
 import type {
   BaseUnit,
   PaymentMethod,
@@ -919,19 +920,46 @@ export class ArgusReceiptProcessor {
       );
     }
 
+    // Camada OpenCV (quando RECEIPT_VISION_API_URL configurada): corrige rotação 180°, recupera contraste CLAHE e tenta QR Code SEFAZ
+    const visionPre = receiptVisionClient.isEnabled()
+      ? await receiptVisionClient.processImages([{ buffer: imageBuffer, mimeType }])
+      : null;
+
+    if (visionPre?.qrCodeUrl && this.isGenuineSefazQrUrl(visionPre.qrCodeUrl)) {
+      const scraped = await this.scrapeSefazReceipt(visionPre.qrCodeUrl).catch(() => null);
+      if (scraped) {
+        return {
+          imageQuality: 'GOOD',
+          qualityReason: 'QR Code SEFAZ recuperado via camada OpenCV (CLAHE/Orientação)',
+          documentsCount: 1,
+          documents: [scraped]
+        };
+      }
+    }
+
+    // Se a camada OpenCV corrigiu rotação macro (ex: 180°) ou desfoque sem cortar outros documentos, prioriza a imagem tratada
+    const preReport = visionPre?.qualityReports?.[0];
+    const sourceBuffer =
+      visionPre?.enhancedImageBuffer &&
+      preReport &&
+      (preReport.detected_rotation_deg !== 0 || preReport.is_blurry || !preReport.cropped_document)
+        ? visionPre.enhancedImageBuffer
+        : imageBuffer;
+    const sourceMime = sourceBuffer === imageBuffer ? mimeType : 'image/png';
+
     // Otimiza a imagem mantendo alta resolução (1800x2600) para preservar legibilidade de múltiplas notas lado a lado
-    let optimizedBuffer = imageBuffer;
-    let optimizedMime = mimeType;
-    if (mimeType.startsWith('image/')) {
+    let optimizedBuffer = sourceBuffer;
+    let optimizedMime = sourceMime;
+    if (sourceMime.startsWith('image/')) {
       try {
-        optimizedBuffer = await sharp(imageBuffer)
+        optimizedBuffer = await sharp(sourceBuffer)
           .rotate()
           .resize({ width: 1800, height: 2600, fit: 'inside', withoutEnlargement: true })
           .jpeg({ quality: 86, mozjpeg: true })
           .toBuffer();
         optimizedMime = 'image/jpeg';
       } catch {
-        optimizedBuffer = imageBuffer;
+        optimizedBuffer = sourceBuffer;
       }
     }
 
@@ -1061,18 +1089,100 @@ REGRAS ESTRITAS:
     };
 
     const rawDocs = Array.isArray(parsed.documents) ? parsed.documents : [];
-    const finalizedDocs = rawDocs.map((doc) =>
-      this.finalizeReceiptIdentifiers({
+    const finalizedDocs = rawDocs.map((doc) => {
+      const enriched: ExtractedReceiptData = {
         ...doc,
+        accessKey:
+          doc.accessKey && /^\d{44}$/.test(doc.accessKey)
+            ? doc.accessKey
+            : visionPre?.sefazAccessKey || doc.accessKey,
         extractionMethod: 'GEMINI_VISION_2_5_FLASH'
-      })
-    );
+      };
+      const finalized = this.finalizeReceiptIdentifiers(enriched);
+      return this.applySelfHealingMathWarning(finalized);
+    });
 
     return {
       imageQuality: parsed.imageQuality || 'ACCEPTABLE',
       qualityReason: parsed.qualityReason || 'Leitura padrão',
       documentsCount: finalizedDocs.length,
       documents: finalizedDocs
+    };
+  }
+
+  /**
+   * Validação Matemática (Self-Healing): verifica se Soma(Itens) bate com o Total Pago
+   * e sinaliza divergência no reasoning caso haja erro de leitura térmica (ex: 3 vs 8).
+   */
+  private applySelfHealingMathWarning(doc: ExtractedReceiptData): ExtractedReceiptData {
+    if (doc.detectedDocumentType !== 'FISCAL_RECEIPT' || doc.items.length === 0 || doc.totalAmount <= 0) {
+      return doc;
+    }
+    const itemsSum = Number(
+      doc.items.reduce((acc, it) => acc + Number(it.totalPrice || 0), 0).toFixed(2)
+    );
+    const diff = Number(Math.abs(itemsSum - Number(doc.totalAmount)).toFixed(2));
+    if (diff > 0.1) {
+      const note = ` [confidence_warning: Soma dos itens (R$ ${itemsSum.toFixed(2)}) diverge do total (R$ ${doc.totalAmount.toFixed(2)}) em R$ ${diff.toFixed(2)}]`;
+      return {
+        ...doc,
+        classificationReasoning: `${doc.classificationReasoning || ''}${note}`.trim()
+      };
+    }
+    return doc;
+  }
+
+  /**
+   * Costura múltiplas fotos sequenciais de UMA MESMA nota longa (ex: 70-120 itens em 2-3 fotos)
+   * usando o microsserviço OpenCV (SIFT/AKAZE + Linear Blending) e extrai os dados sem duplicar itens.
+   */
+  async extractStitchedReceiptFromParts(
+    parts: Array<{ buffer: Buffer; mimeType?: string }>
+  ): Promise<{
+    stitched: boolean;
+    overlapsDetected: number;
+    unifiedBuffer: Buffer;
+    document: ExtractedReceiptData;
+  } | null> {
+    if (!receiptVisionClient.isEnabled() || parts.length < 2) {
+      return null;
+    }
+
+    const visionRes = await receiptVisionClient.processImages(parts);
+    if (!visionRes?.enhancedImageBuffer) {
+      return null;
+    }
+
+    // Só assume automaticamente como "mesma nota costurada" quando detectou overlap visual real
+    if (visionRes.stitchSummary.overlaps_detected <= 0) {
+      return null;
+    }
+
+    if (visionRes.qrCodeUrl && this.isGenuineSefazQrUrl(visionRes.qrCodeUrl)) {
+      const scraped = await this.scrapeSefazReceipt(visionRes.qrCodeUrl).catch(() => null);
+      if (scraped) {
+        return {
+          stitched: true,
+          overlapsDetected: visionRes.stitchSummary.overlaps_detected,
+          unifiedBuffer: visionRes.enhancedImageBuffer,
+          document: scraped
+        };
+      }
+    }
+
+    const multi = await this.extractMultipleReceiptsViaGeminiVision(
+      visionRes.enhancedImageBuffer,
+      'image/png'
+    );
+    if (multi.documents.length === 0) {
+      return null;
+    }
+
+    return {
+      stitched: true,
+      overlapsDetected: visionRes.stitchSummary.overlaps_detected,
+      unifiedBuffer: visionRes.enhancedImageBuffer,
+      document: multi.documents[0]
     };
   }
 

@@ -109,7 +109,18 @@ const envSchema = z.object({
   UBER_MIN_TRIP_FARE: z.coerce.number().nonnegative().default(8.9),
   MIN_SAVINGS_HURDLE: z.coerce.number().nonnegative().default(25.0),
 
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info')
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+
+  // Microsserviço Python de Visão Computacional & Stitching (OpenCV + CLAHE + Sauvola)
+  RECEIPT_VISION_API_URL: z
+    .string()
+    .default('')
+    .transform((v) => {
+      const cleaned = v.trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '');
+      if (!cleaned) return '';
+      return /^https?:\/\//i.test(cleaned) ? cleaned : `http://${cleaned}`;
+    }),
+  RECEIPT_VISION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(25000)
 });
 
 const parsed = envSchema.safeParse(process.env);

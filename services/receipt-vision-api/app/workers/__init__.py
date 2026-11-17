@@ -1,0 +1,1 @@
+"""Workers assíncronos (Celery + Redis)."""
