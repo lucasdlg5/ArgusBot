@@ -1753,7 +1753,7 @@ REGRAS ESTRITAS:
              raw_product_description, canonical_product_name, category,
              unit_type, base_unit, package_size_in_base_unit,
              collected_price, promo_club_price, normalized_price_per_base_unit,
-             confidence_score_pct, missing_info_flags, confidence_explanation, created_at
+             confidence_score_pct, missing_info_flags, confidence_explanation, collected_at
            ) VALUES ($1, $2, 'MARKET_FLYER', $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL, $12, 95, $13, $14, $15)`,
           [
             rec.store_id,
