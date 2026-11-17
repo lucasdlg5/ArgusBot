@@ -6,11 +6,18 @@ import { logger } from '../config/logger';
 import { queryArgus, withArgusTransaction } from '../lib/db';
 import { classifyAndNormalizeStoreName } from '../lib/store-normalization';
 import { ArgusStorageService } from './ArgusStorageService';
-import { ArgusReceiptProcessor, type ExtractedReceiptData } from './ArgusReceiptProcessor';
+import {
+  ArgusReceiptProcessor,
+  isQuotaExhaustedError,
+  type ExtractedReceiptData
+} from './ArgusReceiptProcessor';
 import { ArgusReconciliationService } from './ArgusReconciliationService';
 import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
 import { receiptVisionClient } from './ReceiptVisionClient';
+import { llmFallbackProvider } from './LlmFallbackProvider';
 import type { ReceiptUnitType } from '../types/argus';
+
+const scannerGeminiCooldownUntil = new Map<string, number>();
 
 export type MediaScanKind = 'RECEIPT_PHOTO' | 'SHELF_PHOTO' | 'MARKET_FLYER' | 'AISLE_VIDEO';
 
@@ -103,48 +110,92 @@ export class ArgusPriceScannerService {
     params: Parameters<GoogleGenAI['models']['generateContent']>[0],
     timeoutMsPerModel = 28000
   ) {
-    if (!this.ai) {
-      throw new Error('GEMINI_API_KEY não configurada.');
-    }
-    const candidateModels = Array.from(
-      new Set([
-        env.GEMINI_MODEL,
-        'gemini-3.6-flash',
-        'gemini-3.5-flash',
-        'gemini-3.5-flash-lite',
-        'gemini-3.8-flash'
-      ])
-    );
-
     let lastError: unknown;
-    for (const modelName of candidateModels) {
-      let timer: NodeJS.Timeout | undefined;
-      try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new Error(`Timeout (${timeoutMsPerModel}ms) no modelo ${modelName}`)),
-            timeoutMsPerModel
-          );
-        });
+    const now = Date.now();
 
-        const result = await Promise.race([
-          this.ai.models.generateContent({
-            ...params,
-            model: modelName
-          }),
-          timeoutPromise
-        ]);
-        if (timer) clearTimeout(timer);
-        return result;
-      } catch (err) {
-        if (timer) clearTimeout(timer);
-        lastError = err;
-        logger.warn(
-          { modelName, err: (err as Error).message },
-          '[ArgusPriceScannerService] Tentando próximo modelo Gemini para coleta de preços'
-        );
+    if (this.ai) {
+      const candidateModels = Array.from(
+        new Set([
+          env.GEMINI_MODEL,
+          'gemini-3.6-flash',
+          'gemini-3.5-flash',
+          'gemini-3.5-flash-lite',
+          'gemini-3.8-flash'
+        ])
+      );
+      const activeModels = candidateModels.filter(
+        (m) => now >= (scannerGeminiCooldownUntil.get(m) ?? 0)
+      );
+      const modelsToTry = activeModels.length > 0 ? activeModels : candidateModels.slice(-1);
+
+      for (const modelName of modelsToTry) {
+        let timer: NodeJS.Timeout | undefined;
+        try {
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`Timeout (${timeoutMsPerModel}ms) no modelo ${modelName}`)),
+              timeoutMsPerModel
+            );
+          });
+
+          const result = await Promise.race([
+            this.ai.models.generateContent({
+              ...params,
+              model: modelName
+            }),
+            timeoutPromise
+          ]);
+          if (timer) clearTimeout(timer);
+          scannerGeminiCooldownUntil.delete(modelName);
+          return result;
+        } catch (err) {
+          if (timer) clearTimeout(timer);
+          lastError = err;
+          if (isQuotaExhaustedError(err)) {
+            scannerGeminiCooldownUntil.set(modelName, Date.now() + 15 * 60 * 1000);
+          }
+          logger.warn(
+            { modelName, err: (err as Error).message },
+            '[ArgusPriceScannerService] Tentando próximo modelo Gemini para coleta de preços'
+          );
+        }
       }
+    } else {
+      lastError = new Error('GEMINI_API_KEY não configurada.');
     }
+
+    if (llmFallbackProvider.hasAnyFallbackConfigured()) {
+      const rawContents = Array.isArray(params.contents) ? params.contents : [params.contents];
+      const textParts: string[] = [];
+      let imageBase64: string | undefined;
+      let imageMimeType: string | undefined;
+
+      for (const part of rawContents) {
+        if (typeof part === 'string') {
+          textParts.push(part);
+        } else if (part && typeof part === 'object') {
+          const obj = part as {
+            text?: string;
+            inlineData?: { data?: string; mimeType?: string };
+          };
+          if (obj.text) textParts.push(obj.text);
+          if (obj.inlineData?.data) {
+            imageBase64 = obj.inlineData.data;
+            imageMimeType = obj.inlineData.mimeType || 'image/jpeg';
+          }
+        }
+      }
+
+      const fallbackRes = await llmFallbackProvider.generateWithSecondaryAndTertiary({
+        prompt: textParts.join('\n\n'),
+        imageBase64,
+        imageMimeType,
+        expectJson: true,
+        timeoutMs: 25000
+      });
+      return { text: fallbackRes.text };
+    }
+
     throw lastError;
   }
 

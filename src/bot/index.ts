@@ -576,26 +576,52 @@ export function createArgusBot(): Bot {
 
   bot.command('otimizar', async (ctx) => handleOtimizar(ctx));
 
-  // 5. /reconciliar — Conciliação Open Finance (Pluggy) + Google Sheets ("Argus Ledger")
+  // 5. /reconciliar — Conciliação Open Finance (Pluggy), Google Sheets e Recuperação de Lote/Fila
   async function handleReconciliar(ctx: {
     api: Bot['api'];
     chat?: { id: number };
     reply: any;
     replyWithSticker?: (sticker: string) => Promise<unknown>;
   }) {
+    const batch = await priceScanner.reconcileBatchQueue(false).catch(() => ({
+      recoveredToReceiptCount: 0,
+      reactivatedCount: 0
+    }));
     const { summary } = await reconciler.reconcileAndSyncSheets();
     await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
-    const msg = [
-      '👁️ *AUDITORIA DE CONCILIAÇÃO OPEN FINANCE (PLUGGY) & SHEETS*',
+    const queueSummary = await priceScanner.getQueueAndCollectedSummary().catch(() => null);
+
+    const lines = [
+      '👁️ *AUDITORIA DE CONCILIAÇÃO OPEN FINANCE (PLUGGY), SHEETS & FILA*',
       '',
       `• 📄 Cupons Fiscais Escaneados: *${summary.scannedReceipts}*`,
       `• 🏦 Transações Pluggy Analisadas: *${summary.pluggyTransactions}*`,
       `• 🔗 Taxa de Conciliação (-2h a +48h, <= R$ 0,05): *${summary.reconciliationRatePct}%* (${summary.totalReconciled} conciliados)`,
       `• 💳 Cupons lançados na Carteira VR/VA: *${summary.vrVaSyncedCount}*`,
       `• 📊 Linhas sincronizadas no Google Sheets (*Argus Ledger*): *${summary.sheetsSyncedRows}*`
-    ].join('\n');
+    ];
 
-    await ctx.reply(msg, { parse_mode: 'Markdown' });
+    if (batch.recoveredToReceiptCount > 0 || queueSummary) {
+      lines.push('');
+      lines.push('🗂️ *Fila de Reprocessamento (`argus.media_processing_queue`):*');
+      if (batch.recoveredToReceiptCount > 0) {
+        lines.push(
+          `• 🧾 Notas recuperadas de \`SHELF_PHOTO\` → \`RECEIPT_PHOTO\`: *${batch.recoveredToReceiptCount}*`
+        );
+      }
+      if (queueSummary) {
+        lines.push(
+          `• ✅ Concluídos: *${queueSummary.stats.succeeded_count}* | ⏳ Na fila: *${queueSummary.stats.queued_retry_count}* | ❌ Falhas: *${queueSummary.stats.failed_count}*`
+        );
+      }
+    }
+
+    const kb = new InlineKeyboard()
+      .text('🔄 Reprocessar Fila Agora (até 10)', 'retry_queue:now')
+      .row()
+      .text('♻️ Reativar Falhas Permanentes', 'reconcile_reactivate:all');
+
+    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', reply_markup: kb });
     await stickers.sendEmotionalSticker(ctx, 'CELEBRATION');
   }
 
@@ -922,47 +948,6 @@ export function createArgusBot(): Bot {
   }
 
   bot.command('fila', async (ctx) => handleFila(ctx));
-
-  // 6.2b. /reconciliar — Workaround de Reconciliação de Lote (recupera notas mal-classificadas, sincroniza extrato e reativa fila)
-  bot.command('reconciliar', async (ctx) => {
-    const statusMsg = await ctx.reply('🔄 Executando reconciliação do lote, extrato e fila...');
-    try {
-      const batch = await priceScanner.reconcileBatchQueue(false);
-      const recon = await reconciler.reconcileAndSyncSheets().catch(() => null);
-      await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
-      const summary = await priceScanner.getQueueAndCollectedSummary();
-
-      const lines = [
-        '🛡️ *RECONCILIAÇÃO DE LOTE CONCLUÍDA*',
-        '',
-        `• 🧾 Notas recuperadas de \`SHELF_PHOTO\` → \`RECEIPT_PHOTO\`: *${batch.recoveredToReceiptCount}*`,
-        `• ✅ Mídias concluídas na fila (\`SUCCEEDED\`): *${summary.stats.succeeded_count}*`,
-        `• ⏳ Aguardando reprocessamento (\`QUEUED_RETRY\`): *${summary.stats.queued_retry_count}*`,
-        `• ❌ Falhas permanentes (\`FAILED_PERMANENT\`): *${summary.stats.failed_count}*`
-      ];
-      if (recon) {
-        lines.push(
-          `• 🏦 Conciliação bancária: *${recon.summary.newlyMatched}* nova(s) nota(s) conciliada(s) (taxa: *${recon.summary.reconciliationRatePct.toFixed(1)}%*)`
-        );
-      }
-
-      const kb = new InlineKeyboard()
-        .text('🔄 Reprocessar Fila Agora (até 10)', 'retry_queue:now')
-        .row()
-        .text('♻️ Reativar Falhas Permanentes', 'reconcile_reactivate:all');
-
-      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, lines.join('\n'), {
-        parse_mode: 'Markdown',
-        reply_markup: kb
-      });
-    } catch (err) {
-      await ctx.api.editMessageText(
-        ctx.chat.id,
-        statusMsg.message_id,
-        `❌ Erro na reconciliação: ${(err as Error).message}`
-      );
-    }
-  });
 
   // 6.3. /loja <Nome do Mercado | Local> — Atualiza a loja da última coleta de vídeo/gôndola e eleva a confiabilidade
   bot.command('loja', async (ctx) => {
