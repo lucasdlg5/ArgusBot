@@ -101,7 +101,7 @@ export async function fetchPublicDashboardFallback<T>(
 
   inFlightSnapshotPromise = runFetch();
   try {
-    return await inFlightSnapshotPromise;
+    return (await inFlightSnapshotPromise) as PublicBiFetchResult<T>;
   } finally {
     inFlightSnapshotPromise = null;
   }
