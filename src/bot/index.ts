@@ -771,16 +771,17 @@ export function createArgusBot(): Bot {
       : undefined;
 
     if (outcome.status === 'SUCCEEDED') {
+      const itemsSaved = outcome.receiptItemsCount || 0;
       const text = outcome.isFiscalReceipt
-        ? [
-            '✅ SUCESSO NA TENTATIVA DE REPROCESSAMENTO DA IMAGEM!',
-            `• 🏪 Mercado: ${outcome.storeNameDetected}`,
-            `• 💰 Total: R$ ${(outcome.receiptTotalAmount || 0).toFixed(2)} | 📦 Itens gravados: ${outcome.receiptItemsCount || 0}`,
-            `• 🗄️ Foto arquivada no bucket: '${outcome.storageBucket}/${outcome.storagePath}'`,
-            `• 🔄 Concluído na tentativa #${outcome.attemptsCount || 2} da fila argus.media_processing_queue.`
-          ].join('\n')
+        ? itemsSaved === 0
+          ? `ℹ️ Aquela foto pendente (${outcome.storeNameDetected} — R$ ${(outcome.receiptTotalAmount || 0).toFixed(2)}) já estava registrada no sistema.`
+          : [
+              '✅ Foto da fila processada com sucesso!',
+              `• 🏪 ${outcome.storeNameDetected}`,
+              `• 💰 Total: R$ ${(outcome.receiptTotalAmount || 0).toFixed(2)} | 🧾 ${itemsSaved} itens salvos`
+            ].join('\n')
         : [
-            `✅ SUCESSO NA TENTATIVA DE REPROCESSAMENTO (#${outcome.attemptsCount || 2})!`,
+            `✅ Coleta da fila concluída (tentativa #${outcome.attemptsCount || 2})!`,
             formatPriceScanOutcomeMessage(outcome)
           ].join('\n\n');
 
