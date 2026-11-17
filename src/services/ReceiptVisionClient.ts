@@ -88,6 +88,10 @@ export interface VideoShelfAnalysisResult {
 }
 
 export class ReceiptVisionClient {
+  private consecutiveFailures = 0;
+  private circuitOpenUntil = 0;
+  private readonly circuitCooldownMs = 5 * 60 * 1000;
+
   isEnabled(): boolean {
     return Boolean(env.RECEIPT_VISION_API_URL);
   }
@@ -102,6 +106,14 @@ export class ReceiptVisionClient {
     images: Array<{ buffer: Buffer; mimeType?: string; filename?: string }>
   ): Promise<VisionProcessOutcome | null> {
     if (!this.isEnabled() || images.length === 0) {
+      return null;
+    }
+
+    if (Date.now() < this.circuitOpenUntil) {
+      logger.warn(
+        { retryAfterSec: Math.ceil((this.circuitOpenUntil - Date.now()) / 1000) },
+        '[ReceiptVisionClient] Circuit breaker aberto (OpenCV indisponível); usando fallback local imediato'
+      );
       return null;
     }
 
@@ -207,14 +219,25 @@ export class ReceiptVisionClient {
             '[FIM] [ReceiptVisionClient] [2/2] Pré-processamento OpenCV concluído com sucesso'
           );
 
+          this.consecutiveFailures = 0;
+          this.circuitOpenUntil = 0;
           return outcome;
         } finally {
           clearTimeout(timer);
         }
       },
       fallbackValue: () => {
+        this.consecutiveFailures += 1;
+        if (this.consecutiveFailures >= 2) {
+          this.circuitOpenUntil = Date.now() + this.circuitCooldownMs;
+        }
         logger.warn(
-          { endpoint, elapsedMs: Date.now() - startedAt },
+          {
+            endpoint,
+            elapsedMs: Date.now() - startedAt,
+            consecutiveFailures: this.consecutiveFailures,
+            circuitOpenMin: this.consecutiveFailures >= 2 ? 5 : 0
+          },
           '[FIM-FALLBACK] [ReceiptVisionClient] [2/2] 3 tentativas esgotadas (auditoria salva no banco); seguindo fallback local'
         );
         return null;

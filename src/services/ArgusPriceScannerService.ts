@@ -953,7 +953,7 @@ export class ArgusPriceScannerService {
            FROM argus.media_processing_queue
            WHERE status IN ('QUEUED_RETRY', 'PENDING')
            ORDER BY created_at ASC
-           LIMIT 5`
+           LIMIT 10`
         : `SELECT id, telegram_chat_id::text, telegram_message_id::text, telegram_file_id,
                   telegram_file_unique_id, media_kind, mime_type, user_caption,
                   storage_bucket, storage_path, attempts_count, max_attempts, raw_ai_response
@@ -961,12 +961,15 @@ export class ArgusPriceScannerService {
            WHERE status = 'QUEUED_RETRY'
              AND (next_retry_at IS NULL OR next_retry_at <= NOW())
            ORDER BY next_retry_at ASC
-           LIMIT 3`
+           LIMIT 5`
     );
 
     const outcomes: PriceScanProcessOutcome[] = [];
 
     for (const job of dueJobs) {
+      if (outcomes.length > 0) {
+        await new Promise((r) => setTimeout(r, 1200));
+      }
       const chatIdNum = Number(job.telegram_chat_id);
       const msgIdNum = job.telegram_message_id ? Number(job.telegram_message_id) : undefined;
 
@@ -1129,6 +1132,53 @@ export class ArgusPriceScannerService {
     }
 
     return outcomes;
+  }
+
+  /**
+   * Workaround de Reconciliação em Lote:
+   * 1) Recupera notas fiscais que foram classificadas por engano como SHELF_PHOTO durante falhas 429/503/timeout.
+   * 2) Opcionalmente reativa jobs FAILED_PERMANENT ou atrasados para reprocessamento imediato.
+   */
+  async reconcileBatchQueue(reactivateFailed = false): Promise<{
+    recoveredToReceiptCount: number;
+    reactivatedCount: number;
+  }> {
+    const recovered = await queryArgus<{ id: string }>(
+      `UPDATE argus.media_processing_queue
+       SET media_kind = 'RECEIPT_PHOTO',
+           status = 'QUEUED_RETRY',
+           next_retry_at = NOW()
+       WHERE media_kind = 'SHELF_PHOTO'
+         AND status IN ('QUEUED_RETRY', 'FAILED_PERMANENT')
+         AND (
+           last_error ILIKE '%RESOURCE_EXHAUSTED%'
+           OR last_error ILIKE '%429%'
+           OR last_error ILIKE '%503%'
+           OR last_error ILIKE '%UNAVAILABLE%'
+           OR last_error ILIKE '%Tempo limite%'
+         )
+         AND COALESCE(user_caption, '') !~* '(flyer|panfleto|encarte|gondola|gôndola|preco|preço)'
+       RETURNING id`
+    );
+
+    let reactivatedCount = 0;
+    if (reactivateFailed) {
+      const reactivated = await queryArgus<{ id: string }>(
+        `UPDATE argus.media_processing_queue
+         SET status = 'QUEUED_RETRY',
+             attempts_count = LEAST(attempts_count, GREATEST(max_attempts - 1, 1)),
+             next_retry_at = NOW()
+         WHERE status IN ('FAILED_PERMANENT', 'QUEUED_RETRY', 'PROCESSING')
+           AND (status <> 'PROCESSING' OR created_at < NOW() - INTERVAL '5 minutes')
+         RETURNING id`
+      );
+      reactivatedCount = reactivated.length;
+    }
+
+    return {
+      recoveredToReceiptCount: recovered.length,
+      reactivatedCount
+    };
   }
 
   /**

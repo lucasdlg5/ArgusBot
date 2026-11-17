@@ -41,6 +41,32 @@ interface PendingReceiptSession {
 const pendingReceiptsCache = new Map<string, PendingReceiptSession>();
 const inFlightImageHashes = new Set<string>();
 const awaitingRecipeChats = new Map<string, number>();
+
+// Semáforo de concorrência para evitar tempestade de conexões/cota ao enviar 20-30 notas simultâneas
+const MAX_CONCURRENT_MEDIA_JOBS = 2;
+let activeMediaJobs = 0;
+const mediaJobWaiters: Array<() => void> = [];
+
+function acquireMediaSlot(): { position: number; promise: Promise<void> } {
+  if (activeMediaJobs < MAX_CONCURRENT_MEDIA_JOBS) {
+    activeMediaJobs += 1;
+    return { position: 0, promise: Promise.resolve() };
+  }
+  const position = mediaJobWaiters.length + 1;
+  const promise = new Promise<void>((resolve) => {
+    mediaJobWaiters.push(() => {
+      activeMediaJobs += 1;
+      resolve();
+    });
+  });
+  return { position, promise };
+}
+
+function releaseMediaSlot(): void {
+  activeMediaJobs = Math.max(0, activeMediaJobs - 1);
+  const next = mediaJobWaiters.shift();
+  if (next) next();
+}
 const pendingRecipeUrlCache = new Map<
   string,
   { url: string; chatId: number; expiresAt: number }
@@ -897,6 +923,47 @@ export function createArgusBot(): Bot {
 
   bot.command('fila', async (ctx) => handleFila(ctx));
 
+  // 6.2b. /reconciliar — Workaround de Reconciliação de Lote (recupera notas mal-classificadas, sincroniza extrato e reativa fila)
+  bot.command('reconciliar', async (ctx) => {
+    const statusMsg = await ctx.reply('🔄 Executando reconciliação do lote, extrato e fila...');
+    try {
+      const batch = await priceScanner.reconcileBatchQueue(false);
+      const recon = await reconciler.reconcileAndSyncSheets().catch(() => null);
+      await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+      const summary = await priceScanner.getQueueAndCollectedSummary();
+
+      const lines = [
+        '🛡️ *RECONCILIAÇÃO DE LOTE CONCLUÍDA*',
+        '',
+        `• 🧾 Notas recuperadas de \`SHELF_PHOTO\` → \`RECEIPT_PHOTO\`: *${batch.recoveredToReceiptCount}*`,
+        `• ✅ Mídias concluídas na fila (\`SUCCEEDED\`): *${summary.stats.succeeded_count}*`,
+        `• ⏳ Aguardando reprocessamento (\`QUEUED_RETRY\`): *${summary.stats.queued_retry_count}*`,
+        `• ❌ Falhas permanentes (\`FAILED_PERMANENT\`): *${summary.stats.failed_count}*`
+      ];
+      if (recon) {
+        lines.push(
+          `• 🏦 Conciliação bancária: *${recon.summary.newlyMatched}* nova(s) nota(s) conciliada(s) (taxa: *${recon.summary.reconciliationRatePct.toFixed(1)}%*)`
+        );
+      }
+
+      const kb = new InlineKeyboard()
+        .text('🔄 Reprocessar Fila Agora (até 10)', 'retry_queue:now')
+        .row()
+        .text('♻️ Reativar Falhas Permanentes', 'reconcile_reactivate:all');
+
+      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, lines.join('\n'), {
+        parse_mode: 'Markdown',
+        reply_markup: kb
+      });
+    } catch (err) {
+      await ctx.api.editMessageText(
+        ctx.chat.id,
+        statusMsg.message_id,
+        `❌ Erro na reconciliação: ${(err as Error).message}`
+      );
+    }
+  });
+
   // 6.3. /loja <Nome do Mercado | Local> — Atualiza a loja da última coleta de vídeo/gôndola e eleva a confiabilidade
   bot.command('loja', async (ctx) => {
     const rawArg = typeof ctx.match === 'string' ? ctx.match.trim() : '';
@@ -997,6 +1064,14 @@ export function createArgusBot(): Bot {
       }
     };
 
+    const slot = acquireMediaSlot();
+    if (slot.position > 0) {
+      await updateStatus(
+        `⏳ Na fila de leitura (${slot.position} mídia(s) na frente)... Processando em lotes para evitar timeout e limite de cota.`
+      );
+      await slot.promise;
+    }
+
     try {
       await withTypingIndicator(ctx, async () => {
         const mediaObj =
@@ -1059,6 +1134,8 @@ export function createArgusBot(): Bot {
         `❌ FALHA NO PROCESSAMENTO DO VÍDEO\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}\n• Consulte /fila para verificar o status de reprocessamento.`
       );
       await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
+    } finally {
+      releaseMediaSlot();
     }
   });
 
@@ -1384,6 +1461,14 @@ export function createArgusBot(): Bot {
       '[INÍCIO] [BotMedia] [1/3] Recebida mídia para download e análise'
     );
 
+    const slot = acquireMediaSlot();
+    if (slot.position > 0) {
+      await updateStatus(
+        `⏳ Na fila de leitura (${slot.position} mídia(s) na frente)... Processando em lotes para evitar timeout e limite de cota.`
+      );
+      await slot.promise;
+    }
+
     try {
       await withTypingIndicator(ctx, async () => {
         let timeoutHandle: NodeJS.Timeout | undefined;
@@ -1567,40 +1652,31 @@ export function createArgusBot(): Bot {
                     mimeType
                   );
                 } catch (receiptErr) {
-                  // Se falhou por erro de rede/IA ou não é cupom, salva no bucket FotosArgus e agenda reprocessamento em 1 hora!
+                  // Salva imediatamente como RECEIPT_PHOTO na fila para reprocessar em 1h sem desperdiçar outra chamada Gemini no PriceScanner
                   logger.warn(
                     { err: receiptErr },
-                    '[ArgusBot] Leitura de cupom falhou; acionando PriceScanner + Fila Resiliente (1h)'
+                    '[ArgusBot] Leitura de cupom falhou; enfileirando como RECEIPT_PHOTO na Fila Resiliente (1h)'
                   );
-                  const scanOutcome = await priceScanner.ingestAndProcessPriceScanMedia({
+                  const errMsg =
+                    receiptErr instanceof Error ? receiptErr.message : String(receiptErr);
+                  const scanOutcome = await priceScanner.enqueueFailedReceiptForRetry({
                     mediaBuffer: buffer,
                     mimeType,
-                    initialMediaKind: 'SHELF_PHOTO',
                     telegramChatId: ctx.chat.id,
                     telegramMessageId: originalMessageId,
                     telegramFileId,
                     telegramFileUniqueId,
-                    userCaption: caption
+                    userCaption: caption,
+                    errorMessage: errMsg
                   });
 
-                  if (scanOutcome.status === 'SUCCEEDED') {
-                    lastPriceScanJobId = scanOutcome.queueJobId;
-                    if (scanOutcome.items.length > 0) {
-                      await reconciler.reconcileAndSyncSheets().catch(() => {});
-                    }
-                  }
-
-                  const kbRetry =
-                    scanOutcome.status === 'QUEUED_RETRY'
-                      ? new InlineKeyboard().text('🔄 Tentar Reprocessar Agora', 'retry_queue:now')
-                      : undefined;
-
-                  const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
-                  await updateStatus(formatPriceScanOutcomeMessage(scanOutcome, elapsedSec), kbRetry);
-                  await stickers.sendEmotionalSticker(
-                    ctx,
-                    scanOutcome.status === 'SUCCEEDED' ? 'DETECTIVE' : 'SHOCK_ALERT'
+                  const kbRetry = new InlineKeyboard().text(
+                    '🔄 Tentar Reprocessar Agora',
+                    'retry_queue:now'
                   );
+
+                  await updateStatus(formatPriceScanOutcomeMessage(scanOutcome), kbRetry);
+                  await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
                   return;
                 }
               }
@@ -1920,6 +1996,7 @@ export function createArgusBot(): Bot {
       );
       await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
     } finally {
+      releaseMediaSlot();
       logger.info(
         { chatId: ctx.chat.id, messageId: originalMessageId, elapsedMs: Date.now() - startMs },
         '[FIM] [BotMedia] Fluxo de processamento de mídia encerrado'
@@ -2562,6 +2639,21 @@ export function createArgusBot(): Bot {
           succeeded > 0 ? 'CELEBRATION' : 'SKEPTICAL'
         );
       });
+      return;
+    }
+
+    if (action === 'reconcile_reactivate') {
+      await ctx
+        .answerCallbackQuery({ text: 'Reativando falhas e corrigindo tipos na fila...' })
+        .catch(() => {});
+      const batch = await priceScanner.reconcileBatchQueue(true);
+      const kb = new InlineKeyboard().text('🔄 Reprocessar Fila Agora (até 10)', 'retry_queue:now');
+      await ctx
+        .editMessageText(
+          `♻️ *FILA REATIVADA*\n• Notas recuperadas para \`RECEIPT_PHOTO\`: *${batch.recoveredToReceiptCount}*\n• Jobs reativados para tentativa imediata: *${batch.reactivatedCount}*\n\nClique abaixo para processar o lote agora (ou aguarde o worker automático).`,
+          { parse_mode: 'Markdown', reply_markup: kb }
+        )
+        .catch(() => {});
       return;
     }
 

@@ -112,6 +112,7 @@ export class ArgusFailureAuditService {
     endpointUrl?: string;
     payloadSummary?: Record<string, unknown>;
     extractHttpStatus?: (err: unknown) => number | null;
+    shouldRetry?: (err: unknown) => boolean;
     fn: (attempt: number) => Promise<T>;
     fallbackValue?: () => T;
   }): Promise<T> {
@@ -162,6 +163,10 @@ export class ArgusFailureAuditService {
           },
           `[FALHA-TENTATIVA ${attempt}/${maxAttempts}] Erro na execução`
         );
+
+        if (params.shouldRetry && !params.shouldRetry(err)) {
+          break;
+        }
 
         if (attempt < maxAttempts) {
           const waitMs = baseDelayMs * Math.pow(2, attempt - 1);

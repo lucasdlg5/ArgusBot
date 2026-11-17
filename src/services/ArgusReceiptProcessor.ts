@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import type { PoolClient, QueryResultRow } from 'pg';
 import sharp from 'sharp';
 import jsQR from 'jsqr';
 import * as cheerio from 'cheerio';
@@ -17,6 +18,18 @@ import type {
   ProductCategory,
   ReceiptUnitType
 } from '../types/argus';
+
+const geminiModelCooldownUntil = new Map<string, number>();
+
+export function isQuotaExhaustedError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  return (
+    msg.includes('RESOURCE_EXHAUSTED') ||
+    msg.includes('"code":429') ||
+    msg.includes('429') ||
+    msg.toLowerCase().includes('quota exceeded')
+  );
+}
 
 export interface ExtractedReceiptItemInput {
   rawDescription: string;
@@ -864,6 +877,7 @@ export class ArgusReceiptProcessor {
     timeoutMsPerModel = 18000
   ): Promise<{ text?: string }> {
     let lastError: unknown;
+    const now = Date.now();
 
     if (this.ai) {
       const candidateModels = Array.from(
@@ -875,7 +889,13 @@ export class ArgusReceiptProcessor {
           'gemini-3.8-flash'
         ])
       );
-      for (const modelName of candidateModels) {
+      const activeModels = candidateModels.filter((m) => {
+        const until = geminiModelCooldownUntil.get(m) ?? 0;
+        return now >= until;
+      });
+      const modelsToTry = activeModels.length > 0 ? activeModels : candidateModels.slice(-1);
+
+      for (const modelName of modelsToTry) {
         let timer: NodeJS.Timeout | undefined;
         try {
           const timeoutPromise = new Promise<never>((_, reject) => {
@@ -893,10 +913,14 @@ export class ArgusReceiptProcessor {
             timeoutPromise
           ]);
           if (timer) clearTimeout(timer);
+          geminiModelCooldownUntil.delete(modelName);
           return result;
         } catch (err) {
           if (timer) clearTimeout(timer);
           lastError = err;
+          if (isQuotaExhaustedError(err)) {
+            geminiModelCooldownUntil.set(modelName, Date.now() + 15 * 60 * 1000);
+          }
           logger.warn(
             { modelName, err: (err as Error).message },
             '[ArgusReceiptProcessor] Tentando próximo modelo Gemini'
@@ -1092,6 +1116,7 @@ export class ArgusReceiptProcessor {
       operationName: 'gemini_extract',
       maxAttempts: 3,
       baseDelayMs: 1500,
+      shouldRetry: (err) => !isQuotaExhaustedError(err),
       payloadSummary: {
         model: env.GEMINI_MODEL,
         mimeType: optimizedMime,
@@ -1300,7 +1325,8 @@ REGRAS ESTRITAS:
    */
   async resolveOrCreateCanonicalProduct(
     rawDescription: string,
-    unitType: ReceiptUnitType
+    unitType: ReceiptUnitType,
+    dbClient?: PoolClient
   ): Promise<{
     canonicalProductId: string;
     canonicalName: string;
@@ -1311,9 +1337,19 @@ REGRAS ESTRITAS:
     isEssential: boolean;
   }> {
     const cleanRaw = rawDescription.trim().toUpperCase();
+    const runQuery = async <T extends QueryResultRow>(
+      sql: string,
+      params?: unknown[]
+    ): Promise<T[]> => {
+      if (dbClient) {
+        const res = await dbClient.query<T>(sql, params);
+        return res.rows;
+      }
+      return queryArgus<T>(sql, params);
+    };
 
     // 1. Verifica no cache de aliases (`argus.product_aliases`)
-    const cached = await queryArgus<{
+    const cached = await runQuery<{
       canonical_product_id: string;
       name: string;
       category: ProductCategory;
@@ -1354,7 +1390,7 @@ REGRAS ESTRITAS:
     const inferred = await this.inferCanonicalProductMetadata(cleanRaw, unitType);
 
     // 3. Upsert no `canonical_products` e registra no cache `product_aliases`
-    const upsertedProduct = await queryArgus<{ id: string }>(
+    const upsertedProduct = await runQuery<{ id: string }>(
       `INSERT INTO argus.canonical_products (name, category, base_unit, standard_package_size, is_essential)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (name) DO UPDATE SET
@@ -1371,7 +1407,7 @@ REGRAS ESTRITAS:
 
     const canonicalProductId = upsertedProduct[0].id;
 
-    await queryArgus(
+    await runQuery(
       `INSERT INTO argus.product_aliases (raw_description, canonical_product_id, package_multiplier, last_seen_package_size)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (raw_description) DO UPDATE SET
@@ -1555,7 +1591,11 @@ REGRAS ESTRITAS:
 
       // 3. Processa e normaliza cada item
       for (const item of data.items) {
-        const norm = await this.resolveOrCreateCanonicalProduct(item.rawDescription, item.unitType);
+        const norm = await this.resolveOrCreateCanonicalProduct(
+          item.rawDescription,
+          item.unitType,
+          client
+        );
 
         // Calcula a quantidade total em unidade base (g, ml ou un)
         const totalBaseUnits =

@@ -555,9 +555,9 @@ export function getArgusPool(): Pool {
     pgPool = new Pool({
       connectionString,
       ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
-      max: 3,
+      max: 6,
       idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 10000
+      connectionTimeoutMillis: 15000
     });
     globalForArgusDb.__argusPgPool = pgPool;
   }
