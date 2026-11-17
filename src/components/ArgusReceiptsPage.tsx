@@ -65,6 +65,20 @@ function formatQty(qty: number, unitType: string): string {
   return `${cleanQty} ${unitType || 'UN'}`;
 }
 
+function getMonthKey(isoDate: string): string {
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const [y, m] = monthKey.split('-').map(Number);
+  if (!y || !m) return monthKey;
+  const d = new Date(y, m - 1, 1);
+  const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export default function ArgusReceiptsPage() {
   const searchParams = useSearchParams();
   const initialStore = searchParams.get('store') || 'ALL';
@@ -76,6 +90,8 @@ export default function ArgusReceiptsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [storeFilter, setStoreFilter] = useState(initialStore);
+  const [monthFilter, setMonthFilter] = useState<string>('ALL');
+  const [reconciledFilter, setReconciledFilter] = useState<'ALL' | 'RECONCILED' | 'UNRECONCILED'>('ALL');
   const [paymentFilter, setPaymentFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<SortOption>('RECENT');
   const [hideZeroReceipts, setHideZeroReceipts] = useState(false);
@@ -120,11 +136,23 @@ export default function ArgusReceiptsPage() {
     loadReceipts();
   }, [loadReceipts]);
 
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of receipts) {
+      const k = getMonthKey(r.purchaseDate);
+      if (k) set.add(k);
+    }
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [receipts]);
+
   const filteredReceipts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const list = receipts.filter((r) => {
       if (hideZeroReceipts && r.totalAmount <= 0) return false;
       if (storeFilter !== 'ALL' && r.storeId !== storeFilter) return false;
+      if (monthFilter !== 'ALL' && getMonthKey(r.purchaseDate) !== monthFilter) return false;
+      if (reconciledFilter === 'RECONCILED' && !r.reconciled) return false;
+      if (reconciledFilter === 'UNRECONCILED' && r.reconciled) return false;
       if (paymentFilter !== 'ALL' && r.paymentMethod !== paymentFilter) return false;
       if (!q) return true;
       const inHeader =
@@ -146,19 +174,39 @@ export default function ArgusReceiptsPage() {
     });
 
     return list;
-  }, [receipts, searchQuery, storeFilter, paymentFilter, sortBy, hideZeroReceipts]);
+  }, [
+    receipts,
+    searchQuery,
+    storeFilter,
+    monthFilter,
+    reconciledFilter,
+    paymentFilter,
+    sortBy,
+    hideZeroReceipts
+  ]);
 
   const summary = useMemo(() => {
     const totalSpent = filteredReceipts.reduce((acc, r) => acc + r.totalAmount, 0);
     const totalItems = filteredReceipts.reduce((acc, r) => acc + r.itemsCount, 0);
     const reconciledCount = filteredReceipts.filter((r) => r.reconciled).length;
+
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentMonthReceipts = receipts.filter(
+      (r) => getMonthKey(r.purchaseDate) === currentMonthKey
+    );
+    const currentMonthTotal = currentMonthReceipts.reduce((acc, r) => acc + r.totalAmount, 0);
+
     return {
       count: filteredReceipts.length,
       totalSpent,
       totalItems,
-      reconciledCount
+      reconciledCount,
+      currentMonthTotal,
+      currentMonthCount: currentMonthReceipts.length,
+      currentMonthLabel: formatMonthLabel(currentMonthKey)
     };
-  }, [filteredReceipts]);
+  }, [filteredReceipts, receipts]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -217,18 +265,27 @@ export default function ArgusReceiptsPage() {
         </header>
 
         {/* KPIs */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <div className="rounded-xl border border-slate-800/90 bg-slate-900/60 p-4">
             <p className="text-[11px] uppercase tracking-wider text-slate-400">Notas Exibidas</p>
             <p className="mt-1 text-2xl font-bold text-white tabular-nums">{summary.count}</p>
             <p className="text-[11px] text-slate-500 mt-0.5">de {receipts.length} cupons no banco</p>
           </div>
           <div className="rounded-xl border border-slate-800/90 bg-slate-900/60 p-4">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400">Total Gasto (Cupons)</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">Total Gasto (Filtro)</p>
             <p className="mt-1 text-2xl font-bold text-emerald-400 tabular-nums">
               {formatCurrency(summary.totalSpent)}
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">Exclui flyers e coletas avulsas</p>
+          </div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4">
+            <p className="text-[11px] uppercase tracking-wider text-emerald-300">Mês Atual</p>
+            <p className="mt-1 text-2xl font-bold text-white tabular-nums">
+              {formatCurrency(summary.currentMonthTotal)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {summary.currentMonthLabel} ({summary.currentMonthCount} notas)
+            </p>
           </div>
           <div className="rounded-xl border border-slate-800/90 bg-slate-900/60 p-4">
             <p className="text-[11px] uppercase tracking-wider text-slate-400">Produtos Listados</p>
@@ -236,7 +293,7 @@ export default function ArgusReceiptsPage() {
             <p className="text-[11px] text-slate-500 mt-0.5">Itens detalhados nas notas</p>
           </div>
           <div className="rounded-xl border border-slate-800/90 bg-slate-900/60 p-4">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400">Conciliadas Open Finance</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">Conciliadas</p>
             <p className="mt-1 text-2xl font-bold text-amber-300 tabular-nums">
               {summary.reconciledCount}
             </p>
@@ -272,6 +329,33 @@ export default function ArgusReceiptsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
+            <select
+              aria-label="Filtrar por mês"
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="ALL">Todos os meses</option>
+              {availableMonths.map((mk) => (
+                <option key={mk} value={mk}>
+                  {formatMonthLabel(mk)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              aria-label="Filtrar por conciliação"
+              value={reconciledFilter}
+              onChange={(e) =>
+                setReconciledFilter(e.target.value as 'ALL' | 'RECONCILED' | 'UNRECONCILED')
+              }
+              className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="ALL">Conciliação: Todas</option>
+              <option value="RECONCILED">Conciliadas</option>
+              <option value="UNRECONCILED">Sem conciliação</option>
+            </select>
+
             <select
               aria-label="Filtrar por mercado"
               value={storeFilter}
