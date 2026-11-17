@@ -205,6 +205,93 @@ export function createArgusBot(): Bot {
     await next();
   });
 
+  // 0.2. Keep-Alive / Wake-up automático do moneta-argus-bot e argus-receipt-vision
+  // A cada interação autorizada, envia /health (com throttle de 60s) e mantém pings a cada 4 min;
+  // encerra automaticamente após 20 minutos sem nenhuma interação com o bot.
+  const KEEPALIVE_IDLE_TIMEOUT_MS = 20 * 60 * 1000;
+  const KEEPALIVE_PING_INTERVAL_MS = 4 * 60 * 1000;
+  const KEEPALIVE_THROTTLE_MS = 60 * 1000;
+  let lastKeepAliveInteractionAt = 0;
+  let lastHealthPingAt = 0;
+  let keepAliveTimer: NodeJS.Timeout | null = null;
+
+  function getHealthTargets(): Array<{ name: string; url: string }> {
+    const targets: Array<{ name: string; url: string }> = [];
+    const botBase = (
+      process.env.RENDER_EXTERNAL_URL ||
+      process.env.TELEGRAM_WEBHOOK_URL ||
+      ''
+    )
+      .replace(/\/telegram\/webhook\/?$/i, '')
+      .replace(/\/+$/, '');
+    if (botBase) {
+      targets.push({ name: 'moneta-argus-bot', url: `${botBase}/health` });
+    }
+    const visionBase = (env.RECEIPT_VISION_API_URL || '').replace(/\/+$/, '');
+    if (visionBase) {
+      targets.push({ name: 'argus-receipt-vision', url: `${visionBase}/health` });
+    }
+    return targets;
+  }
+
+  async function pingAgentsHealth(reason: string): Promise<void> {
+    const targets = getHealthTargets();
+    if (targets.length === 0) return;
+    lastHealthPingAt = Date.now();
+    await Promise.all(
+      targets.map(async (t) => {
+        try {
+          const res = await fetch(t.url, {
+            method: 'GET',
+            signal: AbortSignal.timeout(10_000)
+          });
+          logger.debug(
+            { target: t.name, status: res.status, reason },
+            '[ArgusKeepAlive] Ping /health enviado'
+          );
+        } catch (err) {
+          logger.debug(
+            { target: t.name, reason, err: (err as Error).message },
+            '[ArgusKeepAlive] Ping /health falhou (serviço acordando ou offline)'
+          );
+        }
+      })
+    );
+  }
+
+  function touchKeepAlive(reason: string): void {
+    const now = Date.now();
+    lastKeepAliveInteractionAt = now;
+
+    if (now - lastHealthPingAt >= KEEPALIVE_THROTTLE_MS) {
+      void pingAgentsHealth(reason);
+    }
+
+    if (!keepAliveTimer) {
+      keepAliveTimer = setInterval(() => {
+        const idleMs = Date.now() - lastKeepAliveInteractionAt;
+        if (idleMs >= KEEPALIVE_IDLE_TIMEOUT_MS) {
+          if (keepAliveTimer) {
+            clearInterval(keepAliveTimer);
+            keepAliveTimer = null;
+          }
+          logger.info(
+            { idleMinutes: Math.round(idleMs / 60_000) },
+            '[ArgusKeepAlive] Sem interações recentes; encerrando pings /health até próxima atividade'
+          );
+          return;
+        }
+        void pingAgentsHealth('keepalive_interval');
+      }, KEEPALIVE_PING_INTERVAL_MS);
+      keepAliveTimer.unref();
+    }
+  }
+
+  bot.use(async (_ctx, next) => {
+    touchKeepAlive('telegram_interaction');
+    await next();
+  });
+
   // 0.5 Reengajamento após pausa >= 1h: envia botão com link para o site do Argus na primeira nova interação
   const INACTIVITY_DASHBOARD_MS = 60 * 60 * 1000;
   const lastChatInteractionMs = new Map<number, number>();
@@ -3113,6 +3200,7 @@ export function createArgusBot(): Bot {
     try {
       const outcomes = await priceScanner.processDueQueueJobs(downloadTelegramFileById, false);
       if (outcomes.length > 0) {
+        touchKeepAlive('queue_worker');
         const succeeded = outcomes.filter((o) => o.status === 'SUCCEEDED').length;
         if (succeeded > 0) {
           await reconciler.reconcileAndSyncSheets().catch(() => {});
