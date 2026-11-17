@@ -437,8 +437,8 @@ export default function ArgusVisionDashboard() {
               &ldquo;Vigio cada centavo por grama, caço embalagens encolhidas e decido na ponta do lápis se compensa ir de carro ou de Uber.&rdquo;
             </p>
             <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-400 border-t border-amber-500/20 pt-2">
-              <span>Schema Supabase:</span>
-              <code className="text-emerald-400 font-mono">argus (Isolado)</code>
+              <span>Status:</span>
+              <code className="text-emerald-400 font-mono">Ativo 24h</code>
             </div>
           </div>
         </div>
@@ -450,10 +450,10 @@ export default function ArgusVisionDashboard() {
             className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-3 py-2 text-xs font-semibold text-slate-950 transition shadow-lg shadow-emerald-950/50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${syncingReconcile ? 'animate-spin' : ''}`} />
-            <span>{syncingReconcile ? 'Conciliando Pluggy...' : 'Conciliar Open Finance & Sheets'}</span>
+            <span>{syncingReconcile ? 'Atualizando dados...' : 'Atualizar & Conciliar'}</span>
           </button>
           <p className="text-[10px] text-center text-slate-500">
-            100% Zero-Cost Stack • Gemini 2.5 Flash • OSRM
+            Preços reais de cupons, gôndolas e receitas
           </p>
         </div>
       </aside>
@@ -501,10 +501,10 @@ export default function ArgusVisionDashboard() {
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <Wallet className="h-5 w-5 text-emerald-400" />
-                  Módulo 1: Raio-X Open Finance &amp; Auditoria de Gastos
+                  1. Seus Gastos no Mercado
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Cruzamento automático entre faturas genéricas do Pluggy Open Finance e os itens reais dos cupons fiscais.
+                  Resumo do que você gastou no mês com base nos seus cupons fiscais e extrato.
                 </p>
               </div>
             </div>
@@ -520,7 +520,7 @@ export default function ArgusVisionDashboard() {
                   R$ {data.kpis.totalMonthSpent.toFixed(2)}
                 </p>
                 <p className="mt-1 text-[11px] text-emerald-400">
-                  Auditado item a item por unidade base (g/ml/un)
+                  Calculado item a item pelas notas
                 </p>
               </div>
 
@@ -533,13 +533,13 @@ export default function ArgusVisionDashboard() {
                   R$ {data.kpis.potentialMonthlySavings.toFixed(2)}/mês
                 </p>
                 <p className="mt-1 text-[11px] text-slate-300">
-                  Arbitragem entre mercados + corte de 50% em impulso
+                  Comprando no mercado mais barato + menos supérfluos
                 </p>
               </div>
 
               <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                 <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>Burn-rate de VR / VA (Benefícios)</span>
+                  <span>Uso do Vale (VR / VA)</span>
                   <Flame className="h-4 w-4 text-amber-400" />
                 </div>
                 <p className="mt-2 text-2xl font-bold text-white">
@@ -558,14 +558,14 @@ export default function ArgusVisionDashboard() {
 
               <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                 <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>Taxa de Notas vs. Pluggy</span>
+                  <span>Notas Conferidas</span>
                   <ShieldCheck className="h-4 w-4 text-sky-400" />
                 </div>
                 <p className="mt-2 text-2xl font-bold text-white">
                   {data.kpis.reconciliationRatePct}%
                 </p>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  {data.reconciliation.totalReconciled} de {data.kpis.scannedReceiptsCount} cupons conciliados (-2h a +48h)
+                  {data.reconciliation.totalReconciled} de {data.kpis.scannedReceiptsCount} cupons conferidos com o banco
                 </p>
               </div>
             </div>
@@ -575,10 +575,10 @@ export default function ArgusVisionDashboard() {
               {/* Donut: O Que Realmente Compramos */}
               <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
                 <h4 className="text-sm font-semibold text-white">
-                  O Que Realmente Compramos (Desconstrução da Fatura de Supermercado)
+                  O Que Realmente Compramos
                 </h4>
                 <p className="text-xs text-slate-400 mb-4">
-                  Separa Alimentação Essencial de Limpeza/Higiene e Besteiras/Impulso (`is_essential = false`)
+                  Separa comida e limpeza do dia a dia dos gastos extras por impulso
                 </p>
                 <div className="h-64 w-full flex flex-col sm:flex-row items-center">
                   <div className="h-full w-full sm:w-3/5">
@@ -630,10 +630,10 @@ export default function ArgusVisionDashboard() {
               {/* Barras Empilhadas: Conta Bancária vs VR/VA por Categoria */}
               <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
                 <h4 className="text-sm font-semibold text-white">
-                  Auditoria por Carteira: Conta Bancária (Pix/Cartão) vs. Benefícios (VR/VA)
+                  Forma de Pagamento por Categoria
                 </h4>
                 <p className="text-xs text-slate-400 mb-4">
-                  Visão da view `argus.v_true_spending_breakdown` por corredor do mercado
+                  Quanto saiu da conta ou cartão vs. vale alimentação (VR/VA)
                 </p>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -680,10 +680,10 @@ export default function ArgusVisionDashboard() {
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-400" />
-                Módulo 2: Radar Argus de Inflação Pessoal &amp; Detector de Reduflação (Shrinkflation)
+                2. Variação de Preços &amp; Embalagens Menores
               </h3>
               <p className="text-xs text-slate-400">
-                Monitoramento contínuo do preço por grama/ml e alerta automático quando o fabricante reduz o peso da embalagem.
+                Acompanhe a mudança nos preços e veja quando um produto diminuiu de peso na embalagem.
               </p>
             </div>
 
@@ -755,7 +755,7 @@ export default function ArgusVisionDashboard() {
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-bold text-amber-300 flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-amber-400" />
-                      Alerta de Reduflação Detectada (Shrinkflation)
+                      Embalagens que Encolheram
                     </h4>
                     <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                       {uniqueShrinkflation.length} ITENS CAÇADOS
@@ -842,12 +842,12 @@ export default function ArgusVisionDashboard() {
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Store className="h-5 w-5 text-emerald-400" />
-                Módulo 3: Matriz Competitiva de Mercados (Store Category Heatmap)
+                3. Qual Mercado é Mais Barato por Setor
               </h3>
               <p className="text-xs text-slate-400">
-                Índice de competitividade por corredor (`100` = média da região;{' '}
-                <span className="text-emerald-400 font-semibold">&lt; 96 = Mais Barato / Dominante</span>;{' '}
-                <span className="text-rose-400 font-semibold">&gt; 104 = Careiro</span>) e frescor das leituras.
+                Compare onde cada categoria sai mais em conta (`100` = média;{' '}
+                <span className="text-emerald-400 font-semibold">&lt; 96 = Mais Barato</span>;{' '}
+                <span className="text-rose-400 font-semibold">&gt; 104 = Mais Caro</span>).
               </p>
             </div>
 
@@ -951,10 +951,10 @@ export default function ArgusVisionDashboard() {
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Navigation className="h-5 w-5 text-emerald-400" />
-                Módulo 4: Laboratório de Receitas &amp; Simulador Logístico (Carro vs. Uber | Rota OSRM)
+                4. Receitas &amp; Melhor Rota de Compra
               </h3>
               <p className="text-xs text-slate-400">
-                Custo exato por grama de cada receita (Proporcional vs. Embalagem Fechada) e roteirização real OSRM com trava de R$ 25,00.
+                Veja o custo de cada receita (por porção e comprando pacotes fechados) e compare se compensa ir de carro ou Uber.
               </p>
             </div>
 
@@ -1216,7 +1216,7 @@ export default function ArgusVisionDashboard() {
                       R$ {(activeRecipe.cashOutlayTotalCost * portionMultiplier).toFixed(2)}
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Comprando as embalagens fechadas necessárias (`CEIL`)
+                      Comprando as embalagens fechadas necessárias
                     </p>
                   </div>
 
@@ -1339,7 +1339,7 @@ export default function ArgusVisionDashboard() {
                     Custo Produtos + Logística (Gasolina vs. Uber)
                   </h4>
                   <p className="text-xs text-slate-400 mb-3">
-                    Trava de Segurança Argus: `MIN_SAVINGS_HURDLE = R$ 25,00`
+                    Só vale dividir a compra em dois mercados se a economia passar de R$ 25,00
                   </p>
 
                   <div className="h-56 w-full">

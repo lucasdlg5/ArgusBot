@@ -833,7 +833,7 @@ export default function ArgusRecipesPage() {
                       />
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Proteção ativa: validação anti-SSRF, leitura segura JSON-LD/Microdata/HTML e adição automática ao painel em caso de sucesso.
+                      Cole o link público da receita: os ingredientes e preços são importados automaticamente.
                     </p>
                   </div>
                 ) : (
