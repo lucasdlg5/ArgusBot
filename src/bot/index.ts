@@ -79,6 +79,33 @@ export function createArgusBot(): Bot {
     }
   });
 
+  // -1. Deduplicação de Webhook (update_id) para evitar resposta dupla quando o Telegram reenvia durante cold start
+  const processedUpdateIds = new Map<number, number>();
+  const UPDATE_ID_TTL_MS = 15 * 60 * 1000;
+
+  bot.use(async (ctx, next) => {
+    const updateId = ctx.update?.update_id;
+    if (typeof updateId === 'number') {
+      const now = Date.now();
+      if (processedUpdateIds.has(updateId)) {
+        logger.info(
+          { updateId, chatId: ctx.chat?.id },
+          '[Webhook] update_id duplicado (retry do Telegram após cold start) ignorado'
+        );
+        return;
+      }
+      processedUpdateIds.set(updateId, now);
+      if (processedUpdateIds.size > 500) {
+        for (const [id, ts] of processedUpdateIds.entries()) {
+          if (now - ts > UPDATE_ID_TTL_MS) {
+            processedUpdateIds.delete(id);
+          }
+        }
+      }
+    }
+    await next();
+  });
+
   // 0. Guardião de Acesso Exclusivo & Detector de Ataques (Allowlist + Persistência em argus.security_audit_logs)
   bot.use(async (ctx, next) => {
     const allowedIds = new Set<string>([
