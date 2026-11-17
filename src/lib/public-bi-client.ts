@@ -52,49 +52,67 @@ export async function fetchPublicDashboardFallback<T>(
   const runFetch = async (): Promise<PublicBiFetchResult<T>> => {
     const botApiBase = getPublicBotApiBaseUrl();
     if (botApiBase) {
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 12000);
-        const resBot = await fetch(`${botApiBase}/api/public-snapshot?t=${Date.now()}`, {
-          cache: 'no-store',
-          signal: controller.signal
-        });
-        clearTimeout(timer);
-        if (resBot.ok) {
-          const data = (await resBot.json()) as T;
-          const resObj = { data, sourceLabel: '🟢 Render Live API (PostgreSQL)' };
-          clientSnapshotCache = { result: resObj, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
-          return resObj;
-        }
-      } catch {
-        // Segue para Supabase Storage ou Snapshot Estático
-      }
-    }
+      // Aguarda até ~95s o wake-up (cold start) do servidor no Render para NUNCA exibir valores antigos do snapshot estático
+      const maxAttempts = 4;
+      const attemptTimeoutMs = 22000;
+      let lastError: unknown = null;
 
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
-    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'FotosArgus';
-    if (supabaseUrl) {
-      try {
-        const liveUrl = `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(
-          bucket
-        )}/public-bi/dashboard-live.json?t=${Date.now()}`;
-        const resLive = await fetch(liveUrl, { cache: 'no-store' });
-        if (resLive.ok) {
-          const data = (await resLive.json()) as T;
-          const resObj = { data, sourceLabel: '☁️ Supabase Cloud Live (GitHub Pages)' };
-          clientSnapshotCache = { result: resObj, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
-          return resObj;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), attemptTimeoutMs);
+        try {
+          const resBot = await fetch(`${botApiBase}/api/public-snapshot?t=${Date.now()}`, {
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+          if (resBot.ok) {
+            const data = (await resBot.json()) as T;
+            const resObj = { data, sourceLabel: '🟢 PostgreSQL (Tempo Real)' };
+            clientSnapshotCache = { result: resObj, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
+            return resObj;
+          }
+          lastError = new Error(`HTTP ${resBot.status} do servidor`);
+        } catch (err) {
+          clearTimeout(timer);
+          lastError = err;
         }
-      } catch {
-        // Segue para Snapshot Estático
+
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 2500));
+        }
       }
+
+      // Tenta apenas a versão Live do Supabase antes de reportar erro (nunca cai silenciosamente no Actions CI antigo)
+      const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
+      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'FotosArgus';
+      if (supabaseUrl) {
+        try {
+          const liveUrl = `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(
+            bucket
+          )}/public-bi/dashboard-live.json?t=${Date.now()}`;
+          const resLive = await fetch(liveUrl, { cache: 'no-store' });
+          if (resLive.ok) {
+            const data = (await resLive.json()) as T;
+            const resObj = { data, sourceLabel: '☁️ Nuvem (Tempo Real)' };
+            clientSnapshotCache = { result: resObj, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
+            return resObj;
+          }
+        } catch {
+          // segue para erro explícito abaixo
+        }
+      }
+
+      throw lastError instanceof Error
+        ? lastError
+        : new Error('O servidor demorou para responder. Recarregue a página em alguns segundos.');
     }
 
     const snapRes = await fetch(`${basePath}/data/dashboard-snapshot.json?t=${Date.now()}`, {
       cache: 'no-store'
     });
     const data = (await snapRes.json()) as T;
-    const resObj = { data, sourceLabel: '📦 GitHub Pages Snapshot (Actions CI)' };
+    const resObj = { data, sourceLabel: '📦 Snapshot Local' };
     clientSnapshotCache = { result: resObj, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
     return resObj;
   };

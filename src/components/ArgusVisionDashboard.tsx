@@ -251,9 +251,9 @@ export default function ArgusVisionDashboard() {
         <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-slate-900/90 px-6 py-4 shadow-2xl">
           <Eye className="h-7 w-7 animate-pulse text-emerald-400" />
           <div>
-            <p className="font-semibold text-white">Inicializando Argus Vision BI...</p>
+            <p className="font-semibold text-white">Conectando ao Argus...</p>
             <p className="text-xs text-slate-400">
-              Carregando views analíticas do schema isolado `argus`, rotas OSRM e conciliação Pluggy
+              Buscando dados atualizados do banco. Se o servidor estava em repouso, pode levar até 45 segundos.
             </p>
           </div>
         </div>
