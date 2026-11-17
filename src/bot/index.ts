@@ -224,22 +224,23 @@ export function createArgusBot(): Bot {
   }) {
     const publicUrl = env.PUBLIC_DASHBOARD_URL.trim();
     const welcome = [
-      '👁️ *Saudações. Eu sou o ARGUS (@MonetaArgusBot) — O Olho Fiscal do ecossistema Moneta.*',
+      '👋 *Olá! Eu sou o Argus*, seu assistente de compras, preços e receitas.',
       '',
-      'Sou um auditor analítico, direto e afiado. Minha função é vigiar cada centavo do seu orçamento, caçar reduflação oculta nas embalagens, calcular o custo exato por grama de cada receita e decidir na ponta do lápis se compensa ir de carro ou de Uber.',
+      'Você pode me enviar por aqui:',
+      '• 📸 *Foto ou PDF de nota fiscal* — leio os itens, salvo seus gastos e atualizo os preços.',
+      '• 🏷️ *Foto de prateleira, folheto ou vídeo* — salvo os preços para comparar mercados.',
+      '• 🍳 *Link, foto ou texto de receita* — salvo no painel e calculo quanto custa fazer.',
       '',
-      '📋 *Comandos de Auditoria Disponíveis:*',
-      '• 💬 *Converse normalmente comigo* — Respondo perguntas básicas sem rodeios e sempre te guio para a opção ou comando certo (ex: `/produto arroz`).',
-      '• 📸 *Envie uma Foto ou PDF de Cupom Fiscal (NFC-e/SAT)* — Decodifico o QR Code localmente (`sharp` + `jsqr`), raspo a SEFAZ ou aciono o Gemini Vision e salvo a foto comprimida em WebP no bucket `FotosArgus`.',
-      '• 🎥 *Envie um Vídeo do Corredor ou Foto de Gôndola/Panfleto (Flyer)* — Extraio todos os produtos e preços visíveis, calculo a *% de Confiabilidade* (apontando se faltou loja, filial ou nitidez), gravo na planilha `Precos_Coletados` e mantenho fila automática em `argus.media_processing_queue` caso precise reprocessar!',
-      '• `/produto <item>` (ou `/preco <item>`) — Consulta o preço estimado atual por grama/ml em cada mercado (ex: `/produto arroz`) e alerta se é hora de estocar.',
-      '• `/fila` — Consulta a Tabela de Controle de mídias processadas com sucesso, fila de reprocessamento e últimos preços coletados de gôndolas/flyers.',
-      '• `/loja <Nome do Mercado | Bairro>` — Define ou corrige a loja da última coleta de vídeo/gôndola para elevar o score de confiabilidade.',
-      '• `/receita` — Calcula o *Custo Proporcional por Marmita* vs. *Desembolso de Caixa (Embalagens Fechadas)* das suas receitas.',
-      '• `/otimizar` — Roda o Simulador Logístico (Rota Real OSRM: Mercado Único vs. Compra Dividida | Gasolina vs. Uber com trava de R$ 25,00).',
-      '• `/reconciliar` — Cruza cupons fiscais com transações do Pluggy Open Finance (`-2h` a `+48h`, `<= R$ 0,05`) e sincroniza a planilha *Argus Ledger*.',
-      '• `/seguranca` — Exibe o relatório de tentativas de invasão e acessos bloqueados em `argus.security_audit_logs`.',
-      '• `/dashboard` — Exibe o Resumo Executivo de BI (ou abre o *Argus Vision BI* na nuvem).'
+      '⚡ *Atalhos úteis:*',
+      '• `/produto arroz` — mostra onde está mais barato',
+      '• `/receita` — custo das suas receitas',
+      '• `/otimizar` — melhor rota para economizar',
+      '• `/fila` — últimas fotos e coletas salvas',
+      '• `/loja Nome` — ajusta o mercado da última coleta',
+      '• `/reconciliar` — confere notas com o extrato',
+      '• `/dashboard` — resumo rápido e acesso ao painel',
+      '',
+      '💬 _Se preferir, é só conversar comigo normalmente!_'
     ].join('\n');
 
     const kb = new InlineKeyboard()
@@ -1133,10 +1134,10 @@ export function createArgusBot(): Bot {
     // Responde SEMPRE marcando (reply_parameters) a foto/documento enviado pelo usuário
     const statusMsg = await ctx.reply(
       isAwaitingRecipe || isExplicitRecipeCaption
-        ? '🍳 [1/2] Baixando imagem da receita e lendo ingredientes e preparo...'
+        ? '🍳 [1/2] Lendo a receita da imagem...'
         : isVideoDocument || isExplicitPriceScanCaption
-          ? '⏳ [1/3] Baixando mídia de preços (Gôndola / Panfleto / Vídeo) e preparando arquivamento no bucket FotosArgus...'
-          : '⏳ [1/3] Baixando imagem e executando verificação anti-duplicidade (Camada 1)...',
+          ? '⏳ [1/3] Recebendo sua mídia de preços...'
+          : '⏳ [1/3] Recebendo sua imagem...',
       replyOpts
     );
 
@@ -1242,7 +1243,7 @@ export function createArgusBot(): Bot {
               // ROTA A: Documento de Vídeo OU Foto com legenda explícita de Gôndola/Panfleto/Corredor
               if (isVideoDocument || isExplicitPriceScanCaption) {
                 await updateStatus(
-                  '🧠 [2/3] Arquivando mídia no bucket FotosArgus e extraindo preços + score de confiabilidade via Gemini Vision...'
+                  '🧠 [2/3] Extraindo os produtos e preços da foto...'
                 );
                 const outcome = await priceScanner.ingestAndProcessPriceScanMedia({
                   mediaBuffer: buffer,
@@ -1320,10 +1321,9 @@ export function createArgusBot(): Bot {
                   : '-';
                 await updateStatus(
                   [
-                    '🛡️ NOTA FISCAL DUPLICADA BLOQUEADA (PRÉ-OCR)',
-                    `• Motivo: ${preOcrDup.reason}`,
-                    `• Registro Existente: ${preOcrDup.existingStoreName} — R$ ${(preOcrDup.existingTotalAmount || 0).toFixed(2)} (${dtStr})`,
-                    '• Economia de Cota: Bloqueado instantaneamente antes de acionar a IA.'
+                    '🛡️ Essa nota já foi registrada antes!',
+                    `• ${preOcrDup.existingStoreName} — R$ ${(preOcrDup.existingTotalAmount || 0).toFixed(2)} (${dtStr})`,
+                    `• ${preOcrDup.reason}`
                   ].join('\n')
                 );
                 await stickers.sendEmotionalSticker(ctx, 'SKEPTICAL');
@@ -1337,7 +1337,7 @@ export function createArgusBot(): Bot {
               let multiResult: MultiDocumentExtractionResult | null = null;
               const qrData = await processor.decodeQrCodeFromImage(buffer);
               if (qrData && processor.isGenuineSefazQrUrl(qrData)) {
-                await updateStatus('🔍 [2/3] QR Code SEFAZ detectado! Consultando portal da Fazenda...');
+                await updateStatus('🔍 [2/3] QR Code encontrado! Buscando os dados da nota...');
                 const scraped = await processor.scrapeSefazReceipt(qrData);
                 if (scraped) {
                   multiResult = {
@@ -1350,7 +1350,7 @@ export function createArgusBot(): Bot {
               }
               if (!multiResult) {
                 await updateStatus(
-                  '🧠 [2/3] Analisando qualidade, quantidade de notas e classificando documento via Gemini Vision...'
+                  '🧠 [2/3] Lendo os itens e preços da imagem...'
                 );
                 try {
                   multiResult = await processor.extractMultipleReceiptsViaGeminiVision(
@@ -1707,7 +1707,7 @@ export function createArgusBot(): Bot {
       }
 
       await updateStatus(
-        `❌ FALHA NO PROCESSAMENTO DA IMAGEM\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 260)}\n• Você pode reenviar a foto ou consultar /fila.`
+        `😕 Não consegui ler essa imagem agora.\n• Motivo: ${errMsg.slice(0, 220)}\n• Você pode tentar reenviar a foto ou ver a fila em /fila.`
       );
       await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
     } finally {

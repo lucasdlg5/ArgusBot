@@ -355,27 +355,27 @@ export default function ArgusVisionDashboard() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold tracking-tight text-white">Argus Vision BI</h1>
+                <h1 className="text-lg font-bold tracking-tight text-white">Argus</h1>
                 <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30 font-mono">
                   {APP_VERSION_LABEL}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                Market Arbitrage, Recipe Costing &amp; Open Finance Intelligence
+                Compras, Preços e Receitas
               </p>
             </div>
           </div>
 
           <div className="mt-5 space-y-1.5">
             <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Módulos
+              Seções
             </p>
             {[
               { id: 'ALL', label: 'Visão Geral', icon: Eye },
-              { id: 'M1', label: '1. Gastos & Conciliação', icon: Wallet },
-              { id: 'M2', label: '2. Inflação', icon: AlertTriangle },
-              { id: 'M3', label: '3. Mercados', icon: Store },
-              { id: 'M4', label: '4. Rotas & Receitas', icon: Navigation }
+              { id: 'M1', label: 'Gastos do Mês', icon: Wallet },
+              { id: 'M2', label: 'Variação de Preços', icon: AlertTriangle },
+              { id: 'M3', label: 'Mercados', icon: Store },
+              { id: 'M4', label: 'Receitas & Rotas', icon: Navigation }
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
