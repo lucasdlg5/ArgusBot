@@ -13,6 +13,7 @@ import {
 } from '../services/ArgusCatalogBiService';
 import { ArgusDashboardBuilderService } from '../services/ArgusDashboardBuilderService';
 import { ArgusPantryGuideService } from '../services/ArgusPantryGuideService';
+import { ArgusReceiptProcessor } from '../services/ArgusReceiptProcessor';
 import {
   ArgusRecipeService,
   type ExtractedRecipeInput,
@@ -81,6 +82,7 @@ async function main() {
   const recipeService = new ArgusRecipeService();
   const pantryGuideService = new ArgusPantryGuideService();
   const catalogBiService = new ArgusCatalogBiService();
+  const receiptProcessor = new ArgusReceiptProcessor();
   const publicBaseUrl = getPublicBaseUrl();
   const useWebhook =
     Boolean(publicBaseUrl) && process.env.TELEGRAM_BOT_MODE !== 'polling';
@@ -115,6 +117,28 @@ async function main() {
       applyCorsHeaders(res);
       res.writeHead(204);
       res.end();
+      return;
+    }
+
+    const convertFlyerMatch = urlPath.match(/^\/api\/receipts\/([a-f0-9-]+)\/convert-to-flyer$/i);
+    if (req.method === 'POST' && convertFlyerMatch) {
+      applyCorsHeaders(res);
+      try {
+        const result = await receiptProcessor.convertReceiptToFlyer(convertFlyerMatch[1]);
+        if (!result.converted) {
+          res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Nota fiscal não encontrada.' }));
+          return;
+        }
+        snapshotCache = null;
+        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', ...result }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro em POST /api/receipts/:id/convert-to-flyer');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
       return;
     }
 

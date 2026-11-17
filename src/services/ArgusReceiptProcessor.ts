@@ -1687,4 +1687,102 @@ REGRAS ESTRITAS:
       };
     });
   }
+
+  /**
+   * Converte um registro salvo erroneamente em `argus.receipts` para coleta de Flyer (`MARKET_FLYER`),
+   * preservando todos os preços dos itens em `argus.collected_prices` sem contabilizar como gasto real.
+   */
+  async convertReceiptToFlyer(receiptId: string): Promise<{
+    converted: boolean;
+    storeName: string;
+    movedItemsCount: number;
+  }> {
+    return withArgusTransaction(async (client) => {
+      const recRes = await client.query<{
+        id: string;
+        store_id: string;
+        store_name: string;
+        store_address: string | null;
+        purchase_date: string;
+      }>(
+        `SELECT r.id, r.store_id, s.trading_name AS store_name, s.address AS store_address, r.purchase_date::text
+         FROM argus.receipts r
+         JOIN argus.stores s ON s.id = r.store_id
+         WHERE r.id = $1
+         LIMIT 1`,
+        [receiptId]
+      );
+
+      if (recRes.rows.length === 0) {
+        return { converted: false, storeName: '', movedItemsCount: 0 };
+      }
+      const rec = recRes.rows[0];
+
+      const itemsRes = await client.query<{
+        canonical_product_id: string;
+        raw_description: string;
+        canonical_product_name: string;
+        category: string;
+        unit_type: string;
+        base_unit: string;
+        standard_package_size: string;
+        unit_price: string;
+        normalized_price_per_base_unit: string;
+      }>(
+        `SELECT
+           ri.canonical_product_id,
+           ri.raw_description,
+           cp.name AS canonical_product_name,
+           cp.category,
+           ri.unit_type,
+           cp.base_unit,
+           cp.standard_package_size::text,
+           ri.unit_price::text,
+           ri.normalized_price_per_base_unit::text
+         FROM argus.receipt_items ri
+         JOIN argus.canonical_products cp ON cp.id = ri.canonical_product_id
+         WHERE ri.receipt_id = $1`,
+        [receiptId]
+      );
+
+      for (const it of itemsRes.rows) {
+        await client.query(
+          `INSERT INTO argus.collected_prices (
+             store_id, canonical_product_id, source_type,
+             store_name_detected, store_location_detected,
+             raw_product_description, canonical_product_name, category,
+             unit_type, base_unit, package_size_in_base_unit,
+             collected_price, promo_club_price, normalized_price_per_base_unit,
+             confidence_score_pct, missing_info_flags, confidence_explanation, created_at
+           ) VALUES ($1, $2, 'MARKET_FLYER', $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL, $12, 95, $13, $14, $15)`,
+          [
+            rec.store_id,
+            it.canonical_product_id,
+            rec.store_name,
+            rec.store_address || 'Local do mercado',
+            it.raw_description,
+            it.canonical_product_name,
+            it.category || 'Mercearia',
+            it.unit_type || 'UN',
+            it.base_unit || 'un',
+            Number(it.standard_package_size) || 1,
+            Number(it.unit_price) || 0,
+            Number(it.normalized_price_per_base_unit) || 0,
+            [],
+            'Convertido manualmente de Nota Fiscal para Flyer pelo painel web',
+            rec.purchase_date
+          ]
+        );
+      }
+
+      await client.query(`DELETE FROM argus.receipt_items WHERE receipt_id = $1`, [receiptId]);
+      await client.query(`DELETE FROM argus.receipts WHERE id = $1`, [receiptId]);
+
+      return {
+        converted: true,
+        storeName: rec.store_name,
+        movedItemsCount: itemsRes.rows.length
+      };
+    });
+  }
 }

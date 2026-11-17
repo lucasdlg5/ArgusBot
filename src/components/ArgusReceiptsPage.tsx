@@ -18,7 +18,11 @@ import {
   Store,
   X
 } from 'lucide-react';
-import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
+import {
+  fetchPublicDashboardFallback,
+  invalidatePublicSnapshotCache,
+  resolvePublicApiUrl
+} from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
 import type {
@@ -96,6 +100,36 @@ export default function ArgusReceiptsPage() {
   const [sortBy, setSortBy] = useState<SortOption>('RECENT');
   const [hideZeroReceipts, setHideZeroReceipts] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+
+  async function handleConvertToFlyer(receipt: ReceiptDetailEntry) {
+    setConvertingId(receipt.receiptId);
+    setActionMsg(null);
+    setErrorMsg(null);
+    try {
+      const url = resolvePublicApiUrl(`/api/receipts/${receipt.receiptId}/convert-to-flyer`);
+      const res = await fetch(url, { method: 'POST' });
+      const json = (await res.json()) as {
+        status?: string;
+        message?: string;
+        movedItemsCount?: number;
+        storeName?: string;
+      };
+      if (!res.ok) {
+        throw new Error(json.message || 'Falha ao converter nota para Flyer.');
+      }
+      invalidatePublicSnapshotCache();
+      setReceipts((prev) => prev.filter((item) => item.receiptId !== receipt.receiptId));
+      setActionMsg(
+        `✅ Registro de ${json.storeName || receipt.storeName} marcado como Flyer! ${json.movedItemsCount ?? receipt.itemsCount} preço(s) mantidos no catálogo e removidos do total gasto.`
+      );
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Erro ao marcar como Flyer.');
+    } finally {
+      setConvertingId(null);
+    }
+  }
 
   const loadReceipts = useCallback(async () => {
     setLoading(true);
@@ -410,6 +444,12 @@ export default function ArgusReceiptsPage() {
           </div>
         </section>
 
+        {actionMsg && (
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-3 text-xs text-emerald-200">
+            {actionMsg}
+          </div>
+        )}
+
         {errorMsg && (
           <div className="rounded-xl border border-rose-500/40 bg-rose-950/20 px-4 py-3 text-xs text-rose-200">
             {errorMsg}
@@ -502,6 +542,26 @@ export default function ArgusReceiptsPage() {
                         className="overflow-hidden border-t border-slate-800/80 bg-slate-950/70"
                       >
                         <div className="p-4 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                            <span className="text-[11px] text-slate-400">
+                              {rec.totalAmount <= 0
+                                ? '⚠️ Registro com total R$ 0,00 (provável Flyer/Coleta).'
+                                : 'Não é uma compra real? Mova os preços para Flyer sem perder o histórico.'}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={convertingId === rec.receiptId}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleConvertToFlyer(rec);
+                              }}
+                              className="rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 px-3 py-1.5 text-[11px] font-medium text-amber-200 transition-colors"
+                            >
+                              {convertingId === rec.receiptId
+                                ? 'Convertendo...'
+                                : '🏷️ Marcar como Flyer (Não é Nota Fiscal)'}
+                            </button>
+                          </div>
                           {rec.items.length === 0 ? (
                             <p className="text-xs text-slate-400">
                               Nenhum item detalhado vinculado a este cupom.
