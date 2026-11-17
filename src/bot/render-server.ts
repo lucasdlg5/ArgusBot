@@ -98,7 +98,8 @@ async function main() {
 
   const handleWebhook = webhookCallback(bot, 'http', {
     secretToken: webhookSecret,
-    timeoutMilliseconds: 55000
+    timeoutMilliseconds: 85000,
+    onTimeout: 'return'
   });
 
   let snapshotCache: { data: unknown; expiresAt: number } | null = null;
