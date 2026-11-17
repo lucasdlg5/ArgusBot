@@ -23,11 +23,18 @@ const geminiModelCooldownUntil = new Map<string, number>();
 
 export function isQuotaExhaustedError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err ?? '');
+  const lower = msg.toLowerCase();
   return (
     msg.includes('RESOURCE_EXHAUSTED') ||
     msg.includes('"code":429') ||
     msg.includes('429') ||
-    msg.toLowerCase().includes('quota exceeded')
+    msg.includes('"code":503') ||
+    msg.includes('UNAVAILABLE') ||
+    lower.includes('quota exceeded') ||
+    lower.includes('em cooldown') ||
+    lower.includes('todos os provedores de ia falharam') ||
+    lower.includes('no credits remaining') ||
+    lower.includes('credit balance is too low')
   );
 }
 

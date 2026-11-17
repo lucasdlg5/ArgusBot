@@ -780,13 +780,14 @@ export class ArgusPriceScannerService {
       // Caso ocorra erro na IA, timeout ou falha de leitura, mantém a imagem/vídeo salva no bucket FotosArgus
       // e agenda nova tentativa automática na fila (`QUEUED_RETRY`) para daqui a 1 hora!
       const errMsg = (err as Error).message || 'Erro desconhecido no processamento multimodal';
+      const isTransientOutage = isQuotaExhaustedError(errMsg);
       const jobState = await queryArgus<{ attempts_count: number; max_attempts: number }>(
         `SELECT attempts_count, max_attempts FROM argus.media_processing_queue WHERE id = $1`,
         [queueJobId]
       );
       const attempts = jobState[0]?.attempts_count ?? 1;
       const maxAttempts = jobState[0]?.max_attempts ?? 5;
-      const isPermanent = attempts >= maxAttempts;
+      const isPermanent = !isTransientOutage && attempts >= maxAttempts;
 
       // Agenda nova tentativa para daqui a 1 hora (60 minutos)
       const retryMinutes = 60;
@@ -797,9 +798,13 @@ export class ArgusPriceScannerService {
         `UPDATE argus.media_processing_queue
          SET status = $2,
              last_error = $3,
-             next_retry_at = $4
+             next_retry_at = $4,
+             attempts_count = CASE
+               WHEN $5 THEN LEAST(attempts_count, GREATEST(COALESCE(max_attempts, 5) - 1, 1))
+               ELSE attempts_count
+             END
          WHERE id = $1`,
-        [queueJobId, newStatus, errMsg.slice(0, 500), isPermanent ? null : nextRetryAt]
+        [queueJobId, newStatus, errMsg.slice(0, 500), isPermanent ? null : nextRetryAt, isTransientOutage]
       );
 
       logger.warn(
@@ -1132,15 +1137,22 @@ export class ArgusPriceScannerService {
           });
         } catch (err) {
           const errMsg = (err as Error).message || 'Erro ao reprocessar cupom fiscal';
-          const isPerm = nextAttempt >= (job.max_attempts || 5);
+          const isTransientOutage = isQuotaExhaustedError(errMsg);
+          const isPerm = !isTransientOutage && nextAttempt >= (job.max_attempts || 5);
           const nextRetryAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
           const newSt: QueueJobStatus = isPerm ? 'FAILED_PERMANENT' : 'QUEUED_RETRY';
 
           await queryArgus(
             `UPDATE argus.media_processing_queue
-             SET status = $2, last_error = $3, next_retry_at = $4
+             SET status = $2,
+                 last_error = $3,
+                 next_retry_at = $4,
+                 attempts_count = CASE
+                   WHEN $5 THEN LEAST(attempts_count, GREATEST(COALESCE(max_attempts, 5) - 1, 1))
+                   ELSE attempts_count
+                 END
              WHERE id = $1`,
-            [job.id, newSt, errMsg.slice(0, 500), isPerm ? null : nextRetryAt]
+            [job.id, newSt, errMsg.slice(0, 500), isPerm ? null : nextRetryAt, isTransientOutage]
           );
 
           outcomes.push({
