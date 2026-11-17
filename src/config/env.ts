@@ -39,9 +39,21 @@ const envSchema = z.object({
         .filter(Boolean)
     ),
 
-  // Google Gemini (Zero-Cost Google AI Studio)
+  // Google Gemini (Primário - Zero-Cost Google AI Studio)
   GEMINI_API_KEY: z.string().default(''),
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
+
+  // Provedores Secundário e Terciário (Fallback: 1 Gemini > 2 OpenAI > 3 Claude)
+  OPENAI_API_KEY: z
+    .string()
+    .default('')
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '')),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  ANTHROPIC_API_KEY: z
+    .string()
+    .default('')
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '')),
+  ANTHROPIC_MODEL: z.string().default('claude-3-5-haiku-latest'),
 
   // Supabase / PostgreSQL (Schema isolado: argus) & Storage Bucket (FotosArgus)
   SUPABASE_URL: z

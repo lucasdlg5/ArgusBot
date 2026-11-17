@@ -10,6 +10,7 @@ import { classifyAndNormalizeStoreName } from '../lib/store-normalization';
 import { ArgusStoreNormalizationService } from './ArgusStoreNormalizationService';
 import { receiptVisionClient } from './ReceiptVisionClient';
 import { failureAuditService } from './ArgusFailureAuditService';
+import { llmFallbackProvider } from './LlmFallbackProvider';
 import type {
   BaseUnit,
   PaymentMethod,
@@ -861,48 +862,92 @@ export class ArgusReceiptProcessor {
   private async generateWithModelFallback(
     params: Parameters<GoogleGenAI['models']['generateContent']>[0],
     timeoutMsPerModel = 18000
-  ) {
-    if (!this.ai) {
-      throw new Error('GEMINI_API_KEY não configurada.');
-    }
-    const candidateModels = Array.from(
-      new Set([
-        env.GEMINI_MODEL,
-        'gemini-3.6-flash',
-        'gemini-3.5-flash',
-        'gemini-3.5-flash-lite',
-        'gemini-3.8-flash'
-      ])
-    );
+  ): Promise<{ text?: string }> {
     let lastError: unknown;
-    for (const modelName of candidateModels) {
-      let timer: NodeJS.Timeout | undefined;
-      try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new Error(`Timeout (${timeoutMsPerModel}ms) no modelo ${modelName}`)),
-            timeoutMsPerModel
-          );
-        });
 
-        const result = await Promise.race([
-          this.ai.models.generateContent({
-            ...params,
-            model: modelName
-          }),
-          timeoutPromise
-        ]);
-        if (timer) clearTimeout(timer);
-        return result;
-      } catch (err) {
-        if (timer) clearTimeout(timer);
-        lastError = err;
-        logger.warn(
-          { modelName, err: (err as Error).message },
-          '[ArgusReceiptProcessor] Tentando próximo modelo Gemini'
-        );
+    if (this.ai) {
+      const candidateModels = Array.from(
+        new Set([
+          env.GEMINI_MODEL,
+          'gemini-3.6-flash',
+          'gemini-3.5-flash',
+          'gemini-3.5-flash-lite',
+          'gemini-3.8-flash'
+        ])
+      );
+      for (const modelName of candidateModels) {
+        let timer: NodeJS.Timeout | undefined;
+        try {
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`Timeout (${timeoutMsPerModel}ms) no modelo ${modelName}`)),
+              timeoutMsPerModel
+            );
+          });
+
+          const result = await Promise.race([
+            this.ai.models.generateContent({
+              ...params,
+              model: modelName
+            }),
+            timeoutPromise
+          ]);
+          if (timer) clearTimeout(timer);
+          return result;
+        } catch (err) {
+          if (timer) clearTimeout(timer);
+          lastError = err;
+          logger.warn(
+            { modelName, err: (err as Error).message },
+            '[ArgusReceiptProcessor] Tentando próximo modelo Gemini'
+          );
+        }
       }
+    } else {
+      lastError = new Error('GEMINI_API_KEY não configurada.');
     }
+
+    // Fallback cadeia 2 (OpenAI) -> 3 (Claude) -> Erro
+    if (llmFallbackProvider.hasAnyFallbackConfigured()) {
+      logger.warn(
+        { geminiError: lastError instanceof Error ? lastError.message : String(lastError) },
+        '[ArgusReceiptProcessor] Todos os modelos Gemini falharam; acionando fallback 2. OpenAI -> 3. Claude'
+      );
+      const rawContents = Array.isArray(params.contents) ? params.contents : [params.contents];
+      const textParts: string[] = [];
+      let imageBase64: string | undefined;
+      let imageMimeType: string | undefined;
+
+      for (const part of rawContents) {
+        if (typeof part === 'string') {
+          textParts.push(part);
+        } else if (part && typeof part === 'object') {
+          const obj = part as {
+            text?: string;
+            inlineData?: { data?: string; mimeType?: string };
+          };
+          if (obj.text) textParts.push(obj.text);
+          if (obj.inlineData?.data) {
+            imageBase64 = obj.inlineData.data;
+            imageMimeType = obj.inlineData.mimeType || 'image/jpeg';
+          }
+        }
+      }
+
+      const expectJson =
+        (params.config as { responseMimeType?: string } | undefined)?.responseMimeType ===
+        'application/json';
+
+      const fallbackRes = await llmFallbackProvider.generateWithSecondaryAndTertiary({
+        prompt: textParts.join('\n\n'),
+        imageBase64,
+        imageMimeType,
+        expectJson,
+        timeoutMs: 22000
+      });
+      return { text: fallbackRes.text };
+    }
+
     throw lastError;
   }
 
@@ -915,9 +960,9 @@ export class ArgusReceiptProcessor {
     imageBuffer: Buffer,
     mimeType = 'image/jpeg'
   ): Promise<MultiDocumentExtractionResult> {
-    if (!this.ai) {
+    if (!this.ai && !llmFallbackProvider.hasAnyFallbackConfigured()) {
       throw new Error(
-        'GEMINI_API_KEY não configurada e QR Code SEFAZ não pôde ser lido localmente.'
+        'Nenhum provedor de IA configurado (GEMINI_API_KEY, OPENAI_API_KEY ou ANTHROPIC_API_KEY).'
       );
     }
 
