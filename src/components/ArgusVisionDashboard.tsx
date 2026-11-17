@@ -29,7 +29,9 @@ import {
   Scale,
   Receipt,
   Timer,
-  Package
+  Package,
+  Clock,
+  Landmark
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -54,7 +56,8 @@ import type {
   ReconciliationSummary,
   StoreCategoryHeatmapView,
   TrueSpendingBreakdownView,
-  OpenFinanceTransaction
+  OpenFinanceTransaction,
+  ReceiptDetailEntry
 } from '@/types/argus';
 import RecipeStoreComparisonCard from './RecipeStoreComparisonCard';
 
@@ -104,6 +107,7 @@ interface DashboardPayload {
   logisticsVerdict: OptimizationVerdict;
   reconciliation: ReconciliationSummary;
   openFinanceTransactions: OpenFinanceTransaction[];
+  receiptsDetailed?: ReceiptDetailEntry[];
   collectedPrices?: CollectedPriceRecord[];
   queueSummary?: Array<{ status: string; total: number }>;
 }
@@ -128,6 +132,15 @@ export default function ArgusVisionDashboard() {
   );
   const [telegramFeedback, setTelegramFeedback] = useState<string | null>(null);
   const [syncingReconcile, setSyncingReconcile] = useState<boolean>(false);
+  const [localNow, setLocalNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setLocalNow(new Date());
+    const timer = window.setInterval(() => {
+      setLocalNow(new Date());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   async function loadDashboard() {
     setLoading(true);
@@ -491,6 +504,172 @@ export default function ArgusVisionDashboard() {
             </span>
           </div>
         </header>
+
+        {/* BOAS-VINDAS, HORÁRIO LOCAL E RESUMO SEPARADO DO MÊS ATUAL */}
+        {(() => {
+          const refDate = localNow ?? new Date();
+          const hour = refDate.getHours();
+          const greeting =
+            hour >= 5 && hour < 12
+              ? 'Bom dia!'
+              : hour >= 12 && hour < 18
+                ? 'Boa tarde!'
+                : 'Boa noite!';
+
+          const formattedDate = localNow
+            ? new Intl.DateTimeFormat('pt-BR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+              }).format(localNow)
+            : 'Carregando data local...';
+
+          const formattedTime = localNow
+            ? new Intl.DateTimeFormat('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+              }).format(localNow)
+            : '--:--:--';
+
+          const currentMonthKey = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, '0')}`;
+          const currentMonthLabel = new Intl.DateTimeFormat('pt-BR', {
+            month: 'long',
+            year: 'numeric'
+          }).format(refDate);
+
+          // Notas Fiscais alimentadas no mês atual
+          const currentMonthReceipts = (data.receiptsDetailed ?? []).filter((r) =>
+            String(r.purchaseDate || '').startsWith(currentMonthKey)
+          );
+          const hasDetailedReceipts = (data.receiptsDetailed ?? []).length > 0;
+          const fallbackMonthBreakdown = data.spendingBreakdown.filter((s) =>
+            String(s.ref_month || '').startsWith(currentMonthKey)
+          );
+          const receiptsMonthTotal = hasDetailedReceipts
+            ? currentMonthReceipts.reduce((acc, r) => acc + Number(r.totalAmount || 0), 0)
+            : fallbackMonthBreakdown.reduce((acc, s) => acc + Number(s.total_spent || 0), 0);
+          const receiptsMonthCount = hasDetailedReceipts
+            ? currentMonthReceipts.length
+            : fallbackMonthBreakdown.reduce((acc, s) => acc + Number(s.receipts_count || 0), 0);
+          const receiptsReconciledCount = hasDetailedReceipts
+            ? currentMonthReceipts.filter((r) => r.reconciled).length
+            : fallbackMonthBreakdown.reduce(
+                (acc, s) => acc + Number(s.reconciled_receipts_count || 0),
+                0
+              );
+
+          // Gastos recebidos do Open Finance no mês atual
+          const currentMonthOpenFinance = (data.openFinanceTransactions ?? []).filter((tx) =>
+            String(tx.transactionDate || '').startsWith(currentMonthKey)
+          );
+          const openFinanceMonthTotal = currentMonthOpenFinance.reduce(
+            (acc, tx) => acc + Math.abs(Number(tx.amount || 0)),
+            0
+          );
+          const openFinanceBankTotal = currentMonthOpenFinance
+            .filter((tx) => tx.walletType === 'BANK_ACCOUNT')
+            .reduce((acc, tx) => acc + Math.abs(Number(tx.amount || 0)), 0);
+          const openFinanceVrVaTotal = currentMonthOpenFinance
+            .filter((tx) => tx.walletType === 'VR_VA')
+            .reduce((acc, tx) => acc + Math.abs(Number(tx.amount || 0)), 0);
+
+          return (
+            <section className="space-y-4">
+              <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-slate-900 via-slate-900/95 to-emerald-950/30 p-5 lg:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300">
+                    <Sparkles className="h-3 w-3" />
+                    <span>Painel Financeiro Pessoal</span>
+                  </div>
+                  <h3 className="text-xl lg:text-2xl font-bold text-white">
+                    {greeting} Bem-vindo ao Argus Vision.
+                  </h3>
+                  <p className="text-sm text-slate-300">
+                    Acompanhe separadamente os gastos das suas notas fiscais e os lançamentos recebidos pelo Open Finance em{' '}
+                    <span className="font-semibold text-white capitalize">{currentMonthLabel}</span>.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-3 shrink-0">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 capitalize">{formattedDate}</p>
+                    <p className="text-lg font-bold font-mono text-white tabular-nums">
+                      {formattedTime}{' '}
+                      <span className="text-[11px] font-sans font-normal text-slate-400">
+                        (horário local)
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Bloco Separado 1: Notas Fiscais do Mês Atual */}
+                <div className="rounded-xl border border-emerald-500/30 bg-slate-900/75 p-5 flex flex-col justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300">
+                        <Receipt className="h-4 w-4" />
+                        Notas Fiscais no Mês Atual
+                      </span>
+                      <p className="mt-2 text-3xl font-bold text-white tabular-nums">
+                        R$ {receiptsMonthTotal.toFixed(2)}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {receiptsMonthCount}{' '}
+                        {receiptsMonthCount === 1
+                          ? 'nota fiscal alimentada'
+                          : 'notas fiscais alimentadas'}{' '}
+                        em {currentMonthLabel} · {receiptsReconciledCount} conferida(s)
+                      </p>
+                    </div>
+                    <Link
+                      href="/notas"
+                      className="rounded-lg border border-slate-700 hover:border-emerald-500/60 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-emerald-300 transition-colors whitespace-nowrap"
+                    >
+                      Ver notas
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Bloco Separado 2: Open Finance do Mês Atual */}
+                <div className="rounded-xl border border-sky-500/30 bg-slate-900/75 p-5 flex flex-col justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-300">
+                        <Landmark className="h-4 w-4" />
+                        Gastos do Open Finance no Mês Atual
+                      </span>
+                      <p className="mt-2 text-3xl font-bold text-white tabular-nums">
+                        R$ {openFinanceMonthTotal.toFixed(2)}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400 tabular-nums">
+                        {currentMonthOpenFinance.length}{' '}
+                        {currentMonthOpenFinance.length === 1
+                          ? 'lançamento recebido'
+                          : 'lançamentos recebidos'}{' '}
+                        · Conta/Cartão: R$ {openFinanceBankTotal.toFixed(2)} · Vale (VR/VA): R${' '}
+                        {openFinanceVrVaTotal.toFixed(2)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('M1')}
+                      className="rounded-lg border border-slate-700 hover:border-sky-500/60 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-sky-300 transition-colors whitespace-nowrap"
+                    >
+                      Ver extrato
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* ===================================================================
             MÓDULO 1: RAIO-X OPEN FINANCE & AUDITORIA DE GASTOS
