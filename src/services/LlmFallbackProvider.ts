@@ -21,6 +21,18 @@ function stripJsonCodeFences(raw: string): string {
   return match ? match[1].trim() : trimmed;
 }
 
+const providerCooldownUntil = new Map<'openai' | 'claude', number>();
+
+function isBillingOrQuotaExhausted(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes('no credits remaining') ||
+    lower.includes('insufficient_quota') ||
+    lower.includes('credit balance is too low') ||
+    lower.includes('billing')
+  );
+}
+
 export class LlmFallbackProvider {
   hasOpenAi(): boolean {
     return Boolean(env.OPENAI_API_KEY);
@@ -43,32 +55,49 @@ export class LlmFallbackProvider {
     req: LlmFallbackRequest
   ): Promise<LlmFallbackResponse> {
     const errors: string[] = [];
+    const now = Date.now();
 
     if (this.hasOpenAi()) {
-      try {
-        return await this.callOpenAi(req);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`OpenAI (${env.OPENAI_MODEL}): ${msg}`);
-        logger.warn(
-          { provider: 'openai', model: env.OPENAI_MODEL, err: msg },
-          '[LlmFallback] Falha na OpenAI; tentando Claude (terciário)'
-        );
+      const openAiCooldown = providerCooldownUntil.get('openai') ?? 0;
+      if (now < openAiCooldown) {
+        errors.push('OpenAI: em cooldown (sem créditos/cota)');
+      } else {
+        try {
+          return await this.callOpenAi(req);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (isBillingOrQuotaExhausted(msg)) {
+            providerCooldownUntil.set('openai', Date.now() + 15 * 60 * 1000);
+          }
+          errors.push(`OpenAI (${env.OPENAI_MODEL}): ${msg}`);
+          logger.warn(
+            { provider: 'openai', model: env.OPENAI_MODEL, err: msg },
+            '[LlmFallback] Falha na OpenAI; tentando Claude (terciário)'
+          );
+        }
       }
     } else {
       errors.push('OpenAI: OPENAI_API_KEY não configurada');
     }
 
     if (this.hasClaude()) {
-      try {
-        return await this.callClaude(req);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`Claude (${env.ANTHROPIC_MODEL}): ${msg}`);
-        logger.warn(
-          { provider: 'claude', model: env.ANTHROPIC_MODEL, err: msg },
-          '[LlmFallback] Falha no Claude (terciário)'
-        );
+      const claudeCooldown = providerCooldownUntil.get('claude') ?? 0;
+      if (now < claudeCooldown) {
+        errors.push('Claude: em cooldown (sem créditos/cota)');
+      } else {
+        try {
+          return await this.callClaude(req);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (isBillingOrQuotaExhausted(msg)) {
+            providerCooldownUntil.set('claude', Date.now() + 15 * 60 * 1000);
+          }
+          errors.push(`Claude (${env.ANTHROPIC_MODEL}): ${msg}`);
+          logger.warn(
+            { provider: 'claude', model: env.ANTHROPIC_MODEL, err: msg },
+            '[LlmFallback] Falha no Claude (terciário)'
+          );
+        }
       }
     } else {
       errors.push('Claude: ANTHROPIC_API_KEY não configurada');

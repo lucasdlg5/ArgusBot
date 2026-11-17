@@ -1309,7 +1309,24 @@ export function createArgusBot(): Bot {
       return;
     }
 
+    const MAX_STITCH_PARTS = 4;
     const firstCtx = entries[0].ctx;
+    if (entries.length > MAX_STITCH_PARTS) {
+      logger.info(
+        { chatId: firstCtx.chat.id, mediaGroupId: groupKey, photosCount: entries.length },
+        '[BotAlbum] Lote com >4 fotos; pulando costura SIFT para evitar OOM no OpenCV e processando individualmente'
+      );
+      await firstCtx
+        .reply(
+          `📑 Recebi um lote com ${entries.length} fotos! Vou processar cada nota individualmente pela fila.`
+        )
+        .catch(() => {});
+      for (const entry of entries) {
+        await handleSingleMediaCtx(entry.ctx);
+      }
+      return;
+    }
+
     const startedAt = Date.now();
     logger.info(
       { chatId: firstCtx.chat.id, mediaGroupId: groupKey, photosCount: entries.length },
