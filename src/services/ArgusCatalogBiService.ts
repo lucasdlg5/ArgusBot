@@ -158,6 +158,8 @@ interface RawReceiptItemRow {
   unit_price: string | number;
   total_price: string | number;
   normalized_price_per_base_unit: string | number;
+  access_key?: string | null;
+  has_official_access_key?: boolean | null;
 }
 
 interface RawCollectedPriceRow {
@@ -253,7 +255,9 @@ export class ArgusCatalogBiService {
              ri.unit_type,
              ri.unit_price::float8 AS unit_price,
              ri.total_price::float8 AS total_price,
-             ri.normalized_price_per_base_unit::float8 AS normalized_price_per_base_unit
+             ri.normalized_price_per_base_unit::float8 AS normalized_price_per_base_unit,
+             r.access_key,
+             r.has_official_access_key
            FROM argus.receipt_items ri
            JOIN argus.receipts r ON r.id = ri.receipt_id
            JOIN argus.stores s ON s.id = r.store_id
@@ -319,6 +323,13 @@ export class ArgusCatalogBiService {
         item.raw_description,
         item.canonical_product_name
       );
+      const cleanKey = (item.access_key || '').replace(/\D/g, '');
+      const hasOfficialNfce = Boolean(item.has_official_access_key) && /^\d{44}$/.test(cleanKey);
+      const nfceUrl = hasOfficialNfce
+        ? cleanKey.startsWith('35')
+          ? `https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaPublica.aspx?chNFe=${cleanKey}`
+          : `https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&nfe=${cleanKey}`
+        : null;
 
       scannedProducts.push({
         id: item.id,
@@ -344,7 +355,9 @@ export class ArgusCatalogBiService {
         normalizedPackagePrice: pkgPrice,
         confidenceScorePct: 100,
         paymentMethod: item.payment_method,
-        missingInfoFlags: []
+        missingInfoFlags: [],
+        nfceAccessKey: hasOfficialNfce ? cleanKey : null,
+        nfceUrl
       });
     }
 

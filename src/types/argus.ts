@@ -566,6 +566,8 @@ export interface ScannedProductEntry {
   confidenceScorePct: number;
   paymentMethod: PaymentMethod | null;
   missingInfoFlags: string[];
+  nfceAccessKey?: string | null;
+  nfceUrl?: string | null;
 }
 
 export interface StoreBiProductStat {

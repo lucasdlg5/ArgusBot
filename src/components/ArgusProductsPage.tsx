@@ -810,6 +810,20 @@ export default function ArgusProductsPage() {
                               <p className="mt-1 text-[11px] text-slate-400">
                                 Marca: <strong className="text-sky-300">{item.brandName}</strong>
                               </p>
+                              {item.nfceUrl && (
+                                <a
+                                  href={item.nfceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 hover:underline"
+                                >
+                                  🔗 Consultar NFC-e na SEFAZ
+                                  {item.nfceAccessKey
+                                    ? ` (${item.nfceAccessKey.slice(0, 6)}…${item.nfceAccessKey.slice(-6)})`
+                                    : ''}
+                                </a>
+                              )}
                             </div>
 
                             <div>
