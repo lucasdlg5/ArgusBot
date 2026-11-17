@@ -1107,8 +1107,189 @@ export function createArgusBot(): Bot {
     return { isDuplicate: false, reason: '' };
   }
 
-  // 7. Recebimento de Foto ou Documento (Cupom Fiscal c/ 5 Camadas Anti-Duplicidade OU Foto de Gôndola/Panfleto/Vídeo em Arquivo)
+  // 7. Recebimento de Foto, Álbum (media_group_id) ou Documento
+  interface PendingAlbumEntry {
+    ctx: any;
+    fileId: string;
+    fileUniqueId?: string;
+    caption: string;
+    messageId?: number;
+  }
+  const pendingMediaGroups = new Map<
+    string,
+    { entries: PendingAlbumEntry[]; timer: NodeJS.Timeout }
+  >();
+
+  async function processMediaGroup(groupKey: string): Promise<void> {
+    const group = pendingMediaGroups.get(groupKey);
+    if (!group) return;
+    pendingMediaGroups.delete(groupKey);
+
+    const { entries } = group;
+    if (entries.length === 0) return;
+    if (entries.length === 1) {
+      await handleSingleMediaCtx(entries[0].ctx);
+      return;
+    }
+
+    const firstCtx = entries[0].ctx;
+    const startedAt = Date.now();
+    logger.info(
+      { chatId: firstCtx.chat.id, mediaGroupId: groupKey, photosCount: entries.length },
+      '[INÍCIO] [BotAlbum] [1/3] Processando álbum de fotos para verificar costura'
+    );
+
+    const statusMsg = await firstCtx.reply(
+      `🧩 [1/3] Recebi ${entries.length} fotos juntas! Verificando se são partes da mesma nota...`
+    );
+
+    try {
+      const downloadedParts: Array<{ buffer: Buffer; mimeType: string; entry: PendingAlbumEntry }> = [];
+      for (const entry of entries) {
+        const buf = await downloadTelegramFileById(entry.fileId);
+        if (buf) {
+          downloadedParts.push({ buffer: buf, mimeType: 'image/jpeg', entry });
+        }
+      }
+
+      if (downloadedParts.length >= 2) {
+        const stitched = await processor
+          .extractStitchedReceiptFromParts(
+            downloadedParts.map((p) => ({ buffer: p.buffer, mimeType: p.mimeType }))
+          )
+          .catch(() => null);
+
+        if (stitched) {
+          await firstCtx.api
+            .editMessageText(
+              firstCtx.chat.id,
+              statusMsg.message_id,
+              `🧵 [2/3] Nota longa identificada (${stitched.overlapsDetected} emenda(s))! Salvando ${stitched.document.items.length} itens sem duplicar...`
+            )
+            .catch(() => {});
+
+          const hashes = await processor.computeImageHashes(stitched.unifiedBuffer);
+          const finalizedDoc = processor.finalizeReceiptIdentifiers(stitched.document, hashes);
+          const uploadRes = await storage.compressAndUploadReceiptImage(
+            stitched.unifiedBuffer,
+            finalizedDoc.accessKey,
+            finalizedDoc.storeTradingName,
+            'image/png'
+          );
+          finalizedDoc.storageBucket = uploadRes.bucket;
+          finalizedDoc.storagePath = uploadRes.storagePath;
+          finalizedDoc.originalSizeBytes = uploadRes.originalBytes;
+          finalizedDoc.compressedSizeBytes = uploadRes.compressedBytes;
+
+          const ingestRes = await processor.ingestReceipt(finalizedDoc);
+          if (ingestRes.alreadyExisted) {
+            await firstCtx.api
+              .editMessageText(
+                firstCtx.chat.id,
+                statusMsg.message_id,
+                [
+                  '🛡️ Essa nota longa já foi registrada antes!',
+                  `• ${finalizedDoc.storeTradingName} — R$ ${finalizedDoc.totalAmount.toFixed(2)}`,
+                  `• ${ingestRes.duplicateReason || 'Registro duplicado detectado.'}`
+                ].join('\n')
+              )
+              .catch(() => {});
+            await stickers.sendEmotionalSticker(firstCtx, 'SKEPTICAL');
+            return;
+          }
+
+          await reconciler.reconcileAndSyncSheets().catch(() => {});
+          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+
+          const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+          await firstCtx.api
+            .editMessageText(
+              firstCtx.chat.id,
+              statusMsg.message_id,
+              [
+                `✅ Nota longa costurada e salva! (${elapsedSec}s)`,
+                `🏪 ${finalizedDoc.storeTradingName}`,
+                `💰 Total: R$ ${finalizedDoc.totalAmount.toFixed(2)} | 🧾 ${finalizedDoc.items.length} itens (${stitched.overlapsDetected} emenda(s) unida(s))`
+              ].join('\n')
+            )
+            .catch(() => {});
+          await stickers.sendEmotionalSticker(firstCtx, 'THUMBS_UP');
+          logger.info(
+            {
+              chatId: firstCtx.chat.id,
+              receiptId: ingestRes.receiptId,
+              itemsCount: finalizedDoc.items.length,
+              overlaps: stitched.overlapsDetected,
+              elapsedMs: Date.now() - startedAt
+            },
+            '[FIM] [BotAlbum] Nota longa costurada e persistida com sucesso'
+          );
+          return;
+        }
+      }
+
+      // Sem sobreposição visual: trata como notas separadas e processa uma por uma
+      await firstCtx.api
+        .editMessageText(
+          firstCtx.chat.id,
+          statusMsg.message_id,
+          `📑 [2/3] As ${entries.length} fotos não têm sobreposição entre si — vou ler cada uma separadamente.`
+        )
+        .catch(() => {});
+
+      for (const entry of entries) {
+        await handleSingleMediaCtx(entry.ctx);
+      }
+    } catch (albumErr) {
+      logger.error(
+        { err: albumErr instanceof Error ? albumErr.message : String(albumErr), mediaGroupId: groupKey },
+        '[BotAlbum] Erro ao processar álbum; tentando individualmente'
+      );
+      for (const entry of entries) {
+        await handleSingleMediaCtx(entry.ctx).catch(() => {});
+      }
+    }
+  }
+
   bot.on(['message:photo', 'message:document'], async (ctx) => {
+    const mediaGroupId = ctx.message?.media_group_id ? String(ctx.message.media_group_id) : null;
+    const photos = ctx.message?.photo;
+    const caption = (ctx.message?.caption || '').trim();
+    const isRecipeOrPriceCaption =
+      /\b(receita|ingredientes?|modo de preparo|g[oô]ndola|prateleira|panfleto|flyer|encarte|corredor)\b/i.test(
+        caption
+      );
+
+    if (mediaGroupId && photos && photos.length > 0 && !isRecipeOrPriceCaption) {
+      const bestPhoto = photos[photos.length - 1];
+      const existing = pendingMediaGroups.get(mediaGroupId);
+      const entry: PendingAlbumEntry = {
+        ctx,
+        fileId: bestPhoto.file_id,
+        fileUniqueId: bestPhoto.file_unique_id,
+        caption,
+        messageId: ctx.message?.message_id
+      };
+
+      if (existing) {
+        clearTimeout(existing.timer);
+        existing.entries.push(entry);
+        existing.timer = setTimeout(() => {
+          void processMediaGroup(mediaGroupId);
+        }, 1800);
+      } else {
+        const timer = setTimeout(() => {
+          void processMediaGroup(mediaGroupId);
+        }, 1800);
+        pendingMediaGroups.set(mediaGroupId, { entries: [entry], timer });
+      }
+      return;
+    }
+
+    await handleSingleMediaCtx(ctx);
+  });
+
+  async function handleSingleMediaCtx(ctx: any) {
     const startMs = Date.now();
     const originalMessageId = ctx.message?.message_id;
     const replyOpts = originalMessageId
@@ -1716,7 +1897,7 @@ export function createArgusBot(): Bot {
         '[FIM] [BotMedia] Fluxo de processamento de mídia encerrado'
       );
     }
-  });
+  }
 
   // Persiste sessões pendentes de confirmação no PostgreSQL (argus.media_processing_queue) + bucket FotosArgus
   // para que nenhum deploy ou reinício do servidor perca o estado dos botões no Telegram!
