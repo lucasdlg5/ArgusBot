@@ -51,10 +51,7 @@ services:
       - key: USER_SHARE_EMAIL
         sync: false
       - key: RECEIPT_VISION_API_URL
-        fromService:
-          type: web
-          name: argus-receipt-vision
-          property: host
+        value: https://argus-receipt-vision.onrender.com
 
   - type: web
     name: argus-receipt-vision
