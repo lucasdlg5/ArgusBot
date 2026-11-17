@@ -3,13 +3,20 @@ import { logger } from '../config/logger';
 import { queryArgus } from '../lib/db';
 import { classifyIngredientPerishability } from '../lib/perishability';
 import { deriveRecipeMetadata } from '../lib/recipe-intelligence';
-import { classifyStoreForCurrentSweep, CANONICAL_STORE_NE, CANONICAL_STORE_SOUZA } from '../lib/store-normalization';
+import {
+  classifyAndNormalizeStoreName,
+  CANONICAL_STORE_NE,
+  CANONICAL_STORE_SOUZA
+} from '../lib/store-normalization';
 import type {
   BaseUnit,
   LogisticsScenario,
   OptimizationVerdict,
   ProductCategory,
   RecipeCostEvaluation,
+  RecipeMultiStoreComparison,
+  RecipeMultiStoreIngredientRow,
+  RecipeMultiStoreTimelinePoint,
   RecipeStoreHistoryTotals,
   RecipeStorePairComparisonItem,
   RecipeStoreQuote,
@@ -249,15 +256,15 @@ export class ArgusOptimizerService {
       ).catch(() => [])
     ]);
 
-    // Agrupa observações históricas por (canonical_product_id :: CANONICAL_STORE)
+    // Agrupa observações históricas por (canonical_product_id :: CANONICAL_STORE) para TODOS os mercados reais
     const historyByProductAndStore = new Map<string, StoreIngredientPricePoint[]>();
     const allObservations = [...receiptHistoryRows, ...collectedHistoryRows];
     for (const obs of allObservations) {
-      const normalizedStore = classifyStoreForCurrentSweep(obs.store_name).canonicalName;
-      if (normalizedStore !== CANONICAL_STORE_SOUZA && normalizedStore !== CANONICAL_STORE_NE) {
+      const normRes = classifyAndNormalizeStoreName(obs.store_name);
+      if (normRes.isGenericPlaceholder || !normRes.canonicalName) {
         continue;
       }
-      const key = `${obs.canonical_product_id}::${normalizedStore}`;
+      const key = `${obs.canonical_product_id}::${normRes.canonicalName}`;
       const list = historyByProductAndStore.get(key) ?? [];
       list.push({
         observedAt: new Date(obs.observed_at).toISOString(),
@@ -507,6 +514,12 @@ export class ArgusOptimizerService {
         priceRows,
         historyByProductAndStore
       });
+      const multiStoreComparison = this.buildMultiStoreHistoricalComparison({
+        breakdown,
+        priceRows,
+        stores,
+        historyByProductAndStore
+      });
 
       evaluations.push({
         recipeId: recipe.id,
@@ -541,11 +554,422 @@ export class ArgusOptimizerService {
         coldChainSummary,
         storeQuotes,
         ingredientsBreakdown: breakdown,
-        historicalStoreComparison
+        historicalStoreComparison,
+        multiStoreComparison
       });
     }
 
     return evaluations;
+  }
+
+  private buildStoreIngredientSummary(params: {
+    storeLabel: string;
+    canonicalKey: string;
+    ing: RecipeCostEvaluation['ingredientsBreakdown'][number];
+    fallbackBasePrice: number;
+    fallbackPkgPrice: number;
+    priceRows: Array<{
+      canonical_product_id: string;
+      store_name: string;
+      estimated_base_price: string;
+      estimated_package_price: string;
+      last_seen_at?: string;
+    }>;
+    historyByProductAndStore: Map<string, StoreIngredientPricePoint[]>;
+  }): StoreIngredientHistorySummary {
+    const {
+      storeLabel,
+      canonicalKey,
+      ing,
+      fallbackBasePrice,
+      fallbackPkgPrice,
+      priceRows,
+      historyByProductAndStore
+    } = params;
+
+    const points = historyByProductAndStore.get(`${ing.productId}::${canonicalKey}`) ?? [];
+    const currentRow = priceRows.find(
+      (r) =>
+        r.canonical_product_id === ing.productId &&
+        classifyAndNormalizeStoreName(r.store_name).canonicalName === canonicalKey
+    );
+
+    const effectivePoints: StoreIngredientPricePoint[] =
+      points.length > 0
+        ? points
+        : currentRow
+          ? [
+              {
+                observedAt: currentRow.last_seen_at || new Date().toISOString(),
+                packagePrice: Number(Number(currentRow.estimated_package_price).toFixed(2)),
+                basePrice: Number(Number(currentRow.estimated_base_price).toFixed(6)),
+                sourceType: 'HISTORICO'
+              }
+            ]
+          : [];
+
+    const hasRealHistory = effectivePoints.length > 0;
+    if (!hasRealHistory) {
+      const estProp = Number((ing.requiredBaseQty * fallbackBasePrice).toFixed(2));
+      const estCash = Number((ing.packagesNeeded * fallbackPkgPrice).toFixed(2));
+      return {
+        storeName: storeLabel,
+        hasRealHistory: false,
+        observationsCount: 0,
+        latestPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+        weightedPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+        avgHistoricalPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+        minHistoricalPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+        maxHistoricalPackagePrice: Number(fallbackPkgPrice.toFixed(2)),
+        latestProportionalCost: estProp,
+        weightedProportionalCost: estProp,
+        avgProportionalCost: estProp,
+        minProportionalCost: estProp,
+        maxProportionalCost: estProp,
+        latestCashCost: estCash,
+        weightedCashCost: estCash,
+        avgCashCost: estCash,
+        minCashCost: estCash,
+        maxCashCost: estCash,
+        lastSeenAt: null,
+        pricePoints: []
+      };
+    }
+
+    const latestPt = effectivePoints[effectivePoints.length - 1];
+    const prevThree = effectivePoints.slice(
+      Math.max(0, effectivePoints.length - 4),
+      effectivePoints.length - 1
+    );
+    const prevAvgBase =
+      prevThree.length > 0
+        ? prevThree.reduce((sum, pt) => sum + pt.basePrice, 0) / prevThree.length
+        : latestPt.basePrice;
+
+    const weightedBase = currentRow
+      ? Number(currentRow.estimated_base_price)
+      : 0.7 * latestPt.basePrice + 0.3 * prevAvgBase;
+    const weightedPkg = currentRow
+      ? Number(currentRow.estimated_package_price)
+      : weightedBase * ing.standardPackageSize;
+
+    const avgBase = effectivePoints.reduce((s, p) => s + p.basePrice, 0) / effectivePoints.length;
+    const avgPkg = effectivePoints.reduce((s, p) => s + p.packagePrice, 0) / effectivePoints.length;
+
+    let minPt = effectivePoints[0];
+    let maxPt = effectivePoints[0];
+    for (const pt of effectivePoints) {
+      if (pt.basePrice < minPt.basePrice) minPt = pt;
+      if (pt.basePrice > maxPt.basePrice) maxPt = pt;
+    }
+
+    const calcProp = (base: number) => Number((ing.requiredBaseQty * base).toFixed(2));
+    const calcCash = (pkg: number) => Number((ing.packagesNeeded * pkg).toFixed(2));
+
+    return {
+      storeName: storeLabel,
+      hasRealHistory: true,
+      observationsCount: effectivePoints.length,
+      latestPackagePrice: Number(latestPt.packagePrice.toFixed(2)),
+      weightedPackagePrice: Number(weightedPkg.toFixed(2)),
+      avgHistoricalPackagePrice: Number(avgPkg.toFixed(2)),
+      minHistoricalPackagePrice: Number(minPt.packagePrice.toFixed(2)),
+      maxHistoricalPackagePrice: Number(maxPt.packagePrice.toFixed(2)),
+      latestProportionalCost: calcProp(latestPt.basePrice),
+      weightedProportionalCost: calcProp(weightedBase),
+      avgProportionalCost: calcProp(avgBase),
+      minProportionalCost: calcProp(minPt.basePrice),
+      maxProportionalCost: calcProp(maxPt.basePrice),
+      latestCashCost: calcCash(latestPt.packagePrice),
+      weightedCashCost: calcCash(weightedPkg),
+      avgCashCost: calcCash(avgPkg),
+      minCashCost: calcCash(minPt.packagePrice),
+      maxCashCost: calcCash(maxPt.packagePrice),
+      lastSeenAt: latestPt.observedAt,
+      pricePoints: effectivePoints
+    };
+  }
+
+  private buildMultiStoreHistoricalComparison(params: {
+    breakdown: RecipeCostEvaluation['ingredientsBreakdown'];
+    priceRows: Array<{
+      canonical_product_id: string;
+      store_name: string;
+      estimated_base_price: string;
+      estimated_package_price: string;
+      last_seen_at?: string;
+    }>;
+    stores: Array<{ trading_name: string }>;
+    historyByProductAndStore: Map<string, StoreIngredientPricePoint[]>;
+  }): RecipeMultiStoreComparison {
+    const { breakdown, priceRows, stores, historyByProductAndStore } = params;
+
+    const storeDisplayMap = new Map<string, string>();
+    const registerStore = (rawName: string) => {
+      const normRes = classifyAndNormalizeStoreName(rawName);
+      if (normRes.isGenericPlaceholder || !normRes.canonicalName) return;
+      if (!storeDisplayMap.has(normRes.canonicalName)) {
+        const pretty =
+          normRes.canonicalName === CANONICAL_STORE_NE
+            ? 'NE Supermercado'
+            : normRes.canonicalName === CANONICAL_STORE_SOUZA
+              ? 'Mercado Souza'
+              : normRes.canonicalName;
+        storeDisplayMap.set(normRes.canonicalName, pretty);
+      }
+    };
+
+    for (const s of stores) registerStore(s.trading_name);
+    for (const r of priceRows) registerStore(r.store_name);
+    for (const fullKey of historyByProductAndStore.keys()) {
+      const canonical = fullKey.split('::')[1];
+      if (canonical) registerStore(canonical);
+    }
+
+    const canonicalKeys = Array.from(storeDisplayMap.keys());
+    const items: RecipeMultiStoreIngredientRow[] = breakdown.map((ing) => {
+      const fallbackBase =
+        ing.bestUnitPrice ??
+        (ing.baseUnit === 'un' ? 0.85 : ing.category === 'Carnes' ? 0.032 : 0.015);
+      const fallbackPkg =
+        ing.bestPackagePrice ?? Number((fallbackBase * ing.standardPackageSize).toFixed(2));
+
+      const byStore: Record<string, StoreIngredientHistorySummary> = {};
+      const realEntries: Array<{ storeName: string; cash: number }> = [];
+
+      for (const cKey of canonicalKeys) {
+        const label = storeDisplayMap.get(cKey)!;
+        const summary = this.buildStoreIngredientSummary({
+          storeLabel: label,
+          canonicalKey: cKey,
+          ing,
+          fallbackBasePrice: fallbackBase,
+          fallbackPkgPrice: fallbackPkg,
+          priceRows,
+          historyByProductAndStore
+        });
+        byStore[label] = summary;
+        if (summary.hasRealHistory) {
+          realEntries.push({ storeName: label, cash: summary.weightedCashCost });
+        }
+      }
+
+      realEntries.sort((a, b) => a.cash - b.cash);
+      const cheapestStoreName = realEntries.length > 0 ? realEntries[0].storeName : null;
+      const savingsVsSecondBest =
+        realEntries.length >= 2
+          ? Number((realEntries[1].cash - realEntries[0].cash).toFixed(2))
+          : 0;
+
+      return {
+        productId: ing.productId,
+        productName: ing.productName,
+        category: ing.category || 'Mercearia',
+        baseUnit: ing.baseUnit,
+        requiredBaseQty: ing.requiredBaseQty,
+        standardPackageSize: ing.standardPackageSize,
+        packagesNeeded: ing.packagesNeeded,
+        byStore,
+        cheapestStoreName,
+        savingsVsSecondBest
+      };
+    });
+
+    const storeTotals: RecipeStoreHistoryTotals[] = canonicalKeys.map((cKey) => {
+      const label = storeDisplayMap.get(cKey)!;
+      let matched = 0;
+      let totalObs = 0;
+      let lastObservedAt: string | null = null;
+      let weightedCash = 0;
+      let weightedProp = 0;
+      let avgCash = 0;
+      let avgProp = 0;
+      let minCash = 0;
+      let minProp = 0;
+      let maxCash = 0;
+      let maxProp = 0;
+      let latestCash = 0;
+      let latestProp = 0;
+
+      for (const it of items) {
+        const s = it.byStore[label];
+        if (!s) continue;
+        if (s.hasRealHistory) matched += 1;
+        totalObs += s.observationsCount;
+        if (s.lastSeenAt && (!lastObservedAt || s.lastSeenAt > lastObservedAt)) {
+          lastObservedAt = s.lastSeenAt;
+        }
+        weightedCash += s.weightedCashCost;
+        weightedProp += s.weightedProportionalCost;
+        avgCash += s.avgCashCost;
+        avgProp += s.avgProportionalCost;
+        minCash += s.minCashCost;
+        minProp += s.minProportionalCost;
+        maxCash += s.maxCashCost;
+        maxProp += s.maxProportionalCost;
+        latestCash += s.latestCashCost;
+        latestProp += s.latestProportionalCost;
+      }
+
+      const total = items.length;
+      return {
+        storeName: label,
+        matchedIngredientsCount: matched,
+        totalIngredientsCount: total,
+        coveragePct: total > 0 ? Number(((matched / total) * 100).toFixed(1)) : 0,
+        totalObservationsCount: totalObs,
+        lastObservedAt,
+        weightedCashCost: Number(weightedCash.toFixed(2)),
+        weightedProportionalCost: Number(weightedProp.toFixed(2)),
+        avgHistoricalCashCost: Number(avgCash.toFixed(2)),
+        avgHistoricalProportionalCost: Number(avgProp.toFixed(2)),
+        minHistoricalCashCost: Number(minCash.toFixed(2)),
+        minHistoricalProportionalCost: Number(minProp.toFixed(2)),
+        maxHistoricalCashCost: Number(maxCash.toFixed(2)),
+        maxHistoricalProportionalCost: Number(maxProp.toFixed(2)),
+        latestCashCost: Number(latestCash.toFixed(2)),
+        latestProportionalCost: Number(latestProp.toFixed(2))
+      };
+    });
+
+    storeTotals.sort((a, b) => a.weightedCashCost - b.weightedCashCost);
+
+    const byProp = [...storeTotals].sort(
+      (a, b) => a.weightedProportionalCost - b.weightedProportionalCost
+    );
+    const cheapestCash = storeTotals[0];
+    const highestCash = storeTotals[storeTotals.length - 1];
+    const savingsWeightedCash =
+      cheapestCash && highestCash
+        ? Number((highestCash.weightedCashCost - cheapestCash.weightedCashCost).toFixed(2))
+        : 0;
+    const savingsWeightedPct =
+      highestCash && highestCash.weightedCashCost > 0
+        ? Number(((savingsWeightedCash / highestCash.weightedCashCost) * 100).toFixed(1))
+        : 0;
+
+    const cheapestProp = byProp[0];
+    const highestProp = byProp[byProp.length - 1];
+    const savingsWeightedProportional =
+      cheapestProp && highestProp
+        ? Number(
+            (highestProp.weightedProportionalCost - cheapestProp.weightedProportionalCost).toFixed(
+              2
+            )
+          )
+        : 0;
+
+    const allDates: string[] = [];
+    for (const it of items) {
+      for (const s of Object.values(it.byStore)) {
+        for (const pt of s.pricePoints) allDates.push(pt.observedAt);
+      }
+    }
+
+    const ptMonths = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez'
+    ];
+    const anchorDate =
+      allDates.length > 0
+        ? new Date(
+            Math.max(
+              Date.now(),
+              ...allDates.map((d) => new Date(d).getTime()).filter((t) => !Number.isNaN(t))
+            )
+          )
+        : new Date();
+    const anchorYear = anchorDate.getUTCFullYear();
+    const anchorMonth = anchorDate.getUTCMonth();
+
+    const rollingSixMonthsKeys: string[] = [];
+    for (let offset = 5; offset >= 0; offset--) {
+      const dt = new Date(Date.UTC(anchorYear, anchorMonth - offset, 15));
+      const y = dt.getUTCFullYear();
+      const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+      rollingSixMonthsKeys.push(`${y}-${m}`);
+    }
+
+    const toMonthKey = (iso: string) => iso.slice(0, 7);
+    const toMonthLabel = (ymKey: string) => {
+      const [yStr, mStr] = ymKey.split('-');
+      const mIdx = Math.max(0, Math.min(11, Number(mStr) - 1));
+      return `${ptMonths[mIdx]}/${yStr.slice(-2)}`;
+    };
+
+    const hasObsInRollingSix = allDates.some((d) => {
+      const mk = toMonthKey(d);
+      return (
+        mk >= rollingSixMonthsKeys[0] &&
+        mk <= rollingSixMonthsKeys[rollingSixMonthsKeys.length - 1]
+      );
+    });
+
+    const periodKeys = hasObsInRollingSix
+      ? rollingSixMonthsKeys
+      : Array.from(new Set(allDates.map(toMonthKey))).sort().slice(-6);
+
+    const storeLabels = storeTotals.map((s) => s.storeName);
+    const timeline: RecipeMultiStoreTimelinePoint[] = periodKeys.map((pKey) => {
+      const byStoreCash: Record<string, number> = {};
+      const byStoreProportional: Record<string, number> = {};
+      const byStoreRealItems: Record<string, number> = {};
+
+      for (const label of storeLabels) {
+        let sCash = 0;
+        let sProp = 0;
+        let sReal = 0;
+        for (const it of items) {
+          const stSum = it.byStore[label];
+          if (!stSum) continue;
+          const pts = stSum.pricePoints.filter((p) => toMonthKey(p.observedAt) <= pKey);
+          if (pts.length > 0) {
+            const latest = pts[pts.length - 1];
+            sCash += it.packagesNeeded * latest.packagePrice;
+            sProp += it.requiredBaseQty * latest.basePrice;
+            sReal += 1;
+          } else {
+            const first = stSum.pricePoints[0];
+            sCash += first ? it.packagesNeeded * first.packagePrice : stSum.weightedCashCost;
+            sProp += first
+              ? it.requiredBaseQty * first.basePrice
+              : stSum.weightedProportionalCost;
+          }
+        }
+        byStoreCash[label] = Number(sCash.toFixed(2));
+        byStoreProportional[label] = Number(sProp.toFixed(2));
+        byStoreRealItems[label] = sReal;
+      }
+
+      return {
+        periodLabel: toMonthLabel(pKey),
+        sortKey: pKey,
+        byStoreCash,
+        byStoreProportional,
+        byStoreRealItems
+      };
+    });
+
+    return {
+      stores: storeTotals,
+      winnerWeightedCashStore: cheapestCash?.storeName ?? null,
+      winnerWeightedProportionalStore: cheapestProp?.storeName ?? null,
+      savingsWeightedCash,
+      savingsWeightedPct,
+      savingsWeightedProportional,
+      items,
+      timeline
+    };
   }
 
   private buildTwoStoreHistoricalComparison(params: {
@@ -573,7 +997,7 @@ export class ArgusOptimizerService {
       const currentRow = priceRows.find(
         (r) =>
           r.canonical_product_id === ing.productId &&
-          classifyStoreForCurrentSweep(r.store_name).canonicalName === canonicalKey
+          classifyAndNormalizeStoreName(r.store_name).canonicalName === canonicalKey
       );
 
       // Se existir linha em v_current_product_prices mas nenhuma observação direta, cria ponto sintético da leitura atual

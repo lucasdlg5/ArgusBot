@@ -68,4 +68,21 @@ describe('ArgusOptimizerService — Motor de Receitas e Logística (Carro vs. Ub
       expect(cmp!.winnerWeightedCash).toBe(expectedWinner);
     }
   });
+
+  it('populates dynamic multiStoreComparison for 2+ stores including a 3rd store', async () => {
+    const evaluations = await optimizer.evaluateRecipeCosts();
+    expect(evaluations.length).toBeGreaterThan(0);
+
+    const first = evaluations[0];
+    expect(first.multiStoreComparison).toBeDefined();
+    expect(first.multiStoreComparison!.stores.length).toBeGreaterThanOrEqual(2);
+    expect(first.multiStoreComparison!.items.length).toBeGreaterThan(0);
+    expect(first.multiStoreComparison!.timeline.length).toBeGreaterThan(0);
+
+    // Ranking must be sorted ascending by weightedCashCost
+    const costs = first.multiStoreComparison!.stores.map((s) => s.weightedCashCost);
+    for (let i = 1; i < costs.length; i++) {
+      expect(costs[i]).toBeGreaterThanOrEqual(costs[i - 1] - 0.001);
+    }
+  });
 });

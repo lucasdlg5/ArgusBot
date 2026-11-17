@@ -412,6 +412,38 @@ export interface RecipeTwoStoreComparison {
   timeline: RecipeTimelineComparisonPoint[];
 }
 
+export interface RecipeMultiStoreIngredientRow {
+  productId: string;
+  productName: string;
+  category: ProductCategory;
+  baseUnit: BaseUnit;
+  requiredBaseQty: number;
+  standardPackageSize: number;
+  packagesNeeded: number;
+  byStore: Record<string, StoreIngredientHistorySummary>;
+  cheapestStoreName: string | null;
+  savingsVsSecondBest: number;
+}
+
+export interface RecipeMultiStoreTimelinePoint {
+  periodLabel: string;
+  sortKey: string;
+  byStoreCash: Record<string, number>;
+  byStoreProportional: Record<string, number>;
+  byStoreRealItems: Record<string, number>;
+}
+
+export interface RecipeMultiStoreComparison {
+  stores: RecipeStoreHistoryTotals[];
+  winnerWeightedCashStore: string | null;
+  winnerWeightedProportionalStore: string | null;
+  savingsWeightedCash: number;
+  savingsWeightedPct: number;
+  savingsWeightedProportional: number;
+  items: RecipeMultiStoreIngredientRow[];
+  timeline: RecipeMultiStoreTimelinePoint[];
+}
+
 export interface RecipeCostEvaluation {
   recipeId: string;
   recipeName: string;
@@ -446,6 +478,7 @@ export interface RecipeCostEvaluation {
   similarRecipes?: SimilarRecipeSuggestion[];
   routeAnalysis?: RecipeRouteAnalysis;
   historicalStoreComparison?: RecipeTwoStoreComparison;
+  multiStoreComparison?: RecipeMultiStoreComparison;
 }
 
 export interface RouteLegGeometry {

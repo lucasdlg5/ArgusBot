@@ -74,7 +74,7 @@ export interface UpdateRecipeIngredientInput {
   standardPackageSize: number;
   quantityInBaseUnit: number;
   manualPackagePrice?: number | null;
-  manualStoreName?: 'MERCADO_SOUZA' | 'NE_SUPERMERCADO' | null;
+  manualStoreName?: string | null;
 }
 
 const VALID_CATEGORIES = new Set<ProductCategory>([
@@ -1232,13 +1232,17 @@ export class ArgusRecipeService {
         `SELECT id, trading_name FROM argus.stores ORDER BY trading_name ASC`
       );
       if (stores.length > 0) {
-        const wantSouza = input.manualStoreName === 'MERCADO_SOUZA';
+        const rawStore = (input.manualStoreName || '').trim();
+        const normWant = rawStore.toUpperCase().replace(/_/g, ' ');
         const targetStore =
-          stores.find((s) =>
-            wantSouza
-              ? s.trading_name.toUpperCase().includes('SOUZA')
-              : s.trading_name.toUpperCase().includes('NE')
-          ) || stores[0];
+          (normWant
+            ? stores.find(
+                (s) =>
+                  s.trading_name.toUpperCase() === normWant ||
+                  s.trading_name.toUpperCase().includes(normWant) ||
+                  normWant.includes(s.trading_name.toUpperCase())
+              )
+            : undefined) || stores[0];
         const unitType = baseUnit === 'ml' ? 'LT' : baseUnit === 'un' ? 'UN' : 'KG';
         const normPrice = Number((manualPrice / stdPkg).toFixed(6));
 

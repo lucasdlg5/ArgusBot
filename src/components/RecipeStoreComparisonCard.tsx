@@ -31,13 +31,13 @@ import {
   YAxis
 } from 'recharts';
 import { resolvePublicApiUrl } from '@/lib/public-bi-client';
-import { CANONICAL_STORE_NE, CANONICAL_STORE_SOUZA, classifyStoreForCurrentSweep } from '@/lib/store-normalization';
 import type {
   BaseUnit,
   ProductCategory,
   RecipeCostEvaluation,
-  RecipeStorePairComparisonItem,
-  RecipeTwoStoreComparison
+  RecipeMultiStoreComparison,
+  RecipeMultiStoreIngredientRow,
+  StoreIngredientHistorySummary
 } from '@/types/argus';
 
 type CostBasis = 'CASH' | 'PROPORTIONAL';
@@ -51,7 +51,14 @@ interface RecipeStoreComparisonCardProps {
   onRecipeUpdated?: (updated: RecipeCostEvaluation) => void;
 }
 
-const PT_MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const STORE_PALETTE = [
+  '#10b981', // emerald
+  '#38bdf8', // sky
+  '#f59e0b', // amber
+  '#a855f7', // purple
+  '#f43f5e', // rose
+  '#14b8a6'  // teal
+];
 
 const SOURCE_LABELS: Record<string, string> = {
   CUPOM_FISCAL: 'Cupom Fiscal',
@@ -64,111 +71,86 @@ const SOURCE_LABELS: Record<string, string> = {
 interface TrendChartDatum {
   period: string;
   sortKey: string;
-  'Mercado Souza': number;
-  'NE Supermercado': number;
-  souzaReal: number;
-  neReal: number;
   totalItems: number;
-  souzaBaseDeltaPct: number;
-  neBaseDeltaPct: number;
+  [key: string]: string | number;
 }
 
 function TrendTooltipContent({
   active,
   payload,
-  label
+  label,
+  storeNames,
+  colorMap
 }: {
   active?: boolean;
   payload?: Array<{ payload?: TrendChartDatum }>;
   label?: string;
+  storeNames: string[];
+  colorMap: Record<string, string>;
 }) {
   if (!active || !payload || payload.length === 0 || !payload[0]?.payload) {
     return null;
   }
   const d = payload[0].payload;
-  const souzaCost = d['Mercado Souza'];
-  const neCost = d['NE Supermercado'];
-  const diff = Number((souzaCost - neCost).toFixed(2));
-  const absDiff = Math.abs(diff);
-  const maxVal = Math.max(souzaCost, neCost);
-  const diffPct = maxVal > 0 ? ((absDiff / maxVal) * 100).toFixed(1) : '0.0';
-  const winnerLabel =
-    absDiff <= 0.05
-      ? 'Empate técnico'
-      : diff > 0
-        ? `NE Supermercado -R$ ${absDiff.toFixed(2)} (${diffPct}%)`
-        : `Mercado Souza -R$ ${absDiff.toFixed(2)} (${diffPct}%)`;
+  const rows = storeNames
+    .map((name) => ({
+      name,
+      cost: Number(d[name] ?? 0),
+      deltaPct: Number(d[`${name}__delta`] ?? 0),
+      color: colorMap[name] || '#10b981'
+    }))
+    .sort((a, b) => a.cost - b.cost);
 
-  const formatDelta = (pct: number) =>
-    `${pct > 0 ? '+' : ''}${pct.toFixed(1)}% vs. início`;
+  const cheapest = rows[0];
+  const second = rows[1];
+  const diff = cheapest && second ? Number((second.cost - cheapest.cost).toFixed(2)) : 0;
 
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-950/95 px-3.5 py-3 shadow-xl text-xs space-y-2 min-w-[230px]">
       <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
         <span className="font-bold text-white">{label}</span>
         <span className="text-[11px] text-slate-400 tabular-nums">
-          {Math.min(d.souzaReal, d.neReal)}/{d.totalItems} itens c/ leitura
+          {storeNames.length} mercados
         </span>
       </div>
 
       <div className="space-y-1.5 tabular-nums">
-        <div className="flex items-center justify-between gap-4">
-          <span className="inline-flex items-center gap-1.5 text-sky-300 font-medium">
-            <span className="h-2 w-2 rounded-full bg-sky-400" />
-            Mercado Souza
-          </span>
-          <div className="text-right">
-            <span className="font-bold text-white">R$ {souzaCost.toFixed(2)}</span>
-            <span
-              className={`ml-1.5 text-[10px] ${
-                d.souzaBaseDeltaPct > 0.5
-                  ? 'text-rose-400'
-                  : d.souzaBaseDeltaPct < -0.5
-                    ? 'text-emerald-400'
-                    : 'text-slate-400'
-              }`}
-            >
-              ({formatDelta(d.souzaBaseDeltaPct)})
+        {rows.map((row) => (
+          <div key={row.name} className="flex items-center justify-between gap-4">
+            <span className="inline-flex items-center gap-1.5 text-slate-200 font-medium truncate max-w-[140px]">
+              <span
+                className="h-2 w-2 rounded-full shrink-0"
+                style={{ backgroundColor: row.color }}
+              />
+              {row.name}
             </span>
+            <div className="text-right shrink-0">
+              <span className="font-bold text-white">R$ {row.cost.toFixed(2)}</span>
+              <span
+                className={`ml-1.5 text-[10px] ${
+                  row.deltaPct > 0.5
+                    ? 'text-rose-400'
+                    : row.deltaPct < -0.5
+                      ? 'text-emerald-400'
+                      : 'text-slate-400'
+                }`}
+              >
+                ({row.deltaPct > 0 ? '+' : ''}
+                {row.deltaPct.toFixed(1)}%)
+              </span>
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <span className="inline-flex items-center gap-1.5 text-emerald-300 font-medium">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            NE Supermercado
-          </span>
-          <div className="text-right">
-            <span className="font-bold text-white">R$ {neCost.toFixed(2)}</span>
-            <span
-              className={`ml-1.5 text-[10px] ${
-                d.neBaseDeltaPct > 0.5
-                  ? 'text-rose-400'
-                  : d.neBaseDeltaPct < -0.5
-                    ? 'text-emerald-400'
-                    : 'text-slate-400'
-              }`}
-            >
-              ({formatDelta(d.neBaseDeltaPct)})
-            </span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between text-[11px]">
-        <span className="text-slate-400">Mais barato no mês:</span>
-        <span
-          className={`font-semibold tabular-nums ${
-            absDiff <= 0.05
-              ? 'text-slate-200'
-              : diff > 0
-                ? 'text-emerald-400'
-                : 'text-sky-400'
-          }`}
-        >
-          {winnerLabel}
-        </span>
-      </div>
+      {cheapest && second && (
+        <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between text-[11px]">
+          <span className="text-slate-400">Mais barato no mês:</span>
+          <span className="font-semibold text-emerald-400 tabular-nums">
+            {diff <= 0.05 ? 'Empate técnico' : `${cheapest.name} (-R$ ${diff.toFixed(2)})`}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -180,30 +162,90 @@ function formatShortDate(iso: string | null): string {
   return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function buildFallbackComparisonFromQuotes(recipe: RecipeCostEvaluation): RecipeTwoStoreComparison | null {
-  const souzaQuote = recipe.storeQuotes.find(
-    (sq) => classifyStoreForCurrentSweep(sq.storeName).canonicalName === CANONICAL_STORE_SOUZA
-  );
-  const neQuote = recipe.storeQuotes.find(
-    (sq) => classifyStoreForCurrentSweep(sq.storeName).canonicalName === CANONICAL_STORE_NE
-  );
+function buildFallbackMultiStoreComparison(
+  recipe: RecipeCostEvaluation
+): RecipeMultiStoreComparison | null {
+  if (recipe.multiStoreComparison && recipe.multiStoreComparison.stores.length > 0) {
+    return recipe.multiStoreComparison;
+  }
 
-  if (!souzaQuote && !neQuote) return null;
+  if (recipe.storeQuotes.length === 0) {
+    if (!recipe.historicalStoreComparison) return null;
+    const h = recipe.historicalStoreComparison;
+    return {
+      stores: [h.neSupermercado, h.mercadoSouza].sort(
+        (a, b) => a.weightedCashCost - b.weightedCashCost
+      ),
+      winnerWeightedCashStore:
+        h.winnerWeightedCash === 'MERCADO_SOUZA'
+          ? 'Mercado Souza'
+          : h.winnerWeightedCash === 'NE_SUPERMERCADO'
+            ? 'NE Supermercado'
+            : null,
+      winnerWeightedProportionalStore:
+        h.winnerWeightedProportional === 'MERCADO_SOUZA'
+          ? 'Mercado Souza'
+          : h.winnerWeightedProportional === 'NE_SUPERMERCADO'
+            ? 'NE Supermercado'
+            : null,
+      savingsWeightedCash: h.savingsWeightedCash,
+      savingsWeightedPct: h.savingsWeightedPct,
+      savingsWeightedProportional: h.savingsWeightedProportional,
+      items: h.items.map((it) => {
+        const cheaper =
+          it.cheaperStoreWeighted === 'MERCADO_SOUZA'
+            ? 'Mercado Souza'
+            : it.cheaperStoreWeighted === 'NE_SUPERMERCADO'
+              ? 'NE Supermercado'
+              : null;
+        return {
+          productId: it.productId,
+          productName: it.productName,
+          category: it.category,
+          baseUnit: it.baseUnit,
+          requiredBaseQty: it.requiredBaseQty,
+          standardPackageSize: it.standardPackageSize,
+          packagesNeeded: it.packagesNeeded,
+          byStore: {
+            'Mercado Souza': it.mercadoSouza,
+            'NE Supermercado': it.neSupermercado
+          },
+          cheapestStoreName: cheaper,
+          savingsVsSecondBest: Math.abs(it.weightedCashDiff)
+        };
+      }),
+      timeline: h.timeline.map((pt) => ({
+        periodLabel: pt.periodLabel,
+        sortKey: pt.sortKey,
+        byStoreCash: {
+          'Mercado Souza': pt.mercadoSouzaCash,
+          'NE Supermercado': pt.neSupermercadoCash
+        },
+        byStoreProportional: {
+          'Mercado Souza': pt.mercadoSouzaProportional,
+          'NE Supermercado': pt.neSupermercadoProportional
+        },
+        byStoreRealItems: {
+          'Mercado Souza': pt.mercadoSouzaRealItems,
+          'NE Supermercado': pt.neSupermercadoRealItems
+        }
+      }))
+    };
+  }
 
-  const items: RecipeStorePairComparisonItem[] = recipe.ingredientsBreakdown.map((ing) => {
-    const sItem = souzaQuote?.items.find((it) => it.productId === ing.productId);
-    const nItem = neQuote?.items.find((it) => it.productId === ing.productId);
+  const storeNames = recipe.storeQuotes.map((sq) => sq.storeName);
+  const items: RecipeMultiStoreIngredientRow[] = recipe.ingredientsBreakdown.map((ing) => {
+    const byStore: Record<string, StoreIngredientHistorySummary> = {};
+    const realList: Array<{ storeName: string; cash: number }> = [];
 
-    const makeSummary = (
-      storeName: string,
-      qItem: typeof sItem
-    ): RecipeStorePairComparisonItem['mercadoSouza'] => {
+    for (const sq of recipe.storeQuotes) {
+      const qItem = sq.items.find((it) => it.productId === ing.productId);
       const cash = qItem ? qItem.cashOutlayCost : ing.cashOutlayCost;
       const prop = qItem ? qItem.proportionalCost : ing.proportionalCost;
       const pkg = qItem ? qItem.packagePrice : ing.bestPackagePrice ?? cash;
       const hasReal = Boolean(qItem?.hasRealPrice);
-      return {
-        storeName,
+      byStore[sq.storeName] = {
+        storeName: sq.storeName,
         hasRealHistory: hasReal,
         observationsCount: hasReal ? 1 : 0,
         latestPackagePrice: pkg,
@@ -224,20 +266,10 @@ function buildFallbackComparisonFromQuotes(recipe: RecipeCostEvaluation): Recipe
         lastSeenAt: null,
         pricePoints: []
       };
-    };
-
-    const souza = makeSummary('Mercado Souza', sItem);
-    const ne = makeSummary('NE Supermercado', nItem);
-    let cheaper: RecipeStorePairComparisonItem['cheaperStoreWeighted'] = 'INSUFFICIENT_DATA';
-    if (souza.hasRealHistory && ne.hasRealHistory) {
-      cheaper =
-        Math.abs(souza.weightedCashCost - ne.weightedCashCost) <= 0.05
-          ? 'TIE'
-          : souza.weightedCashCost < ne.weightedCashCost
-            ? 'MERCADO_SOUZA'
-            : 'NE_SUPERMERCADO';
+      if (hasReal) realList.push({ storeName: sq.storeName, cash });
     }
 
+    realList.sort((a, b) => a.cash - b.cash);
     return {
       productId: ing.productId,
       productName: ing.productName,
@@ -246,86 +278,67 @@ function buildFallbackComparisonFromQuotes(recipe: RecipeCostEvaluation): Recipe
       requiredBaseQty: ing.requiredBaseQty,
       standardPackageSize: ing.standardPackageSize,
       packagesNeeded: ing.packagesNeeded,
-      mercadoSouza: souza,
-      neSupermercado: ne,
-      cheaperStoreWeighted: cheaper,
-      weightedCashDiff: Number((souza.weightedCashCost - ne.weightedCashCost).toFixed(2)),
-      weightedProportionalDiff: Number(
-        (souza.weightedProportionalCost - ne.weightedProportionalCost).toFixed(2)
-      )
+      byStore,
+      cheapestStoreName: realList[0]?.storeName ?? null,
+      savingsVsSecondBest:
+        realList.length >= 2 ? Number((realList[1].cash - realList[0].cash).toFixed(2)) : 0
     };
   });
 
-  const sumTotals = (storeName: string, key: 'mercadoSouza' | 'neSupermercado') => {
-    const matched = items.filter((i) => i[key].hasRealHistory).length;
-    const wCash = Number(items.reduce((s, i) => s + i[key].weightedCashCost, 0).toFixed(2));
-    const wProp = Number(items.reduce((s, i) => s + i[key].weightedProportionalCost, 0).toFixed(2));
-    return {
-      storeName,
-      matchedIngredientsCount: matched,
-      totalIngredientsCount: items.length,
-      coveragePct: items.length > 0 ? Number(((matched / items.length) * 100).toFixed(1)) : 0,
-      totalObservationsCount: matched,
-      lastObservedAt: null,
-      weightedCashCost: wCash,
-      weightedProportionalCost: wProp,
-      avgHistoricalCashCost: wCash,
-      avgHistoricalProportionalCost: wProp,
-      minHistoricalCashCost: wCash,
-      minHistoricalProportionalCost: wProp,
-      maxHistoricalCashCost: wCash,
-      maxHistoricalProportionalCost: wProp,
-      latestCashCost: wCash,
-      latestProportionalCost: wProp
-    };
-  };
+  const stores = storeNames
+    .map((storeName) => {
+      const matched = items.filter((i) => i.byStore[storeName]?.hasRealHistory).length;
+      const wCash = Number(
+        items.reduce((s, i) => s + (i.byStore[storeName]?.weightedCashCost ?? 0), 0).toFixed(2)
+      );
+      const wProp = Number(
+        items
+          .reduce((s, i) => s + (i.byStore[storeName]?.weightedProportionalCost ?? 0), 0)
+          .toFixed(2)
+      );
+      return {
+        storeName,
+        matchedIngredientsCount: matched,
+        totalIngredientsCount: items.length,
+        coveragePct: items.length > 0 ? Number(((matched / items.length) * 100).toFixed(1)) : 0,
+        totalObservationsCount: matched,
+        lastObservedAt: null,
+        weightedCashCost: wCash,
+        weightedProportionalCost: wProp,
+        avgHistoricalCashCost: wCash,
+        avgHistoricalProportionalCost: wProp,
+        minHistoricalCashCost: wCash,
+        minHistoricalProportionalCost: wProp,
+        maxHistoricalCashCost: wCash,
+        maxHistoricalProportionalCost: wProp,
+        latestCashCost: wCash,
+        latestProportionalCost: wProp
+      };
+    })
+    .sort((a, b) => a.weightedCashCost - b.weightedCashCost);
 
-  const mercadoSouza = sumTotals('Mercado Souza', 'mercadoSouza');
-  const neSupermercado = sumTotals('NE Supermercado', 'neSupermercado');
-  const sharedItems = items.filter((i) => i.mercadoSouza.hasRealHistory && i.neSupermercado.hasRealHistory);
-  const diffCash = Number((mercadoSouza.weightedCashCost - neSupermercado.weightedCashCost).toFixed(2));
-  const diffProp = Number(
-    (mercadoSouza.weightedProportionalCost - neSupermercado.weightedProportionalCost).toFixed(2)
-  );
-  const maxCash = Math.max(mercadoSouza.weightedCashCost, neSupermercado.weightedCashCost);
+  const cheapest = stores[0];
+  const highest = stores[stores.length - 1];
+  const savingsWeightedCash =
+    cheapest && highest ? Number((highest.weightedCashCost - cheapest.weightedCashCost).toFixed(2)) : 0;
 
   return {
-    mercadoSouza,
-    neSupermercado,
-    commonOnly: {
-      sharedIngredientsCount: sharedItems.length,
-      mercadoSouzaWeightedCash: Number(
-        sharedItems.reduce((s, i) => s + i.mercadoSouza.weightedCashCost, 0).toFixed(2)
-      ),
-      neSupermercadoWeightedCash: Number(
-        sharedItems.reduce((s, i) => s + i.neSupermercado.weightedCashCost, 0).toFixed(2)
-      ),
-      mercadoSouzaWeightedProportional: Number(
-        sharedItems.reduce((s, i) => s + i.mercadoSouza.weightedProportionalCost, 0).toFixed(2)
-      ),
-      neSupermercadoWeightedProportional: Number(
-        sharedItems.reduce((s, i) => s + i.neSupermercado.weightedProportionalCost, 0).toFixed(2)
-      ),
-      mercadoSouzaAvgCash: Number(
-        sharedItems.reduce((s, i) => s + i.mercadoSouza.avgCashCost, 0).toFixed(2)
-      ),
-      neSupermercadoAvgCash: Number(
-        sharedItems.reduce((s, i) => s + i.neSupermercado.avgCashCost, 0).toFixed(2)
-      ),
-      mercadoSouzaMinCash: Number(
-        sharedItems.reduce((s, i) => s + i.mercadoSouza.minCashCost, 0).toFixed(2)
-      ),
-      neSupermercadoMinCash: Number(
-        sharedItems.reduce((s, i) => s + i.neSupermercado.minCashCost, 0).toFixed(2)
-      )
-    },
-    winnerWeightedCash:
-      Math.abs(diffCash) <= 0.05 ? 'TIE' : diffCash > 0 ? 'NE_SUPERMERCADO' : 'MERCADO_SOUZA',
-    savingsWeightedCash: Number(Math.abs(diffCash).toFixed(2)),
-    savingsWeightedPct: maxCash > 0 ? Number(((Math.abs(diffCash) / maxCash) * 100).toFixed(1)) : 0,
-    winnerWeightedProportional:
-      Math.abs(diffProp) <= 0.05 ? 'TIE' : diffProp > 0 ? 'NE_SUPERMERCADO' : 'MERCADO_SOUZA',
-    savingsWeightedProportional: Number(Math.abs(diffProp).toFixed(2)),
+    stores,
+    winnerWeightedCashStore: cheapest?.storeName ?? null,
+    winnerWeightedProportionalStore:
+      [...stores].sort((a, b) => a.weightedProportionalCost - b.weightedProportionalCost)[0]
+        ?.storeName ?? null,
+    savingsWeightedCash,
+    savingsWeightedPct:
+      highest && highest.weightedCashCost > 0
+        ? Number(((savingsWeightedCash / highest.weightedCashCost) * 100).toFixed(1))
+        : 0,
+    savingsWeightedProportional:
+      cheapest && highest
+        ? Number(
+            (highest.weightedProportionalCost - cheapest.weightedProportionalCost).toFixed(2)
+          )
+        : 0,
     items,
     timeline: []
   };
@@ -340,6 +353,7 @@ export default function RecipeStoreComparisonCard({
   const [historyLens, setHistoryLens] = useState<HistoryLens>('WEIGHTED');
   const [scopeMode, setScopeMode] = useState<ScopeMode>('FULL');
   const [trendWindow, setTrendWindow] = useState<TrendWindow>('6M');
+  const [selectedStoreFilter, setSelectedStoreFilter] = useState<string[] | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [editingIngredient, setEditingIngredient] = useState<{
     productId: string;
@@ -349,18 +363,38 @@ export default function RecipeStoreComparisonCard({
     standardPackageSize: string;
     quantityInBaseUnit: string;
     manualPackagePrice: string;
-    manualStoreName: 'NE_SUPERMERCADO' | 'MERCADO_SOUZA';
+    manualStoreName: string;
   } | null>(null);
   const [savingIngredient, setSavingIngredient] = useState(false);
   const [saveIngredientError, setSaveIngredientError] = useState<string | null>(null);
 
-  const openEditIngredient = (item: RecipeStorePairComparisonItem) => {
+  const comparison = useMemo(() => buildFallbackMultiStoreComparison(recipe), [recipe]);
+  const scaledPortions = Math.max(1, Math.round(recipe.servings * portionMultiplier));
+
+  const allStoreNames = useMemo(
+    () => (comparison ? comparison.stores.map((s) => s.storeName) : []),
+    [comparison]
+  );
+
+  const visibleStoreNames = useMemo(() => {
+    if (!selectedStoreFilter || selectedStoreFilter.length === 0) return allStoreNames;
+    const valid = allStoreNames.filter((n) => selectedStoreFilter.includes(n));
+    return valid.length > 0 ? valid : allStoreNames;
+  }, [allStoreNames, selectedStoreFilter]);
+
+  const storeColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    allStoreNames.forEach((name, idx) => {
+      map[name] = STORE_PALETTE[idx % STORE_PALETTE.length];
+    });
+    return map;
+  }, [allStoreNames]);
+
+  const openEditIngredient = (item: RecipeMultiStoreIngredientRow) => {
     setSaveIngredientError(null);
-    const defaultPrice = item.neSupermercado.hasRealHistory
-      ? item.neSupermercado.weightedPackagePrice
-      : item.mercadoSouza.hasRealHistory
-        ? item.mercadoSouza.weightedPackagePrice
-        : '';
+    const firstWithReal = visibleStoreNames
+      .map((sName) => item.byStore[sName])
+      .find((s) => s?.hasRealHistory);
     setEditingIngredient({
       productId: item.productId,
       productName: item.productName,
@@ -368,8 +402,8 @@ export default function RecipeStoreComparisonCard({
       baseUnit: item.baseUnit,
       standardPackageSize: String(item.standardPackageSize),
       quantityInBaseUnit: String(item.requiredBaseQty),
-      manualPackagePrice: defaultPrice ? String(defaultPrice) : '',
-      manualStoreName: 'NE_SUPERMERCADO'
+      manualPackagePrice: firstWithReal ? String(firstWithReal.weightedPackagePrice) : '',
+      manualStoreName: firstWithReal?.storeName || visibleStoreNames[0] || allStoreNames[0] || ''
     });
   };
 
@@ -431,28 +465,36 @@ export default function RecipeStoreComparisonCard({
     }
   };
 
-  const comparison = useMemo(
-    () => recipe.historicalStoreComparison ?? buildFallbackComparisonFromQuotes(recipe),
-    [recipe]
-  );
-
-  const scaledPortions = Math.max(1, Math.round(recipe.servings * portionMultiplier));
+  const toggleStoreInFilter = (storeName: string) => {
+    setSelectedStoreFilter((prev) => {
+      if (!prev || prev.length === 0) {
+        return allStoreNames.filter((n) => n !== storeName);
+      }
+      if (prev.includes(storeName)) {
+        const next = prev.filter((n) => n !== storeName);
+        return next.length === 0 ? null : next;
+      }
+      const next = [...prev, storeName];
+      return next.length >= allStoreNames.length ? null : next;
+    });
+  };
 
   const computed = useMemo(() => {
-    if (!comparison) return null;
+    if (!comparison || visibleStoreNames.length === 0) return null;
 
     const visibleItems =
       scopeMode === 'COMMON_ONLY'
-        ? comparison.items.filter(
-            (it) => it.mercadoSouza.hasRealHistory && it.neSupermercado.hasRealHistory
+        ? comparison.items.filter((it) =>
+            visibleStoreNames.every((st) => it.byStore[st]?.hasRealHistory)
           )
         : comparison.items;
 
     const pickItemCost = (
-      summary: RecipeStorePairComparisonItem['mercadoSouza'],
+      summary: StoreIngredientHistorySummary | undefined,
       lens: HistoryLens,
       basis: CostBasis
     ): number => {
+      if (!summary) return 0;
       if (basis === 'CASH') {
         if (lens === 'WEIGHTED') return summary.weightedCashCost * portionMultiplier;
         if (lens === 'AVERAGE') return summary.avgCashCost * portionMultiplier;
@@ -463,53 +505,65 @@ export default function RecipeStoreComparisonCard({
       return summary.minProportionalCost * portionMultiplier;
     };
 
-    const souzaTotal = Number(
-      visibleItems
-        .reduce((acc, it) => acc + pickItemCost(it.mercadoSouza, historyLens, costBasis), 0)
-        .toFixed(2)
-    );
-    const neTotal = Number(
-      visibleItems
-        .reduce((acc, it) => acc + pickItemCost(it.neSupermercado, historyLens, costBasis), 0)
-        .toFixed(2)
-    );
+    const storeTotals = visibleStoreNames
+      .map((storeName) => {
+        const meta = comparison.stores.find((s) => s.storeName === storeName);
+        const total = Number(
+          visibleItems
+            .reduce(
+              (acc, it) => acc + pickItemCost(it.byStore[storeName], historyLens, costBasis),
+              0
+            )
+            .toFixed(2)
+        );
+        const matchedCount = visibleItems.filter((it) => it.byStore[storeName]?.hasRealHistory).length;
+        const winCount = visibleItems.filter((it) => {
+          const realStores = visibleStoreNames
+            .map((st) => ({
+              st,
+              has: Boolean(it.byStore[st]?.hasRealHistory),
+              cost: pickItemCost(it.byStore[st], historyLens, costBasis)
+            }))
+            .filter((x) => x.has);
+          if (realStores.length < 2) return false;
+          realStores.sort((a, b) => a.cost - b.cost);
+          return (
+            realStores[0].st === storeName && realStores[1].cost - realStores[0].cost > 0.05
+          );
+        }).length;
 
-    const diff = Number((souzaTotal - neTotal).toFixed(2));
-    const absDiff = Number(Math.abs(diff).toFixed(2));
-    const higherTotal = Math.max(souzaTotal, neTotal);
-    const diffPct = higherTotal > 0 ? Number(((absDiff / higherTotal) * 100).toFixed(1)) : 0;
-    const winner: 'MERCADO_SOUZA' | 'NE_SUPERMERCADO' | 'TIE' =
-      absDiff <= 0.05 ? 'TIE' : diff > 0 ? 'NE_SUPERMERCADO' : 'MERCADO_SOUZA';
+        return {
+          storeName,
+          total,
+          matchedCount,
+          totalItems: visibleItems.length,
+          observationsCount: meta?.totalObservationsCount ?? matchedCount,
+          lastObservedAt: meta?.lastObservedAt ?? null,
+          winCount
+        };
+      })
+      .sort((a, b) => a.total - b.total);
 
-    let souzaItemWins = 0;
-    let neItemWins = 0;
-    let tiedItems = 0;
-    let missingItems = 0;
-
-    for (const it of visibleItems) {
-      if (!it.mercadoSouza.hasRealHistory || !it.neSupermercado.hasRealHistory) {
-        missingItems += 1;
-        continue;
-      }
-      const sVal = pickItemCost(it.mercadoSouza, historyLens, costBasis);
-      const nVal = pickItemCost(it.neSupermercado, historyLens, costBasis);
-      if (Math.abs(sVal - nVal) <= 0.05) {
-        tiedItems += 1;
-      } else if (sVal < nVal) {
-        souzaItemWins += 1;
-      } else {
-        neItemWins += 1;
-      }
-    }
+    const cheapestStore = storeTotals[0];
+    const mostExpensiveStore = storeTotals[storeTotals.length - 1];
+    const absDiff =
+      cheapestStore && mostExpensiveStore
+        ? Number((mostExpensiveStore.total - cheapestStore.total).toFixed(2))
+        : 0;
+    const diffPct =
+      mostExpensiveStore && mostExpensiveStore.total > 0
+        ? Number(((absDiff / mostExpensiveStore.total) * 100).toFixed(1))
+        : 0;
 
     const sumForLens = (
-      side: 'mercadoSouza' | 'neSupermercado',
+      storeName: string,
       mode: 'MIN' | 'AVG' | 'WEIGHTED' | 'MAX'
-    ) => {
+    ): number => {
       return Number(
         visibleItems
           .reduce((acc, it) => {
-            const s = it[side];
+            const s = it.byStore[storeName];
+            if (!s) return acc;
             if (costBasis === 'CASH') {
               if (mode === 'MIN') return acc + s.minCashCost * portionMultiplier;
               if (mode === 'AVG') return acc + s.avgCashCost * portionMultiplier;
@@ -525,239 +579,108 @@ export default function RecipeStoreComparisonCard({
       );
     };
 
-    const historicalRangeChart = [
-      {
-        metric: 'Mínima Histórica',
-        'Mercado Souza': sumForLens('mercadoSouza', 'MIN'),
-        'NE Supermercado': sumForLens('neSupermercado', 'MIN')
-      },
-      {
-        metric: 'Média Histórica',
-        'Mercado Souza': sumForLens('mercadoSouza', 'AVG'),
-        'NE Supermercado': sumForLens('neSupermercado', 'AVG')
-      },
-      {
-        metric: 'Atual (70/30)',
-        'Mercado Souza': sumForLens('mercadoSouza', 'WEIGHTED'),
-        'NE Supermercado': sumForLens('neSupermercado', 'WEIGHTED')
-      },
-      {
-        metric: 'Máxima Histórica',
-        'Mercado Souza': sumForLens('mercadoSouza', 'MAX'),
-        'NE Supermercado': sumForLens('neSupermercado', 'MAX')
-      }
-    ];
-
-    // Constrói série temporal mensal responsiva a Escopo (Completa vs Em Comum), Base (Caixa vs Proporcional) e Janela (6M vs 3M)
-    const monthsCount = trendWindow === '6M' ? 6 : 3;
-    const allDates: string[] = [];
-    for (const it of visibleItems) {
-      for (const pt of it.mercadoSouza.pricePoints) allDates.push(pt.observedAt);
-      for (const pt of it.neSupermercado.pricePoints) allDates.push(pt.observedAt);
-    }
-
-    let rawTimeline: Array<{
-      period: string;
-      sortKey: string;
-      'Mercado Souza': number;
-      'NE Supermercado': number;
-      souzaReal: number;
-      neReal: number;
-      totalItems: number;
-    }> = [];
-
-    if (allDates.length > 0) {
-      const anchorMs = Math.max(
-        Date.now(),
-        ...allDates.map((d) => new Date(d).getTime()).filter((t) => !Number.isNaN(t))
-      );
-      const anchorDate = new Date(anchorMs);
-      const anchorY = anchorDate.getUTCFullYear();
-      const anchorM = anchorDate.getUTCMonth();
-
-      const rollingKeys: string[] = [];
-      for (let offset = monthsCount - 1; offset >= 0; offset--) {
-        const dt = new Date(Date.UTC(anchorY, anchorM - offset, 15));
-        const y = dt.getUTCFullYear();
-        const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
-        rollingKeys.push(`${y}-${m}`);
-      }
-
-      const toMonthKey = (iso: string) => iso.slice(0, 7);
-      const toMonthLabel = (ymKey: string) => {
-        const [yStr, mStr] = ymKey.split('-');
-        const mIdx = Math.max(0, Math.min(11, Number(mStr) - 1));
-        return `${PT_MONTHS[mIdx]}/${yStr.slice(-2)}`;
+    const historicalRangeChart = (['MIN', 'AVG', 'WEIGHTED', 'MAX'] as const).map((mode) => {
+      const labelMap = {
+        MIN: 'Mínima Histórica',
+        AVG: 'Média Histórica',
+        WEIGHTED: 'Atual (70/30)',
+        MAX: 'Máxima Histórica'
       };
+      const row: Record<string, string | number> = { metric: labelMap[mode] };
+      for (const st of visibleStoreNames) {
+        row[st] = sumForLens(st, mode);
+      }
+      return row;
+    });
 
-      const hasInWindow = allDates.some(
-        (d) => toMonthKey(d) >= rollingKeys[0] && toMonthKey(d) <= rollingKeys[rollingKeys.length - 1]
-      );
-      const targetKeys = hasInWindow
-        ? rollingKeys
-        : Array.from(new Set(allDates.map(toMonthKey))).sort().slice(-monthsCount);
+    const fullTimeline = comparison.timeline ?? [];
+    const windowedTimeline =
+      trendWindow === '3M' && fullTimeline.length > 3 ? fullTimeline.slice(-3) : fullTimeline;
 
-      rawTimeline = targetKeys.map((pKey) => {
-        let souzaSum = 0;
-        let neSum = 0;
-        let souzaReal = 0;
-        let neReal = 0;
-
-        for (const it of visibleItems) {
-          const sPts = it.mercadoSouza.pricePoints.filter((p) => toMonthKey(p.observedAt) <= pKey);
-          if (sPts.length > 0) {
-            const latest = sPts[sPts.length - 1];
-            souzaSum +=
-              costBasis === 'CASH'
-                ? it.packagesNeeded * latest.packagePrice
-                : it.requiredBaseQty * latest.basePrice;
-            souzaReal += 1;
-          } else {
-            const first = it.mercadoSouza.pricePoints[0];
-            souzaSum += first
-              ? costBasis === 'CASH'
-                ? it.packagesNeeded * first.packagePrice
-                : it.requiredBaseQty * first.basePrice
-              : costBasis === 'CASH'
-                ? it.mercadoSouza.weightedCashCost
-                : it.mercadoSouza.weightedProportionalCost;
-          }
-
-          const nPts = it.neSupermercado.pricePoints.filter((p) => toMonthKey(p.observedAt) <= pKey);
-          if (nPts.length > 0) {
-            const latest = nPts[nPts.length - 1];
-            neSum +=
-              costBasis === 'CASH'
-                ? it.packagesNeeded * latest.packagePrice
-                : it.requiredBaseQty * latest.basePrice;
-            neReal += 1;
-          } else {
-            const first = it.neSupermercado.pricePoints[0];
-            neSum += first
-              ? costBasis === 'CASH'
-                ? it.packagesNeeded * first.packagePrice
-                : it.requiredBaseQty * first.basePrice
-              : costBasis === 'CASH'
-                ? it.neSupermercado.weightedCashCost
-                : it.neSupermercado.weightedProportionalCost;
-          }
-        }
-
-        return {
-          period: toMonthLabel(pKey),
-          sortKey: pKey,
-          'Mercado Souza': Number((souzaSum * portionMultiplier).toFixed(2)),
-          'NE Supermercado': Number((neSum * portionMultiplier).toFixed(2)),
-          souzaReal,
-          neReal,
-          totalItems: visibleItems.length
-        };
-      });
-    } else if (comparison.timeline.length > 0) {
-      rawTimeline = comparison.timeline.slice(-monthsCount).map((pt) => ({
+    const rawTimelineData: Array<Record<string, string | number>> = windowedTimeline.map((pt) => {
+      const entry: Record<string, string | number> = {
         period: pt.periodLabel,
         sortKey: pt.sortKey,
-        'Mercado Souza': Number(
-          ((costBasis === 'CASH' ? pt.mercadoSouzaCash : pt.mercadoSouzaProportional) * portionMultiplier).toFixed(2)
-        ),
-        'NE Supermercado': Number(
-          ((costBasis === 'CASH' ? pt.neSupermercadoCash : pt.neSupermercadoProportional) * portionMultiplier).toFixed(2)
-        ),
-        souzaReal: pt.mercadoSouzaRealItems,
-        neReal: pt.neSupermercadoRealItems,
         totalItems: visibleItems.length
-      }));
-    }
+      };
 
-    const firstPt = rawTimeline[0];
-    const timelineData: TrendChartDatum[] = rawTimeline.map((pt) => ({
-      ...pt,
-      souzaBaseDeltaPct:
-        firstPt && firstPt['Mercado Souza'] > 0
-          ? Number(
-              (((pt['Mercado Souza'] - firstPt['Mercado Souza']) / firstPt['Mercado Souza']) * 100).toFixed(1)
-            )
-          : 0,
-      neBaseDeltaPct:
-        firstPt && firstPt['NE Supermercado'] > 0
-          ? Number(
-              (((pt['NE Supermercado'] - firstPt['NE Supermercado']) / firstPt['NE Supermercado']) * 100).toFixed(1)
-            )
-          : 0
-    }));
+      for (const st of visibleStoreNames) {
+        if (scopeMode === 'COMMON_ONLY') {
+          let sum = 0;
+          for (const it of visibleItems) {
+            const s = it.byStore[st];
+            if (!s) continue;
+            const pts = s.pricePoints.filter((p) => p.observedAt.slice(0, 7) <= pt.sortKey);
+            if (pts.length > 0) {
+              const latest = pts[pts.length - 1];
+              sum +=
+                costBasis === 'CASH'
+                  ? it.packagesNeeded * latest.packagePrice
+                  : it.requiredBaseQty * latest.basePrice;
+            } else {
+              sum += costBasis === 'CASH' ? s.weightedCashCost : s.weightedProportionalCost;
+            }
+          }
+          entry[st] = Number((sum * portionMultiplier).toFixed(2));
+        } else {
+          const val =
+            costBasis === 'CASH'
+              ? pt.byStoreCash[st] ?? 0
+              : pt.byStoreProportional[st] ?? 0;
+          entry[st] = Number((val * portionMultiplier).toFixed(2));
+        }
+      }
+      return entry;
+    });
 
-    const lastPt = timelineData[timelineData.length - 1];
-    const souzaStart = firstPt?.['Mercado Souza'] ?? souzaTotal;
-    const souzaEnd = lastPt?.['Mercado Souza'] ?? souzaTotal;
-    const neStart = firstPt?.['NE Supermercado'] ?? neTotal;
-    const neEnd = lastPt?.['NE Supermercado'] ?? neTotal;
+    const firstPt = rawTimelineData[0];
+    const timelineData: TrendChartDatum[] = rawTimelineData.map((pt) => {
+      const out: TrendChartDatum = {
+        period: String(pt.period),
+        sortKey: String(pt.sortKey),
+        totalItems: Number(pt.totalItems)
+      };
+      for (const st of visibleStoreNames) {
+        const val = Number(pt[st] ?? 0);
+        const startVal = firstPt ? Number(firstPt[st] ?? 0) : 0;
+        out[st] = val;
+        out[`${st}__delta`] =
+          startVal > 0 ? Number((((val - startVal) / startVal) * 100).toFixed(1)) : 0;
+      }
+      return out;
+    });
 
-    const souzaTrendPct =
-      souzaStart > 0 ? Number((((souzaEnd - souzaStart) / souzaStart) * 100).toFixed(1)) : 0;
-    const neTrendPct = neStart > 0 ? Number((((neEnd - neStart) / neStart) * 100).toFixed(1)) : 0;
-
-    const allSeriesValues = timelineData.flatMap((pt) => [pt['Mercado Souza'], pt['NE Supermercado']]);
-    const periodMinCost = allSeriesValues.length > 0 ? Math.min(...allSeriesValues) : 0;
-    const periodMaxCost = allSeriesValues.length > 0 ? Math.max(...allSeriesValues) : 0;
+    const allSeriesVals = timelineData.flatMap((pt) =>
+      visibleStoreNames.map((st) => Number(pt[st] ?? 0))
+    );
     const combinedPeriodAvg =
-      allSeriesValues.length > 0
-        ? Number((allSeriesValues.reduce((s, v) => s + v, 0) / allSeriesValues.length).toFixed(2))
+      allSeriesVals.length > 0
+        ? Number((allSeriesVals.reduce((s, v) => s + v, 0) / allSeriesVals.length).toFixed(2))
         : 0;
-
-    let souzaMonthsWon = 0;
-    let neMonthsWon = 0;
-    let tiedMonths = 0;
-    for (const pt of timelineData) {
-      const mDiff = pt['Mercado Souza'] - pt['NE Supermercado'];
-      if (Math.abs(mDiff) <= 0.05) tiedMonths += 1;
-      else if (mDiff < 0) souzaMonthsWon += 1;
-      else neMonthsWon += 1;
-    }
 
     return {
       visibleItems,
-      souzaTotal,
-      neTotal,
+      storeTotals,
+      cheapestStore,
+      mostExpensiveStore,
       absDiff,
       diffPct,
-      winner,
-      souzaItemWins,
-      neItemWins,
-      tiedItems,
-      missingItems,
       historicalRangeChart,
       timelineData,
-      trendStats: {
-        souzaStart,
-        souzaEnd,
-        souzaTrendPct,
-        neStart,
-        neEnd,
-        neTrendPct,
-        periodMinCost,
-        periodMaxCost,
-        combinedPeriodAvg,
-        souzaMonthsWon,
-        neMonthsWon,
-        tiedMonths
-      },
-      souzaPerPortion: Number((souzaTotal / scaledPortions).toFixed(2)),
-      nePerPortion: Number((neTotal / scaledPortions).toFixed(2)),
+      combinedPeriodAvg,
       pickItemCost
     };
-  }, [comparison, costBasis, historyLens, scopeMode, trendWindow, portionMultiplier, scaledPortions]);
+  }, [comparison, visibleStoreNames, scopeMode, historyLens, costBasis, portionMultiplier, trendWindow]);
 
-  if (!comparison || !computed) {
+  if (!comparison || !computed || computed.storeTotals.length === 0) {
     return (
       <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
         <div className="flex items-start gap-3">
-          <Scale className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
+          <AlertCircle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-sm font-bold text-white">
-              Comparativo Histórico: Mercado Souza vs. NE Supermercado
-            </h3>
+            <h3 className="text-sm font-bold text-white">Comparativo de Preços entre Mercados</h3>
             <p className="text-xs text-slate-400 mt-1">
-              Ainda não há registros de preços no banco de dados para comparar esta receita entre o Mercado Souza e o NE Supermercado. Envie cupons fiscais ou panfletos pelo bot para popular o histórico.
+              Ainda não há registros de preços no banco de dados para comparar esta receita entre mercados. Envie cupons fiscais ou panfletos pelo bot para popular o histórico.
             </p>
           </div>
         </div>
@@ -765,59 +688,48 @@ export default function RecipeStoreComparisonCard({
     );
   }
 
-  const totalDbObservations =
-    comparison.mercadoSouza.totalObservationsCount + comparison.neSupermercado.totalObservationsCount;
-
-  const lensLabel =
-    historyLens === 'WEIGHTED'
-      ? 'Atual Ponderado (70% recente / 30% anterior)'
-      : historyLens === 'AVERAGE'
-        ? 'Média Histórica Completa'
-        : 'Menor Preço Histórico Registrado';
+  const showIndividualColumns = visibleStoreNames.length <= 3;
 
   return (
     <section
-      aria-label="Comparativo histórico da receita entre Mercado Souza e NE Supermercado"
+      aria-label="Comparativo histórico da receita entre todos os mercados cadastrados"
       className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 space-y-5"
     >
-      {/* CABEÇALHO + CONTROLES ANALÍTICOS */}
+      {/* CABEÇALHO E CONTROLES */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 tabular-nums">
-            <span className="text-emerald-400 font-medium">Histórico do Banco de Dados</span>
-            <span aria-hidden="true">·</span>
-            <span>{totalDbObservations} leituras registradas</span>
-            <span aria-hidden="true">·</span>
-            <span>{scaledPortions} porções ({portionMultiplier}x)</span>
-          </div>
-          <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <ArrowRightLeft className="h-4 w-4 text-emerald-400 shrink-0" />
-            <span>Mercado Souza vs. NE Supermercado — {recipe.recipeName}</span>
+        <div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+            Comparativo entre Mercados ({allStoreNames.length} cadastrados)
+          </span>
+          <h3 className="text-base lg:text-lg font-bold text-white mt-0.5 flex flex-wrap items-center gap-2">
+            <span>Ranking de Custos — {recipe.recipeName}</span>
+            <span className="text-xs font-normal text-slate-400">
+              ({scaledPortions} porções)
+            </span>
           </h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Compara preços ponderados, médias e mínimas históricas considerando todos os supermercados do seu histórico.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Seletor Base de Custo */}
-          <div
-            role="group"
-            aria-label="Base de cálculo do custo"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950 p-1 text-xs"
-          >
+          <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-1 text-xs">
             <button
               type="button"
               onClick={() => setCostBasis('CASH')}
-              className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap shrink-0 ${
+              className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap ${
                 costBasis === 'CASH'
                   ? 'bg-emerald-500 text-slate-950 font-semibold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Embalagens (Caixa)
+              Embalagens Fechadas
             </button>
             <button
               type="button"
               onClick={() => setCostBasis('PROPORTIONAL')}
-              className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap shrink-0 ${
+              className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap ${
                 costBasis === 'PROPORTIONAL'
                   ? 'bg-emerald-500 text-slate-950 font-semibold'
                   : 'text-slate-400 hover:text-white'
@@ -827,26 +739,21 @@ export default function RecipeStoreComparisonCard({
             </button>
           </div>
 
-          {/* Seletor Lente Histórica */}
-          <div
-            role="group"
-            aria-label="Lente do histórico de preços"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950 p-1 text-xs"
-          >
+          <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-1 text-xs">
             {(
               [
-                { id: 'WEIGHTED', label: 'Atual' },
+                { id: 'WEIGHTED', label: 'Atual (70/30)' },
                 { id: 'AVERAGE', label: 'Média Hist.' },
                 { id: 'MINIMUM', label: 'Mínima Hist.' }
-              ] as Array<{ id: HistoryLens; label: string }>
+              ] as const
             ).map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => setHistoryLens(opt.id)}
-                className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap shrink-0 ${
+                className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap ${
                   historyLens === opt.id
-                    ? 'bg-slate-800 text-white font-semibold'
+                    ? 'bg-sky-500 text-slate-950 font-semibold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -855,200 +762,159 @@ export default function RecipeStoreComparisonCard({
             ))}
           </div>
 
-          {/* Seletor Cobertura / Itens em Comum */}
-          {comparison.commonOnly.sharedIngredientsCount > 0 &&
-            comparison.commonOnly.sharedIngredientsCount < comparison.items.length && (
-              <div
-                role="group"
-                aria-label="Escopo de itens comparados"
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950 p-1 text-xs"
-              >
-                <button
-                  type="button"
-                  onClick={() => setScopeMode('FULL')}
-                  className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap shrink-0 ${
-                    scopeMode === 'FULL'
-                      ? 'bg-amber-500 text-slate-950 font-semibold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Receita Completa ({comparison.items.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScopeMode('COMMON_ONLY')}
-                  className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap shrink-0 ${
-                    scopeMode === 'COMMON_ONLY'
-                      ? 'bg-amber-500 text-slate-950 font-semibold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Em Comum ({comparison.commonOnly.sharedIngredientsCount})
-                </button>
-              </div>
-            )}
-        </div>
-      </div>
-
-      {/* PLACAR HEAD-TO-HEAD: MERCADO SOUZA vs. NE SUPERMERCADO */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-        {/* MERCADO SOUZA */}
-        <div
-          className={`lg:col-span-5 rounded-xl border p-4 flex flex-col justify-between transition-colors ${
-            computed.winner === 'MERCADO_SOUZA'
-              ? 'border-sky-500/50 bg-sky-950/20'
-              : 'border-slate-800 bg-slate-950/60'
-          }`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium text-sky-300 flex items-center gap-1.5">
-                <Store className="h-3.5 w-3.5" />
-                <span>Mercado Souza</span>
-              </p>
-              <p className="text-xs text-slate-400 mt-1 tabular-nums">
-                {comparison.mercadoSouza.matchedIngredientsCount}/
-                {comparison.mercadoSouza.totalIngredientsCount} itens no histórico ·{' '}
-                {comparison.mercadoSouza.totalObservationsCount} leituras
-              </p>
-            </div>
-            {computed.winner === 'MERCADO_SOUZA' && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 shrink-0">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Mais econômico
-              </span>
-            )}
-          </div>
-
-          <div className="mt-4 flex items-baseline justify-between gap-2">
-            <motion.p
-              key={`souza-${computed.souzaTotal}-${costBasis}-${historyLens}`}
-              initial={{ opacity: 0.4, y: 3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.16 }}
-              className="text-2xl font-bold text-white tabular-nums"
+          <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setScopeMode('FULL')}
+              className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap ${
+                scopeMode === 'FULL'
+                  ? 'bg-amber-500 text-slate-950 font-semibold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
             >
-              R$ {computed.souzaTotal.toFixed(2)}
-            </motion.p>
-            <span className="text-xs text-slate-300 tabular-nums">
-              R$ {computed.souzaPerPortion.toFixed(2)}/porção
-            </span>
-          </div>
-
-          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 tabular-nums">
-            <span>
-              Vence em <strong className="text-sky-300">{computed.souzaItemWins}</strong> item(ns)
-            </span>
-            <span>Última leitura: {formatShortDate(comparison.mercadoSouza.lastObservedAt)}</span>
-          </div>
-        </div>
-
-        {/* DIFERENÇA CENTRAL */}
-        <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-950/75 p-4 flex flex-col items-center justify-center text-center gap-1.5">
-          <span className="text-[11px] font-medium text-slate-400">{lensLabel.split('(')[0].trim()}</span>
-          {computed.winner === 'TIE' ? (
-            <>
-              <p className="text-lg font-bold text-slate-200 tabular-nums">Empate</p>
-              <p className="text-[11px] text-slate-400">Diferença inferior a R$ 0,05</p>
-            </>
-          ) : (
-            <>
-              <div className="inline-flex items-center gap-1 text-emerald-400 font-bold text-lg tabular-nums">
-                <TrendingDown className="h-4 w-4" />
-                <span>R$ {computed.absDiff.toFixed(2)}</span>
-              </div>
-              <p className="text-xs font-semibold text-white">
-                {computed.winner === 'NE_SUPERMERCADO' ? 'NE Supermercado' : 'Mercado Souza'} vence
-              </p>
-              <p className="text-[11px] text-slate-400 tabular-nums">
-                {computed.diffPct}% de economia direta
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* NE SUPERMERCADO */}
-        <div
-          className={`lg:col-span-5 rounded-xl border p-4 flex flex-col justify-between transition-colors ${
-            computed.winner === 'NE_SUPERMERCADO'
-              ? 'border-emerald-500/50 bg-emerald-950/20'
-              : 'border-slate-800 bg-slate-950/60'
-          }`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium text-emerald-300 flex items-center gap-1.5">
-                <Store className="h-3.5 w-3.5" />
-                <span>NE Supermercado</span>
-              </p>
-              <p className="text-xs text-slate-400 mt-1 tabular-nums">
-                {comparison.neSupermercado.matchedIngredientsCount}/
-                {comparison.neSupermercado.totalIngredientsCount} itens no histórico ·{' '}
-                {comparison.neSupermercado.totalObservationsCount} leituras
-              </p>
-            </div>
-            {computed.winner === 'NE_SUPERMERCADO' && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 shrink-0">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Mais econômico
-              </span>
-            )}
-          </div>
-
-          <div className="mt-4 flex items-baseline justify-between gap-2">
-            <motion.p
-              key={`ne-${computed.neTotal}-${costBasis}-${historyLens}`}
-              initial={{ opacity: 0.4, y: 3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.16 }}
-              className="text-2xl font-bold text-white tabular-nums"
-            >
-              R$ {computed.neTotal.toFixed(2)}
-            </motion.p>
-            <span className="text-xs text-slate-300 tabular-nums">
-              R$ {computed.nePerPortion.toFixed(2)}/porção
-            </span>
-          </div>
-
-          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 tabular-nums">
-            <span>
-              Vence em <strong className="text-emerald-300">{computed.neItemWins}</strong> item(ns)
-            </span>
-            <span>Última leitura: {formatShortDate(comparison.neSupermercado.lastObservedAt)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* AVISO DE COBERTURA PARCIAL QUANDO APLICÁVEL */}
-      {computed.missingItems > 0 && scopeMode === 'FULL' && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-950/15 px-3.5 py-2.5 text-xs text-amber-200">
-          <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-          <p>
-            {computed.missingItems} ingrediente(s) ainda não possuem leitura histórica em um dos dois mercados; no modo Receita Completa eles usam o preço de referência do outro mercado. Alterne para{' '}
+              Receita Completa
+            </button>
             <button
               type="button"
               onClick={() => setScopeMode('COMMON_ONLY')}
-              className="font-semibold underline text-amber-300 hover:text-amber-200"
+              className={`rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap ${
+                scopeMode === 'COMMON_ONLY'
+                  ? 'bg-amber-500 text-slate-950 font-semibold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
             >
-              Em Comum ({comparison.commonOnly.sharedIngredientsCount} itens)
-            </button>{' '}
-            para comparar apenas os itens com registro nos dois mercados.
-          </p>
+              Itens em Comum
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* FILTRO DE MERCADOS (QUANDO HOUVER MAIS DE 2 MERCADOS) */}
+      {allStoreNames.length > 2 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-slate-400 mr-1">Mercados exibidos:</span>
+          <button
+            type="button"
+            onClick={() => setSelectedStoreFilter(null)}
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              !selectedStoreFilter
+                ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-300'
+                : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+            }`}
+          >
+            Todos ({allStoreNames.length})
+          </button>
+          {allStoreNames.map((st) => {
+            const active = visibleStoreNames.includes(st);
+            return (
+              <button
+                key={st}
+                type="button"
+                onClick={() => toggleStoreInFilter(st)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  active
+                    ? 'border-slate-600 bg-slate-800/80 text-white'
+                    : 'border-slate-800 bg-slate-950 text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: storeColorMap[st] }}
+                />
+                {st}
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* TENDÊNCIA HISTÓRICA DE CUSTO NOS ÚLTIMOS 6 MESES (RECHARTS AREACHART) */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4">
+      {/* RANKING DINÂMICO DE MERCADOS */}
+      <div
+        className={`grid grid-cols-1 gap-4 ${
+          computed.storeTotals.length === 2
+            ? 'md:grid-cols-2'
+            : 'md:grid-cols-2 xl:grid-cols-3'
+        }`}
+      >
+        {computed.storeTotals.map((st, idx) => {
+          const isLeader = idx === 0 && computed.absDiff > 0.05;
+          const diffFromLeader = Number((st.total - (computed.cheapestStore?.total ?? 0)).toFixed(2));
+          const color = storeColorMap[st.storeName] || '#10b981';
+
+          return (
+            <div
+              key={st.storeName}
+              className={`rounded-xl border p-4 space-y-2 transition-colors ${
+                isLeader
+                  ? 'border-emerald-500/60 bg-emerald-950/20'
+                  : 'border-slate-800 bg-slate-950/70'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white min-w-0 truncate">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <Store className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <span className="truncate">{st.storeName}</span>
+                </span>
+                {isLeader ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-bold text-emerald-300 shrink-0">
+                    <CheckCircle2 className="h-3 w-3" />
+                    1º Mais barato
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-300 shrink-0 tabular-nums">
+                    {idx + 1}º lugar
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-2xl font-bold text-white tabular-nums">
+                  R$ {st.total.toFixed(2)}
+                </p>
+                {diffFromLeader > 0.05 ? (
+                  <span className="text-xs font-semibold text-amber-300 tabular-nums">
+                    +R$ {diffFromLeader.toFixed(2)}
+                  </span>
+                ) : (
+                  computed.storeTotals.length >= 2 &&
+                  computed.absDiff > 0.05 && (
+                    <span className="text-xs font-semibold text-emerald-400 tabular-nums">
+                      Economiza até R$ {computed.absDiff.toFixed(2)} ({computed.diffPct}%)
+                    </span>
+                  )
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400 tabular-nums">
+                <span>
+                  {st.matchedCount}/{st.totalItems} itens com leitura ({st.observationsCount} obs.)
+                </span>
+                <span>{st.winCount} item(ns) mais barato(s)</span>
+              </div>
+              <p className="text-[10px] text-slate-500">
+                Última leitura: {formatShortDate(st.lastObservedAt)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* GRÁFICO DE TENDÊNCIA HISTÓRICA MULTI-MERCADOS */}
+      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h4 className="text-sm font-semibold text-white flex items-center gap-1.5">
-              <History className="h-4 w-4 text-emerald-400 shrink-0" />
+            <h4 className="text-xs font-semibold text-white flex items-center gap-2">
+              <History className="h-3.5 w-3.5 text-emerald-400" />
               <span>
-                Tendência Histórica de Preços ({trendWindow === '6M' ? 'Últimos 6 Meses' : 'Últimos 3 Meses'})
+                Tendência Histórica ({trendWindow === '6M' ? 'Últimos 6 Meses' : 'Últimos 3 Meses'})
               </span>
             </h4>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Flutuação mensal do custo de &ldquo;{recipe.recipeName}&rdquo; ({costBasis === 'CASH' ? 'Embalagens Fechadas' : 'Uso Proporcional'}) nos dois mercados
+              Variação mensal do custo da receita ({costBasis === 'CASH' ? 'Embalagens Fechadas' : 'Uso Proporcional'}) nos mercados selecionados
             </p>
           </div>
 
@@ -1082,90 +948,6 @@ export default function RecipeStoreComparisonCard({
           </div>
         </div>
 
-        {/* 4 KPIs DE OSCILAÇÃO DO PERÍODO */}
-        {computed.timelineData.length >= 2 && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div className="rounded-lg border border-slate-800/90 bg-slate-900/50 px-3 py-2.5">
-              <p className="text-[11px] text-sky-300">Oscilação · Mercado Souza</p>
-              <div className="mt-1 flex items-center gap-1.5 font-bold tabular-nums">
-                {computed.trendStats.souzaTrendPct > 0 ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-rose-400 shrink-0" />
-                ) : (
-                  <TrendingDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                )}
-                <span
-                  className={
-                    computed.trendStats.souzaTrendPct > 0.5
-                      ? 'text-rose-300'
-                      : computed.trendStats.souzaTrendPct < -0.5
-                        ? 'text-emerald-300'
-                        : 'text-slate-200'
-                  }
-                >
-                  {computed.trendStats.souzaTrendPct > 0 ? '+' : ''}
-                  {computed.trendStats.souzaTrendPct}%
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
-                R$ {computed.trendStats.souzaStart.toFixed(2)} → R${' '}
-                {computed.trendStats.souzaEnd.toFixed(2)}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-800/90 bg-slate-900/50 px-3 py-2.5">
-              <p className="text-[11px] text-emerald-300">Oscilação · NE Supermercado</p>
-              <div className="mt-1 flex items-center gap-1.5 font-bold tabular-nums">
-                {computed.trendStats.neTrendPct > 0 ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-rose-400 shrink-0" />
-                ) : (
-                  <TrendingDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                )}
-                <span
-                  className={
-                    computed.trendStats.neTrendPct > 0.5
-                      ? 'text-rose-300'
-                      : computed.trendStats.neTrendPct < -0.5
-                        ? 'text-emerald-300'
-                        : 'text-slate-200'
-                  }
-                >
-                  {computed.trendStats.neTrendPct > 0 ? '+' : ''}
-                  {computed.trendStats.neTrendPct}%
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
-                R$ {computed.trendStats.neStart.toFixed(2)} → R${' '}
-                {computed.trendStats.neEnd.toFixed(2)}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-800/90 bg-slate-900/50 px-3 py-2.5">
-              <p className="text-[11px] text-slate-400">Amplitude no Período</p>
-              <p className="mt-1 font-bold text-white tabular-nums">
-                R$ {computed.trendStats.periodMinCost.toFixed(2)} – R${' '}
-                {computed.trendStats.periodMaxCost.toFixed(2)}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
-                Média geral: R$ {computed.trendStats.combinedPeriodAvg.toFixed(2)}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-800/90 bg-slate-900/50 px-3 py-2.5">
-              <p className="text-[11px] text-slate-400">Liderança Mensal</p>
-              <p className="mt-1 font-bold text-white tabular-nums">
-                <span className="text-emerald-300">{computed.trendStats.neMonthsWon}m NE</span>
-                <span className="text-slate-500"> · </span>
-                <span className="text-sky-300">{computed.trendStats.souzaMonthsWon}m Souza</span>
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
-                {computed.trendStats.tiedMonths > 0
-                  ? `${computed.trendStats.tiedMonths} empate(s) nos ${computed.timelineData.length} meses`
-                  : `${computed.timelineData.length} meses comparados`}
-              </p>
-            </div>
-          </div>
-        )}
-
         {computed.timelineData.length >= 2 ? (
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -1174,14 +956,22 @@ export default function RecipeStoreComparisonCard({
                 margin={{ top: 12, right: 16, left: -6, bottom: 4 }}
               >
                 <defs>
-                  <linearGradient id={`gradSouza-${recipe.recipeId}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.28} />
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id={`gradNe-${recipe.recipeId}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.28} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                  </linearGradient>
+                  {visibleStoreNames.map((st, idx) => {
+                    const color = storeColorMap[st] || STORE_PALETTE[idx % STORE_PALETTE.length];
+                    return (
+                      <linearGradient
+                        key={st}
+                        id={`gradStore-${recipe.recipeId}-${idx}`}
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop offset="5%" stopColor={color} stopOpacity={0.25} />
+                        <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+                      </linearGradient>
+                    );
+                  })}
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis
@@ -1197,50 +987,54 @@ export default function RecipeStoreComparisonCard({
                   axisLine={false}
                   tickLine={false}
                 />
-                <RechartsTooltip content={<TrendTooltipContent />} />
+                <RechartsTooltip
+                  content={
+                    <TrendTooltipContent
+                      storeNames={visibleStoreNames}
+                      colorMap={storeColorMap}
+                    />
+                  }
+                />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                {computed.trendStats.combinedPeriodAvg > 0 && (
+                {computed.combinedPeriodAvg > 0 && (
                   <ReferenceLine
-                    y={computed.trendStats.combinedPeriodAvg}
+                    y={computed.combinedPeriodAvg}
                     stroke="#64748b"
                     strokeDasharray="4 4"
                     label={{
-                      value: `Média R$ ${computed.trendStats.combinedPeriodAvg.toFixed(2)}`,
+                      value: `Média R$ ${computed.combinedPeriodAvg.toFixed(2)}`,
                       position: 'insideTopRight',
                       fill: '#94a3b8',
                       fontSize: 10
                     }}
                   />
                 )}
-                <Area
-                  type="monotone"
-                  dataKey="Mercado Souza"
-                  stroke="#38bdf8"
-                  strokeWidth={2.5}
-                  fill={`url(#gradSouza-${recipe.recipeId})`}
-                  dot={{ r: 4, fill: '#020617', stroke: '#38bdf8', strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: '#38bdf8', stroke: '#020617', strokeWidth: 2 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="NE Supermercado"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  fill={`url(#gradNe-${recipe.recipeId})`}
-                  dot={{ r: 4, fill: '#020617', stroke: '#10b981', strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: '#10b981', stroke: '#020617', strokeWidth: 2 }}
-                />
+                {visibleStoreNames.map((st, idx) => {
+                  const color = storeColorMap[st] || STORE_PALETTE[idx % STORE_PALETTE.length];
+                  return (
+                    <Area
+                      key={st}
+                      type="monotone"
+                      dataKey={st}
+                      stroke={color}
+                      strokeWidth={2.5}
+                      fill={`url(#gradStore-${recipe.recipeId}-${idx})`}
+                      dot={{ r: 3.5, fill: '#020617', stroke: color, strokeWidth: 2 }}
+                      activeDot={{ r: 5.5, fill: color, stroke: '#020617', strokeWidth: 2 }}
+                    />
+                  );
+                })}
               </AreaChart>
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-56 flex flex-col items-center justify-center text-center px-4 rounded-lg border border-slate-800/80 bg-slate-900/40">
+          <div className="h-48 flex flex-col items-center justify-center text-center px-4 rounded-lg border border-slate-800/80 bg-slate-900/40">
             <Calendar className="h-5 w-5 text-slate-500 mb-2" />
             <p className="text-xs font-medium text-slate-300">
-              Histórico temporal concentrado em 1 período ({computed.timelineData[0]?.period ?? 'Atual'})
+              Histórico concentrado em 1 período ({computed.timelineData[0]?.period ?? 'Atual'})
             </p>
             <p className="text-[11px] text-slate-400 mt-1">
-              À medida que novos cupons ou flyers forem registrados ao longo dos meses, a tendência de 6 meses entre Mercado Souza e NE Supermercado será traçada aqui.
+              Conforme novos cupons e panfletos forem registrados ao longo dos meses, a curva comparativa entre os mercados aparecerá aqui.
             </p>
           </div>
         )}
@@ -1253,7 +1047,7 @@ export default function RecipeStoreComparisonCard({
             Faixa de Custo Histórico ({costBasis === 'CASH' ? 'Embalagens Fechadas' : 'Uso Proporcional'})
           </h4>
           <p className="text-[11px] text-slate-400">
-            Comparação entre mínima, média, atual ponderada e máxima registrada no banco nos últimos meses
+            Comparação entre mínima, média, atual ponderada e máxima registrada em cada mercado
           </p>
         </div>
         <div className="h-56 w-full">
@@ -1278,8 +1072,14 @@ export default function RecipeStoreComparisonCard({
                 formatter={(value: unknown) => [`R$ ${Number(value).toFixed(2)}`, undefined]}
               />
               <Legend wrapperStyle={{ fontSize: '11px' }} />
-              <Bar dataKey="Mercado Souza" fill="#38bdf8" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="NE Supermercado" fill="#10b981" radius={[4, 4, 0, 0]} />
+              {visibleStoreNames.map((st, idx) => (
+                <Bar
+                  key={st}
+                  dataKey={st}
+                  fill={storeColorMap[st] || STORE_PALETTE[idx % STORE_PALETTE.length]}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -1289,60 +1089,79 @@ export default function RecipeStoreComparisonCard({
       <div className="space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h4 className="text-xs font-semibold text-white">
-            Detalhamento por Ingrediente (clique em uma linha para abrir as leituras históricas)
+            Detalhamento por Ingrediente (clique em uma linha para abrir todos os mercados e leituras)
           </h4>
           <span className="text-[11px] text-slate-400 tabular-nums">
-            {computed.souzaItemWins} Souza · {computed.neItemWins} NE · {computed.tiedItems} empates
+            {computed.visibleItems.length} ingrediente(s) · {visibleStoreNames.length} mercado(s)
           </span>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden">
           <div className="hidden md:grid md:grid-cols-12 gap-2 px-3.5 py-2.5 border-b border-slate-800 text-[11px] font-semibold text-slate-400">
-            <div className="col-span-4">Ingrediente da Receita</div>
-            <div className="col-span-3 text-right">Mercado Souza</div>
-            <div className="col-span-3 text-right">NE Supermercado</div>
-            <div className="col-span-2 text-right">Diferença</div>
+            <div className={showIndividualColumns && visibleStoreNames.length === 3 ? 'col-span-4' : 'col-span-4'}>
+              Ingrediente da Receita
+            </div>
+            {showIndividualColumns ? (
+              <>
+                {visibleStoreNames.map((st) => (
+                  <div
+                    key={st}
+                    className={`${
+                      visibleStoreNames.length === 3
+                        ? 'col-span-2'
+                        : visibleStoreNames.length === 2
+                          ? 'col-span-3'
+                          : 'col-span-6'
+                    } text-right truncate`}
+                    title={st}
+                  >
+                    {st}
+                  </div>
+                ))}
+                <div className="col-span-2 text-right">Melhor Opção</div>
+              </>
+            ) : (
+              <>
+                <div className="col-span-3 text-right">Menor Preço</div>
+                <div className="col-span-3 text-right">2º Lugar</div>
+                <div className="col-span-2 text-right">Diferença</div>
+              </>
+            )}
           </div>
 
           <div className="divide-y divide-slate-800/70">
             {computed.visibleItems.map((item) => {
               const isRowExpanded = expandedProductId === item.productId;
-              const sCost = computed.pickItemCost(item.mercadoSouza, historyLens, costBasis);
-              const nCost = computed.pickItemCost(item.neSupermercado, historyLens, costBasis);
-              const bothReal =
-                item.mercadoSouza.hasRealHistory && item.neSupermercado.hasRealHistory;
-              const rowDiff = Number((sCost - nCost).toFixed(2));
-              const absRowDiff = Math.abs(rowDiff);
+              const storeCosts = visibleStoreNames
+                .map((st) => {
+                  const s = item.byStore[st];
+                  return {
+                    storeName: st,
+                    summary: s,
+                    cost: computed.pickItemCost(s, historyLens, costBasis),
+                    hasReal: Boolean(s?.hasRealHistory)
+                  };
+                })
+                .sort((a, b) => a.cost - b.cost);
 
-              const souzaRangeMin =
-                (costBasis === 'CASH'
-                  ? item.mercadoSouza.minCashCost
-                  : item.mercadoSouza.minProportionalCost) * portionMultiplier;
-              const souzaRangeMax =
-                (costBasis === 'CASH'
-                  ? item.mercadoSouza.maxCashCost
-                  : item.mercadoSouza.maxProportionalCost) * portionMultiplier;
-              const neRangeMin =
-                (costBasis === 'CASH'
-                  ? item.neSupermercado.minCashCost
-                  : item.neSupermercado.minProportionalCost) * portionMultiplier;
-              const neRangeMax =
-                (costBasis === 'CASH'
-                  ? item.neSupermercado.maxCashCost
-                  : item.neSupermercado.maxProportionalCost) * portionMultiplier;
+              const realCosts = storeCosts.filter((sc) => sc.hasReal);
+              const bestReal = realCosts[0];
+              const secondReal = realCosts[1];
+              const diff =
+                bestReal && secondReal
+                  ? Number((secondReal.cost - bestReal.cost).toFixed(2))
+                  : 0;
 
-              const mergedTimelineRows = [
-                ...item.mercadoSouza.pricePoints.map((pt) => ({
-                  store: 'Mercado Souza',
-                  ...pt
-                })),
-                ...item.neSupermercado.pricePoints.map((pt) => ({
-                  store: 'NE Supermercado',
-                  ...pt
-                }))
-              ].sort(
-                (a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime()
-              );
+              const mergedTimelineRows = visibleStoreNames
+                .flatMap((st) =>
+                  (item.byStore[st]?.pricePoints ?? []).map((pt) => ({
+                    store: st,
+                    ...pt
+                  }))
+                )
+                .sort(
+                  (a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime()
+                );
 
               return (
                 <div key={item.productId}>
@@ -1374,68 +1193,107 @@ export default function RecipeStoreComparisonCard({
                         </div>
                       </div>
 
-                      <div className="md:col-span-3 md:text-right tabular-nums">
-                        {item.mercadoSouza.hasRealHistory ? (
-                          <>
-                            <p
-                              className={`font-bold ${
-                                bothReal && sCost < nCost - 0.05
-                                  ? 'text-sky-300'
-                                  : 'text-slate-200'
-                              }`}
-                            >
-                              R$ {sCost.toFixed(2)}
-                            </p>
-                            <p className="text-[10px] text-slate-400">
-                              {item.mercadoSouza.observationsCount} leit. · mín R${' '}
-                              {souzaRangeMin.toFixed(2)}–{souzaRangeMax.toFixed(2)}
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-slate-400">R$ {sCost.toFixed(2)} (est.)</p>
-                            <p className="text-[10px] text-amber-300/90">Sem leitura no histórico</p>
-                          </>
-                        )}
-                      </div>
+                      {showIndividualColumns ? (
+                        <>
+                          {visibleStoreNames.map((st) => {
+                            const s = item.byStore[st];
+                            const cost = computed.pickItemCost(s, historyLens, costBasis);
+                            const isBestHere =
+                              bestReal &&
+                              bestReal.storeName === st &&
+                              realCosts.length >= 2 &&
+                              diff > 0.05;
+                            const colSpan =
+                              visibleStoreNames.length === 3
+                                ? 'md:col-span-2'
+                                : visibleStoreNames.length === 2
+                                  ? 'md:col-span-3'
+                                  : 'md:col-span-6';
+                            const rangeMin = s
+                              ? (costBasis === 'CASH'
+                                  ? s.minCashCost
+                                  : s.minProportionalCost) * portionMultiplier
+                              : 0;
+                            const rangeMax = s
+                              ? (costBasis === 'CASH'
+                                  ? s.maxCashCost
+                                  : s.maxProportionalCost) * portionMultiplier
+                              : 0;
 
-                      <div className="md:col-span-3 md:text-right tabular-nums">
-                        {item.neSupermercado.hasRealHistory ? (
-                          <>
-                            <p
-                              className={`font-bold ${
-                                bothReal && nCost < sCost - 0.05
-                                  ? 'text-emerald-300'
-                                  : 'text-slate-200'
-                              }`}
-                            >
-                              R$ {nCost.toFixed(2)}
-                            </p>
-                            <p className="text-[10px] text-slate-400">
-                              {item.neSupermercado.observationsCount} leit. · mín R${' '}
-                              {neRangeMin.toFixed(2)}–{neRangeMax.toFixed(2)}
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-slate-400">R$ {nCost.toFixed(2)} (est.)</p>
-                            <p className="text-[10px] text-amber-300/90">Sem leitura no histórico</p>
-                          </>
-                        )}
-                      </div>
+                            return (
+                              <div key={st} className={`${colSpan} md:text-right tabular-nums`}>
+                                {s?.hasRealHistory ? (
+                                  <>
+                                    <p
+                                      className={`font-bold ${
+                                        isBestHere ? 'text-emerald-300' : 'text-slate-200'
+                                      }`}
+                                    >
+                                      R$ {cost.toFixed(2)}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">
+                                      {s.observationsCount} leit. · mín R$ {rangeMin.toFixed(2)}–
+                                      {rangeMax.toFixed(2)}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-slate-400">R$ {cost.toFixed(2)} (est.)</p>
+                                    <p className="text-[10px] text-amber-300/90">Sem leitura</p>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : (
+                        <>
+                          <div className="md:col-span-3 md:text-right tabular-nums">
+                            {bestReal ? (
+                              <>
+                                <p className="font-bold text-emerald-300">
+                                  R$ {bestReal.cost.toFixed(2)}
+                                </p>
+                                <p className="text-[10px] text-slate-300 truncate">
+                                  {bestReal.storeName}
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-slate-400">
+                                  R$ {(storeCosts[0]?.cost ?? 0).toFixed(2)} (est.)
+                                </p>
+                                <p className="text-[10px] text-amber-300/90">Sem leitura</p>
+                              </>
+                            )}
+                          </div>
+                          <div className="md:col-span-3 md:text-right tabular-nums">
+                            {secondReal ? (
+                              <>
+                                <p className="font-semibold text-slate-200">
+                                  R$ {secondReal.cost.toFixed(2)}
+                                </p>
+                                <p className="text-[10px] text-slate-400 truncate">
+                                  {secondReal.storeName}
+                                </p>
+                              </>
+                            ) : (
+                              <span className="text-[11px] text-slate-500">—</span>
+                            )}
+                          </div>
+                        </>
+                      )}
 
                       <div className="md:col-span-2 md:text-right tabular-nums text-[11px] font-semibold">
-                        {!bothReal ? (
-                          <span className="text-slate-400 font-normal">Parcial</span>
-                        ) : absRowDiff <= 0.05 ? (
-                          <span className="text-slate-300">Empate</span>
-                        ) : rowDiff > 0 ? (
-                          <span className="text-emerald-400">
-                            NE -R$ {absRowDiff.toFixed(2)}
+                        {realCosts.length < 2 ? (
+                          <span className="text-slate-400 font-normal">
+                            {bestReal ? bestReal.storeName : 'Parcial'}
                           </span>
+                        ) : diff <= 0.05 ? (
+                          <span className="text-slate-300">Empate</span>
                         ) : (
-                          <span className="text-sky-400">
-                            Souza -R$ {absRowDiff.toFixed(2)}
+                          <span className="text-emerald-400">
+                            {bestReal.storeName.split(' ')[0]} -R$ {diff.toFixed(2)}
                           </span>
                         )}
                       </div>
@@ -1452,10 +1310,10 @@ export default function RecipeStoreComparisonCard({
                         transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                         className="overflow-hidden bg-slate-900/50 border-t border-slate-800/70"
                       >
-                        <div className="px-4 py-3 space-y-2.5 text-xs">
+                        <div className="px-4 py-3 space-y-3 text-xs">
                           <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
                             <span>
-                              Registros históricos no banco para{' '}
+                              Preços e leituras para{' '}
                               <strong className="text-white">{item.productName}</strong>
                             </span>
                             <div className="flex items-center gap-2.5">
@@ -1476,6 +1334,33 @@ export default function RecipeStoreComparisonCard({
                             </div>
                           </div>
 
+                          {/* Preço atual por mercado (útil especialmente com 3+ mercados) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {storeCosts.map((sc) => (
+                              <div
+                                key={sc.storeName}
+                                className="rounded-lg border border-slate-800/90 bg-slate-950/70 px-3 py-2 flex items-center justify-between gap-2 text-[11px] tabular-nums"
+                              >
+                                <span className="inline-flex items-center gap-1.5 text-slate-200 font-medium truncate">
+                                  <span
+                                    className="h-2 w-2 rounded-full shrink-0"
+                                    style={{ backgroundColor: storeColorMap[sc.storeName] }}
+                                  />
+                                  {sc.storeName}
+                                </span>
+                                <span
+                                  className={
+                                    sc.hasReal
+                                      ? 'font-bold text-white shrink-0'
+                                      : 'text-slate-400 shrink-0'
+                                  }
+                                >
+                                  R$ {sc.cost.toFixed(2)} {!sc.hasReal && '(est.)'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
                           {mergedTimelineRows.length === 0 ? (
                             <p className="text-[11px] text-slate-400">
                               Sem observações individuais detalhadas registradas para este item.
@@ -1489,11 +1374,8 @@ export default function RecipeStoreComparisonCard({
                                 >
                                   <div className="min-w-0">
                                     <p
-                                      className={`text-[11px] font-semibold truncate ${
-                                        obs.store === 'NE Supermercado'
-                                          ? 'text-emerald-300'
-                                          : 'text-sky-300'
-                                      }`}
+                                      className="text-[11px] font-semibold truncate"
+                                      style={{ color: storeColorMap[obs.store] || '#cbd5e1' }}
                                     >
                                       {obs.store}
                                     </p>
@@ -1692,20 +1574,19 @@ export default function RecipeStoreComparisonCard({
                   value={editingIngredient.manualStoreName}
                   onChange={(e) =>
                     setEditingIngredient((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            manualStoreName: e.target.value as
-                              | 'NE_SUPERMERCADO'
-                              | 'MERCADO_SOUZA'
-                          }
-                        : prev
+                      prev ? { ...prev, manualStoreName: e.target.value } : prev
                     )
                   }
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-sky-500 focus:outline-none"
                 >
-                  <option value="NE_SUPERMERCADO">NE Supermercado</option>
-                  <option value="MERCADO_SOUZA">Mercado Souza</option>
+                  {(allStoreNames.length > 0
+                    ? allStoreNames
+                    : ['NE Supermercado', 'Mercado Souza']
+                  ).map((stName) => (
+                    <option key={stName} value={stName}>
+                      {stName}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
