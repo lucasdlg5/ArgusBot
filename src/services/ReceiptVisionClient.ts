@@ -98,12 +98,20 @@ export class ReceiptVisionClient {
   }
 
   /**
-   * Quando o serviço OpenCV no Render Free Tier está hibernando (HTTP 502/503/504),
-   * pausa a fila por até 2 minutos fazendo polling em /health a cada 5s.
-   * Assim que responder 200 OK, retoma o processamento; se após 2 min continuar indisponível,
-   * abre o circuit breaker por 5 min e segue com o fallback local.
+   * Dispara o wake-up do serviço OpenCV em segundo plano (sem bloquear a foto atual).
+   * Ideal para não consumir o orçamento de timeout do bot enquanto o container Free sobe.
    */
-  private async waitForWakeUp(maxWaitMs = 120_000): Promise<boolean> {
+  triggerBackgroundWakeUp(maxWaitMs = 150_000): void {
+    if (!this.isEnabled() || this.warmUpPromise) return;
+    void this.waitForWakeUp(maxWaitMs).catch(() => false);
+  }
+
+  /**
+   * Quando o serviço OpenCV no Render Free Tier está hibernando (HTTP 502/503/504),
+   * faz polling em /health em segundo plano por até ~2.5 minutos.
+   * Assim que responder 200 OK, fecha o circuit breaker imediatamente.
+   */
+  private async waitForWakeUp(maxWaitMs = 150_000): Promise<boolean> {
     if (this.warmUpPromise) {
       return this.warmUpPromise;
     }
@@ -114,7 +122,7 @@ export class ReceiptVisionClient {
       let probe = 0;
       logger.warn(
         { healthUrl, maxWaitSec: Math.round(maxWaitMs / 1000) },
-        '[ReceiptVisionClient] OpenCV hibernando/indisponível (502); pausando fila por até 2 min aguardando wake-up...'
+        '[ReceiptVisionClient] OpenCV hibernando/indisponível; iniciando wake-up em background...'
       );
 
       while (Date.now() < deadline) {
@@ -268,20 +276,17 @@ export class ReceiptVisionClient {
           if (!res.ok) {
             const errBody = await res.text().catch(() => '');
             if (res.status === 502 || res.status === 503 || res.status === 504) {
-              const wokeUp = await this.waitForWakeUp(120_000);
-              if (wokeUp) {
-                const retryRes = await fetch(endpoint, {
-                  method: 'POST',
-                  body: buildFormData(),
-                  signal: AbortSignal.timeout(env.RECEIPT_VISION_TIMEOUT_MS)
-                });
-                if (retryRes.ok) {
-                  const retryData = (await retryRes.json()) as RawVisionApiResponse;
-                  this.consecutiveFailures = 0;
-                  this.circuitOpenUntil = 0;
-                  return mapVisionResponse(retryData);
-                }
+              this.triggerBackgroundWakeUp(150_000);
+              // Abre circuit breaker curto (90s) enquanto o container sobe em background;
+              // o wake-up zera circuitOpenUntil assim que receber 200 OK.
+              if (Date.now() >= this.circuitOpenUntil) {
+                this.circuitOpenUntil = Date.now() + 90_000;
               }
+              logger.warn(
+                { status: res.status, endpoint },
+                '[ReceiptVisionClient] OpenCV hibernando (502/503/504); wake-up disparado em background e seguindo fallback local imediato'
+              );
+              return null;
             }
             const httpErr = new Error(
               `HTTP ${res.status} de ${endpoint}: ${errBody.slice(0, 220)}`

@@ -773,19 +773,46 @@ export class ArgusReceiptProcessor {
 
   /**
    * 1. Decodifica QR Code 100% localmente usando `sharp` + `jsqr`
+   *    (tenta imagem inteira rotacionada por EXIF e, em seguida, recorte da metade inferior com contraste)
    */
   async decodeQrCodeFromImage(imageBuffer: Buffer): Promise<string | null> {
     try {
-      const { data, info } = await sharp(imageBuffer)
+      const base = sharp(imageBuffer).rotate();
+      const { data, info } = await base
+        .clone()
         .ensureAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
 
-      const qr = jsQR(new Uint8ClampedArray(data), info.width, info.height);
-      if (qr?.data) {
-        logger.info({ qrUrl: qr.data.slice(0, 60) }, '[ArgusReceiptProcessor] QR Code detectado localmente via sharp+jsqr');
-        return qr.data;
+      const qrFull = jsQR(new Uint8ClampedArray(data), info.width, info.height);
+      if (qrFull?.data) {
+        logger.info({ qrUrl: qrFull.data.slice(0, 60) }, '[ArgusReceiptProcessor] QR Code detectado localmente via sharp+jsqr');
+        return qrFull.data;
       }
+
+      // Segunda passada rápida: metade inferior do cupom (onde fica o QR Code) com normalise
+      if (info.height >= 400 && info.width >= 200) {
+        const cropTop = Math.floor(info.height * 0.45);
+        const cropHeight = info.height - cropTop;
+        const { data: cropData, info: cropInfo } = await base
+          .clone()
+          .extract({ left: 0, top: cropTop, width: info.width, height: cropHeight })
+          .resize({ width: 1100, withoutEnlargement: true })
+          .normalise()
+          .ensureAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+
+        const qrCrop = jsQR(new Uint8ClampedArray(cropData), cropInfo.width, cropInfo.height);
+        if (qrCrop?.data) {
+          logger.info(
+            { qrUrl: qrCrop.data.slice(0, 60) },
+            '[ArgusReceiptProcessor] QR Code detectado localmente via recorte inferior sharp+jsqr'
+          );
+          return qrCrop.data;
+        }
+      }
+
       return null;
     } catch (err) {
       logger.warn({ err }, '[ArgusReceiptProcessor] Aviso ao decodificar QR Code com sharp+jsqr');
@@ -1039,16 +1066,73 @@ export class ArgusReceiptProcessor {
       ? await receiptVisionClient.processImages([{ buffer: imageBuffer, mimeType }])
       : null;
 
-    if (visionPre?.qrCodeUrl && this.isGenuineSefazQrUrl(visionPre.qrCodeUrl)) {
-      const scraped = await this.scrapeSefazReceipt(visionPre.qrCodeUrl).catch(() => null);
+    const resolvedQrUrl =
+      visionPre?.qrCodeUrl && this.isGenuineSefazQrUrl(visionPre.qrCodeUrl)
+        ? visionPre.qrCodeUrl
+        : await this.decodeQrCodeFromImage(imageBuffer);
+
+    if (resolvedQrUrl && this.isGenuineSefazQrUrl(resolvedQrUrl)) {
+      const keyMatch = resolvedQrUrl.match(/\b(\d{44})\b/);
+      if (keyMatch) {
+        try {
+          const existingByKey = await queryArgus<{
+            total_amount: string;
+            purchase_date: string;
+            trading_name: string;
+            cnpj: string;
+            address: string;
+          }>(
+            `SELECT r.total_amount, r.purchase_date, s.trading_name, s.cnpj, s.address
+             FROM argus.receipts r
+             JOIN argus.stores s ON s.id = r.store_id
+             WHERE r.access_key = $1
+             LIMIT 1`,
+            [keyMatch[1]]
+          );
+          if (existingByKey.length > 0) {
+            const row = existingByKey[0];
+            logger.info(
+              { elapsedMs: Date.now() - startedAt, accessKey: keyMatch[1], store: row.trading_name },
+              '[FIM] [ArgusReceiptProcessor] Chave SEFAZ do QR Code já registrada no banco (pré-cheque sem IA)'
+            );
+            return {
+              imageQuality: 'GOOD',
+              qualityReason: 'Chave SEFAZ identificada localmente via QR Code e já existente no banco',
+              documentsCount: 1,
+              documents: [
+                {
+                  storeCnpj: row.cnpj,
+                  storeRawName: row.trading_name,
+                  storeTradingName: row.trading_name,
+                  storeAddress: row.address,
+                  purchaseDate: new Date(row.purchase_date).toISOString(),
+                  totalAmount: Number(row.total_amount),
+                  discountAmount: 0,
+                  paymentMethod: 'PIX',
+                  accessKey: keyMatch[1],
+                  hasOfficialAccessKey: true,
+                  items: [],
+                  extractionMethod: 'QR_SEFAZ_SCRAPER'
+                }
+              ]
+            };
+          }
+        } catch {
+          // Segue fluxo normal se falhar consulta rápida
+        }
+      }
+
+      const scraped = await this.scrapeSefazReceipt(resolvedQrUrl).catch(() => null);
       if (scraped) {
         logger.info(
           { elapsedMs: Date.now() - startedAt, store: scraped.storeTradingName, total: scraped.totalAmount },
-          '[FIM] [ArgusReceiptProcessor] Cupom extraído via QR Code SEFAZ recuperado pelo OpenCV'
+          '[FIM] [ArgusReceiptProcessor] Cupom extraído via QR Code SEFAZ local/OpenCV'
         );
         return {
           imageQuality: 'GOOD',
-          qualityReason: 'QR Code SEFAZ recuperado via camada OpenCV (CLAHE/Orientação)',
+          qualityReason: visionPre?.qrCodeUrl
+            ? 'QR Code SEFAZ recuperado via camada OpenCV (CLAHE/Orientação)'
+            : 'QR Code SEFAZ decodificado localmente via sharp+jsqr',
           documentsCount: 1,
           documents: [scraped]
         };

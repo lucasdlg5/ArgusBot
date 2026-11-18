@@ -2,8 +2,12 @@ name: Argus Hourly Media Queue & BI Sync Worker
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
+
+concurrency:
+  group: argus-queue-worker
+  cancel-in-progress: false
 
 permissions:
   contents: write

@@ -13,6 +13,7 @@ import { ArgusReconciliationService } from '../services/ArgusReconciliationServi
 import { ArgusSecurityService } from '../services/ArgusSecurityService';
 import { ArgusStorageService } from '../services/ArgusStorageService';
 import { ArgusStickerService } from '../services/ArgusStickerService';
+import { receiptVisionClient } from '../services/ReceiptVisionClient';
 import {
   ArgusPriceScannerService,
   type PriceScanProcessOutcome
@@ -1312,6 +1313,7 @@ export function createArgusBot(): Bot {
     const MAX_STITCH_PARTS = 4;
     const firstCtx = entries[0].ctx;
     if (entries.length > MAX_STITCH_PARTS) {
+      receiptVisionClient.triggerBackgroundWakeUp();
       logger.info(
         { chatId: firstCtx.chat.id, mediaGroupId: groupKey, photosCount: entries.length },
         '[BotAlbum] Lote com >4 fotos; pulando costura SIFT para evitar OOM no OpenCV e processando individualmente'
@@ -1321,8 +1323,15 @@ export function createArgusBot(): Bot {
           `📑 Recebi um lote com ${entries.length} fotos! Vou processar cada nota individualmente pela fila.`
         )
         .catch(() => {});
-      for (const entry of entries) {
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        if (!entry) continue;
         await handleSingleMediaCtx(entry.ctx);
+        // Libera referência do contexto/entrada e dá breve respiro para GC em lotes grandes (30+ fotos)
+        entries[i] = undefined as unknown as PendingAlbumEntry;
+        if (i + 1 < entries.length) {
+          await new Promise((r) => setTimeout(r, 150));
+        }
       }
       return;
     }
@@ -2085,6 +2094,7 @@ export function createArgusBot(): Bot {
       );
       await stickers.sendEmotionalSticker(ctx, 'SHOCK_ALERT');
     } finally {
+      downloadedBuffer = null;
       releaseMediaSlot();
       logger.info(
         { chatId: ctx.chat.id, messageId: originalMessageId, elapsedMs: Date.now() - startMs },
