@@ -19,6 +19,7 @@ from typing import Dict, List, Optional
 
 from celery.result import AsyncResult
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -111,7 +112,8 @@ async def process_receipt(
         )
 
     try:
-        response = process_receipt_batch_sync(
+        response = await run_in_threadpool(
+            process_receipt_batch_sync,
             images_bytes,
             include_images_base64=include_images_base64,
             extract_semantic=extract_semantic,

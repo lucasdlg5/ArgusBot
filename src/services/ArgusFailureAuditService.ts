@@ -182,7 +182,7 @@ export class ArgusFailureAuditService {
     await this.recordFailure({
       serviceName: params.serviceName,
       operationName: params.operationName,
-      attemptsCount: maxAttempts,
+      attemptsCount: history.length > 0 ? history.length : 1,
       maxAttempts,
       finalStatus: hasFallback ? 'FALLBACK_ACTIVATED' : 'FAILED_FINAL',
       errorMessage: finalMessage,

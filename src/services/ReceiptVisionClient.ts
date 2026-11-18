@@ -119,8 +119,13 @@ export class ReceiptVisionClient {
 
       while (Date.now() < deadline) {
         probe += 1;
+        const remainingForProbe = deadline - Date.now();
+        if (remainingForProbe <= 0) break;
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 8000);
+        // No Render Free, o cold start segura o GET /health por até ~50s antes de responder;
+        // abortar em 8s derrubava a conexão antes do container subir.
+        const probeTimeoutMs = Math.min(55_000, Math.max(10_000, remainingForProbe));
+        const timer = setTimeout(() => controller.abort(), probeTimeoutMs);
         try {
           const res = await fetch(healthUrl, { method: 'GET', signal: controller.signal });
           if (res.ok) {

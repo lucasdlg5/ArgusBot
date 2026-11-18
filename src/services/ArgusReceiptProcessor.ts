@@ -28,13 +28,23 @@ export function isQuotaExhaustedError(err: unknown): boolean {
     msg.includes('RESOURCE_EXHAUSTED') ||
     msg.includes('"code":429') ||
     msg.includes('429') ||
-    msg.includes('"code":503') ||
-    msg.includes('UNAVAILABLE') ||
     lower.includes('quota exceeded') ||
-    lower.includes('em cooldown') ||
-    lower.includes('todos os provedores de ia falharam') ||
     lower.includes('no credits remaining') ||
     lower.includes('credit balance is too low')
+  );
+}
+
+function isTransientGeminiError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  const lower = msg.toLowerCase();
+  return (
+    msg.includes('"code":503') ||
+    msg.includes('503') ||
+    msg.includes('UNAVAILABLE') ||
+    lower.includes('timeout') ||
+    lower.includes('high demand') ||
+    lower.includes('fetch failed') ||
+    lower.includes('econnreset')
   );
 }
 
@@ -881,7 +891,7 @@ export class ArgusReceiptProcessor {
 
   private async generateWithModelFallback(
     params: Parameters<GoogleGenAI['models']['generateContent']>[0],
-    timeoutMsPerModel = 18000
+    timeoutMsPerModel = 35000
   ): Promise<{ text?: string }> {
     let lastError: unknown;
     const now = Date.now();
@@ -890,8 +900,10 @@ export class ArgusReceiptProcessor {
       const candidateModels = Array.from(
         new Set([
           env.GEMINI_MODEL,
+          'gemini-2.5-flash',
           'gemini-3.6-flash',
           'gemini-3.5-flash',
+          'gemini-2.5-flash-lite',
           'gemini-3.5-flash-lite',
           'gemini-3.8-flash'
         ])
@@ -900,7 +912,13 @@ export class ArgusReceiptProcessor {
         const until = geminiModelCooldownUntil.get(m) ?? 0;
         return now >= until;
       });
-      const modelsToTry = activeModels.length > 0 ? activeModels : candidateModels.slice(-1);
+      const modelsToTry =
+        activeModels.length > 0
+          ? activeModels
+          : [...candidateModels].sort(
+              (a, b) =>
+                (geminiModelCooldownUntil.get(a) ?? 0) - (geminiModelCooldownUntil.get(b) ?? 0)
+            ).slice(0, 2);
 
       for (const modelName of modelsToTry) {
         let timer: NodeJS.Timeout | undefined;
@@ -969,14 +987,21 @@ export class ArgusReceiptProcessor {
         (params.config as { responseMimeType?: string } | undefined)?.responseMimeType ===
         'application/json';
 
-      const fallbackRes = await llmFallbackProvider.generateWithSecondaryAndTertiary({
-        prompt: textParts.join('\n\n'),
-        imageBase64,
-        imageMimeType,
-        expectJson,
-        timeoutMs: 22000
-      });
-      return { text: fallbackRes.text };
+      try {
+        const fallbackRes = await llmFallbackProvider.generateWithSecondaryAndTertiary({
+          prompt: textParts.join('\n\n'),
+          imageBase64,
+          imageMimeType,
+          expectJson,
+          timeoutMs: 22000
+        });
+        return { text: fallbackRes.text };
+      } catch (fallbackErr) {
+        if (isTransientGeminiError(lastError) && fallbackErr && typeof fallbackErr === 'object') {
+          (fallbackErr as { geminiTransient?: boolean }).geminiTransient = true;
+        }
+        throw fallbackErr;
+      }
     }
 
     throw lastError;
@@ -1123,7 +1148,9 @@ export class ArgusReceiptProcessor {
       operationName: 'gemini_extract',
       maxAttempts: 3,
       baseDelayMs: 1500,
-      shouldRetry: (err) => !isQuotaExhaustedError(err),
+      shouldRetry: (err) =>
+        Boolean((err as { geminiTransient?: boolean } | null)?.geminiTransient) ||
+        !isQuotaExhaustedError(err),
       payloadSummary: {
         model: env.GEMINI_MODEL,
         mimeType: optimizedMime,
