@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -37,6 +38,17 @@ from app.workers.celery_app import (
 
 ARTIFACTS_DIR = Path("/tmp/argus_receipt_artifacts")
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+MAX_UPLOAD_PARTS = 5
+
+
+def _cleanup_old_artifacts(ttl_seconds: int = 1800) -> None:
+    cutoff = time.time() - ttl_seconds
+    for item in ARTIFACTS_DIR.iterdir():
+        try:
+            if item.is_file() and item.stat().st_mtime < cutoff:
+                item.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 app = FastAPI(
     title=settings.app_name,
@@ -72,6 +84,12 @@ async def process_receipt(
 ):
     if not files:
         raise HTTPException(status_code=400, detail="Envie ao menos uma imagem.")
+    if len(files) > MAX_UPLOAD_PARTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Máximo de {MAX_UPLOAD_PARTS} partes por requisição para evitar estouro de memória.",
+        )
+    _cleanup_old_artifacts()
 
     images_bytes: List[bytes] = []
     for f in files:

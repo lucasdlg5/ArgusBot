@@ -235,7 +235,8 @@ export class ArgusCatalogBiService {
              r.has_official_access_key
            FROM argus.receipts r
            JOIN argus.stores s ON s.id = r.store_id
-           ORDER BY r.purchase_date DESC`
+           ORDER BY r.purchase_date DESC
+           LIMIT 300`
         ),
         queryArgus<RawReceiptItemRow>(
           `SELECT

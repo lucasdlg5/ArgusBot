@@ -5,7 +5,7 @@ import { webhookCallback } from 'grammy';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { APP_VERSION } from '../config/version';
-import { queryArgus } from '../lib/db';
+import { closeArgusPool, queryArgus } from '../lib/db';
 import {
   ArgusCatalogBiService,
   type UpdateProductInput,
@@ -25,8 +25,23 @@ import { createArgusBot } from './index';
 const PORT = Number(process.env.PORT || env.PORT || 3000);
 const WEBHOOK_PATH = '/telegram/webhook';
 
-function applyCorsHeaders(res: http.ServerResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+const ALLOWED_CORS_ORIGINS = new Set<string>([
+  'https://lucasdlg5.github.io',
+  ...(env.PUBLIC_DASHBOARD_URL
+    ? [new URL(env.PUBLIC_DASHBOARD_URL).origin]
+    : [])
+]);
+
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_CORS_ORIGINS.has(origin)) return true;
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+}
+
+function applyCorsHeaders(res: http.ServerResponse, req?: http.IncomingMessage) {
+  const origin = String(req?.headers?.origin || '').trim();
+  const allowOrigin = origin && isAllowedOrigin(origin) ? origin : 'https://lucasdlg5.github.io';
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
@@ -54,10 +69,19 @@ function sendJsonCompressed(
   res.end(jsonBuf);
 }
 
-async function readJsonBody<T>(req: http.IncomingMessage): Promise<T> {
+async function readJsonBody<T>(
+  req: http.IncomingMessage,
+  maxBytes = 256 * 1024
+): Promise<T> {
   const chunks: Buffer[] = [];
+  let totalBytes = 0;
   for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buf.length;
+    if (totalBytes > maxBytes) {
+      throw new Error(`Payload excede o limite máximo de ${maxBytes} bytes.`);
+    }
+    chunks.push(buf);
   }
   const raw = Buffer.concat(chunks).toString('utf8');
   return JSON.parse(raw || '{}') as T;
@@ -111,7 +135,7 @@ async function main() {
     }
 
     if (req.method === 'OPTIONS' && urlPath.startsWith('/api/')) {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       res.writeHead(204);
       res.end();
       return;
@@ -119,7 +143,7 @@ async function main() {
 
     const convertFlyerMatch = urlPath.match(/^\/api\/receipts\/([a-f0-9-]+)\/convert-to-flyer$/i);
     if (req.method === 'POST' && convertFlyerMatch) {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const result = await receiptProcessor.convertReceiptToFlyer(convertFlyerMatch[1]);
         if (!result.converted) {
@@ -140,7 +164,7 @@ async function main() {
     }
 
     if (req.method === 'GET' && urlPath === '/api/public-snapshot') {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const now = Date.now();
         if (snapshotCache && snapshotCache.expiresAt > now) {
@@ -159,7 +183,7 @@ async function main() {
     }
 
     if (req.method === 'GET' && urlPath === '/api/recipes') {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const searchParams = new URL(req.url || '/api/recipes', 'http://localhost').searchParams;
         const id = searchParams.get('id') || undefined;
@@ -189,7 +213,7 @@ async function main() {
     }
 
     if (req.method === 'POST' && urlPath === '/api/recipes') {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const body = await readJsonBody<{
           rawText?: string;
@@ -263,7 +287,7 @@ async function main() {
     }
 
     if (req.method === 'PATCH' && urlPath === '/api/recipes') {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const body = await readJsonBody<Partial<UpdateRecipeIngredientInput>>(req);
         if (!body?.recipeId || !body?.productId || !body?.productName) {
@@ -291,7 +315,7 @@ async function main() {
     }
 
     if (req.method === 'DELETE' && urlPath === '/api/recipes') {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const id = new URL(req.url || '/api/recipes', 'http://localhost').searchParams.get('id');
         if (!id) {
@@ -361,7 +385,7 @@ async function main() {
     }
 
     if (req.method === 'PATCH' && urlPath === '/api/products') {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const body = await readJsonBody<UpdateProductInput>(req);
         if (!body?.id || !body?.canonicalProductName) {
@@ -381,7 +405,7 @@ async function main() {
     }
 
     if (req.method === 'PATCH' && urlPath === '/api/stores') {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const body = await readJsonBody<UpdateStoreInput>(req);
         if (!body?.storeId || !body?.tradingName) {
@@ -401,7 +425,7 @@ async function main() {
     }
 
     if (req.method === 'POST' && urlPath === '/api/recipes/pantry-chat') {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
       try {
         const body = await readJsonBody<{ message?: string; recipes?: any[] }>(req);
         if (!body?.message || !body.message.trim()) {
@@ -437,7 +461,7 @@ async function main() {
     }
 
     if (urlPath.startsWith('/api/')) {
-      applyCorsHeaders(res);
+      applyCorsHeaders(res, req);
     }
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));
@@ -479,6 +503,23 @@ async function main() {
       });
     }
   });
+
+  let shuttingDown = false;
+  const gracefulShutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info({ signal }, '[ArgusRender] Encerrando servidor com graceful shutdown...');
+    const forceTimer = setTimeout(() => process.exit(0), 10_000);
+    forceTimer.unref();
+    server.close(async () => {
+      await closeArgusPool();
+      clearTimeout(forceTimer);
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 }
 
 main().catch((err) => {

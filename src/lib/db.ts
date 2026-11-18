@@ -687,3 +687,12 @@ export function getSupabaseArgusClient(): SupabaseClient<any, 'argus'> | null {
   }
   return supabaseAdmin;
 }
+
+export async function closeArgusPool(): Promise<void> {
+  if (pgPool) {
+    const poolToClose = pgPool;
+    pgPool = null;
+    globalForArgusDb.__argusPgPool = undefined;
+    await poolToClose.end().catch(() => {});
+  }
+}
