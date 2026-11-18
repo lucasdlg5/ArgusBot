@@ -133,7 +133,7 @@ const envSchema = z.object({
       if (/^https?:\/\//i.test(cleaned)) return cleaned;
       return cleaned.includes('.onrender.com') ? `https://${cleaned}` : `http://${cleaned}`;
     }),
-  RECEIPT_VISION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(35000)
+  RECEIPT_VISION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(50000)
 });
 
 const parsed = envSchema.safeParse(process.env);

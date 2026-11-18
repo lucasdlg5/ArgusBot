@@ -900,10 +900,8 @@ export class ArgusReceiptProcessor {
       const candidateModels = Array.from(
         new Set([
           env.GEMINI_MODEL,
-          'gemini-2.5-flash',
           'gemini-3.6-flash',
           'gemini-3.5-flash',
-          'gemini-2.5-flash-lite',
           'gemini-3.5-flash-lite',
           'gemini-3.8-flash'
         ])
@@ -943,7 +941,14 @@ export class ArgusReceiptProcessor {
         } catch (err) {
           if (timer) clearTimeout(timer);
           lastError = err;
-          if (isQuotaExhaustedError(err)) {
+          const errMsg = err instanceof Error ? err.message : String(err ?? '');
+          if (
+            errMsg.includes('"code":404') ||
+            errMsg.includes('NOT_FOUND') ||
+            errMsg.toLowerCase().includes('no longer available')
+          ) {
+            geminiModelCooldownUntil.set(modelName, Date.now() + 24 * 60 * 60 * 1000);
+          } else if (isQuotaExhaustedError(err)) {
             geminiModelCooldownUntil.set(modelName, Date.now() + 15 * 60 * 1000);
           }
           logger.warn(
@@ -1218,7 +1223,7 @@ REGRAS ESTRITAS:
               }
             }
           },
-          20000
+          35000
         )
     });
 
