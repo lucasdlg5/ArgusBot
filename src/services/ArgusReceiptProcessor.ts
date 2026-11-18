@@ -213,7 +213,7 @@ export class ArgusReceiptProcessor {
     if (!rawDate) return new Date().toISOString();
     const trimmed = rawDate.trim();
     const brMatch = trimmed.match(
-      /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/
+      /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[\s,Tàs]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/i
     );
     if (brMatch) {
       const day = brMatch[1].padStart(2, '0');
@@ -1167,7 +1167,8 @@ REGRAS ESTRITAS:
 1. NUNCA some preços de um panfleto/flyer para inventar totalAmount! Sem linha impressa de TOTAL => hasPrintedTotalLine = false e totalAmount = 0.
 2. Em receiptNumber, extraia APENAS o código/número do Pedido, COO ou Extrato (ex: "2596437", "2593977").
 3. Se o CNPJ não estiver visível, retorne "" em storeCnpj.
-4. Se imageQuality = 'UNREADABLE', retorne documents: [] e documentsCount: 0.`
+4. Se imageQuality = 'UNREADABLE', retorne documents: [] e documentsCount: 0.
+5. Em purchaseDate, extraia OBRIGATORIAMENTE a DATA e HORA IMPRESSA NO PAPEL do cupom/NF (ex: "14/09/2026 18:22:10"). NUNCA use a data de hoje se houver uma data impressa no papel; se a hora não estiver visível, use "12:00:00". Só retorne "" se não houver nenhuma data impressa na foto.`
               }
             ],
             config: {
