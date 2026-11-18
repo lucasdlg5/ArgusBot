@@ -163,6 +163,116 @@ async function main() {
       return;
     }
 
+    const receiptDetailsMatch = urlPath.match(/^\/api\/receipts\/([a-f0-9-]+)$/i);
+    if (req.method === 'PATCH' && receiptDetailsMatch) {
+      applyCorsHeaders(res, req);
+      try {
+        const body = await readJsonBody<Parameters<typeof receiptProcessor.updateReceiptDetails>[1]>(req);
+        const result = await receiptProcessor.updateReceiptDetails(receiptDetailsMatch[1], body);
+        if (!result.updated) {
+          res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Nota fiscal não encontrada.' }));
+          return;
+        }
+        snapshotCache = null;
+        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', ...result }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro em PATCH /api/receipts/:id');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    const receiptItemsCollectionMatch = urlPath.match(/^\/api\/receipts\/([a-f0-9-]+)\/items$/i);
+    if (req.method === 'POST' && receiptItemsCollectionMatch) {
+      applyCorsHeaders(res, req);
+      try {
+        const body = await readJsonBody<Parameters<typeof receiptProcessor.addReceiptItem>[1]>(req);
+        if (!body.rawDescription || !body.rawDescription.trim()) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Informe a descrição do produto.' }));
+          return;
+        }
+        const result = await receiptProcessor.addReceiptItem(receiptItemsCollectionMatch[1], body);
+        if (!result) {
+          res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Nota fiscal não encontrada.' }));
+          return;
+        }
+        snapshotCache = null;
+        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        res.writeHead(201, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', ...result }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro em POST /api/receipts/:id/items');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    const receiptItemMatch = urlPath.match(/^\/api\/receipts\/([a-f0-9-]+)\/items\/([a-f0-9-]+)$/i);
+    if (req.method === 'PATCH' && receiptItemMatch) {
+      applyCorsHeaders(res, req);
+      try {
+        const body = await readJsonBody<Parameters<typeof receiptProcessor.updateReceiptItem>[2]>(req);
+        if (!body.rawDescription || !body.rawDescription.trim()) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Informe a descrição do produto.' }));
+          return;
+        }
+        const result = await receiptProcessor.updateReceiptItem(
+          receiptItemMatch[1],
+          receiptItemMatch[2],
+          body
+        );
+        if (!result) {
+          res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Item ou nota fiscal não encontrado.' }));
+          return;
+        }
+        snapshotCache = null;
+        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', ...result }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro em PATCH /api/receipts/:id/items/:itemId');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
+    if (req.method === 'DELETE' && receiptItemMatch) {
+      applyCorsHeaders(res, req);
+      try {
+        const reqUrl = new URL(req.url ?? '/', 'http://localhost');
+        const recalc = reqUrl.searchParams.get('recalculateTotal') === 'true';
+        const result = await receiptProcessor.deleteReceiptItem(
+          receiptItemMatch[1],
+          receiptItemMatch[2],
+          recalc
+        );
+        if (!result.deleted) {
+          res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ status: 'error', message: 'Item ou nota fiscal não encontrado.' }));
+          return;
+        }
+        snapshotCache = null;
+        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'ok', ...result }));
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro em DELETE /api/receipts/:id/items/:itemId');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
     if (req.method === 'GET' && urlPath === '/api/public-snapshot') {
       applyCorsHeaders(res, req);
       try {

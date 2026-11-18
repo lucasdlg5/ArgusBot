@@ -1833,4 +1833,352 @@ REGRAS ESTRITAS:
       };
     });
   }
+
+  private computeNormalizedUnitPrice(
+    quantity: number,
+    unitType: ReceiptUnitType,
+    seenPackageSize: number,
+    totalPrice: number,
+    unitPrice: number
+  ): number {
+    const totalBaseUnits =
+      unitType === 'KG' || unitType === 'LT'
+        ? quantity * 1000
+        : quantity * seenPackageSize;
+    const norm = totalBaseUnits > 0 ? totalPrice / totalBaseUnits : unitPrice;
+    return Number((Number.isFinite(norm) ? norm : 0).toFixed(6));
+  }
+
+  async updateReceiptDetails(
+    receiptId: string,
+    input: {
+      storeName?: string;
+      purchaseDate?: string;
+      paymentMethod?: PaymentMethod;
+      totalAmount?: number;
+      discountAmount?: number;
+      reconciled?: boolean;
+    }
+  ): Promise<{
+    updated: boolean;
+    storeId?: string;
+    storeName?: string;
+    storeAddress?: string;
+    purchaseDate?: string;
+    paymentMethod?: PaymentMethod;
+    totalAmount?: number;
+    discountAmount?: number;
+    reconciled?: boolean;
+  }> {
+    return withArgusTransaction(async (client) => {
+      const existing = await client.query<{
+        id: string;
+        store_id: string;
+        purchase_date: string;
+        payment_method: PaymentMethod;
+        total_amount: string;
+        discount_amount: string;
+        reconciled: boolean;
+      }>(
+        `SELECT id, store_id, purchase_date::text, payment_method, total_amount::text, discount_amount::text, reconciled
+         FROM argus.receipts
+         WHERE id = $1`,
+        [receiptId]
+      );
+      if (existing.rows.length === 0) {
+        return { updated: false };
+      }
+      const cur = existing.rows[0];
+
+      let storeId = cur.store_id;
+      let resolvedStoreName: string | undefined;
+      let resolvedStoreAddress: string | undefined;
+
+      if (input.storeName && input.storeName.trim().length > 0) {
+        const cleanStore = input.storeName.trim();
+        const syntheticCnpj = this.normalizeStoreCnpj(undefined, cleanStore);
+        const storeRes = await this.storeNormalizer.resolveOrUpsertCanonicalStore(client, {
+          cnpj: syntheticCnpj,
+          rawName: cleanStore,
+          tradingName: cleanStore,
+          address: 'Endereço não informado',
+          latitude: env.HOME_LAT - 0.012,
+          longitude: env.HOME_LNG - 0.015
+        });
+        storeId = storeRes.storeId;
+        const addrRow = await client.query<{ trading_name: string; address: string }>(
+          `SELECT trading_name, address FROM argus.stores WHERE id = $1`,
+          [storeId]
+        );
+        resolvedStoreName = addrRow.rows[0]?.trading_name || cleanStore;
+        resolvedStoreAddress = addrRow.rows[0]?.address;
+      }
+
+      const nextPurchaseDate = input.purchaseDate
+        ? this.normalizeReceiptDate(input.purchaseDate)
+        : new Date(cur.purchase_date).toISOString();
+      const nextPaymentMethod = input.paymentMethod ?? cur.payment_method;
+      const nextTotalAmount =
+        input.totalAmount !== undefined
+          ? Math.max(0, Number(Number(input.totalAmount).toFixed(2)))
+          : Number(cur.total_amount);
+      const nextDiscountAmount =
+        input.discountAmount !== undefined
+          ? Math.max(0, Number(Number(input.discountAmount).toFixed(2)))
+          : Number(cur.discount_amount || 0);
+      const nextReconciled =
+        input.reconciled !== undefined ? Boolean(input.reconciled) : Boolean(cur.reconciled);
+
+      await client.query(
+        `UPDATE argus.receipts
+         SET store_id = $2,
+             purchase_date = $3,
+             payment_method = $4,
+             total_amount = $5,
+             discount_amount = $6,
+             reconciled = $7
+         WHERE id = $1`,
+        [
+          receiptId,
+          storeId,
+          nextPurchaseDate,
+          nextPaymentMethod,
+          nextTotalAmount,
+          nextDiscountAmount,
+          nextReconciled
+        ]
+      );
+
+      if (!resolvedStoreName) {
+        const stRow = await client.query<{ trading_name: string; address: string }>(
+          `SELECT trading_name, address FROM argus.stores WHERE id = $1`,
+          [storeId]
+        );
+        resolvedStoreName = stRow.rows[0]?.trading_name;
+        resolvedStoreAddress = stRow.rows[0]?.address;
+      }
+
+      return {
+        updated: true,
+        storeId,
+        storeName: resolvedStoreName,
+        storeAddress: resolvedStoreAddress,
+        purchaseDate: nextPurchaseDate,
+        paymentMethod: nextPaymentMethod,
+        totalAmount: nextTotalAmount,
+        discountAmount: nextDiscountAmount,
+        reconciled: nextReconciled
+      };
+    });
+  }
+
+  async addReceiptItem(
+    receiptId: string,
+    input: {
+      rawDescription: string;
+      quantity: number;
+      unitType: ReceiptUnitType;
+      unitPrice: number;
+      totalPrice?: number;
+      recalculateTotal?: boolean;
+    }
+  ) {
+    return withArgusTransaction(async (client) => {
+      const recCheck = await client.query<{ id: string }>(
+        `SELECT id FROM argus.receipts WHERE id = $1`,
+        [receiptId]
+      );
+      if (recCheck.rows.length === 0) {
+        return null;
+      }
+
+      const rawDesc = input.rawDescription.trim().toUpperCase();
+      const qty = Math.max(0.001, Number(input.quantity) || 1);
+      const unitType = input.unitType || 'UN';
+      const unitPrice = Math.max(0, Number(input.unitPrice) || 0);
+      const totalPrice =
+        input.totalPrice !== undefined
+          ? Math.max(0, Number(Number(input.totalPrice).toFixed(2)))
+          : Number((qty * unitPrice).toFixed(2));
+
+      const norm = await this.resolveOrCreateCanonicalProduct(rawDesc, unitType, client);
+      const normalizedPricePerBaseUnit = this.computeNormalizedUnitPrice(
+        qty,
+        unitType,
+        norm.seenPackageSize,
+        totalPrice,
+        unitPrice
+      );
+
+      const inserted = await client.query<{ id: string }>(
+        `INSERT INTO argus.receipt_items (
+           receipt_id, canonical_product_id, raw_description, quantity, unit_type, unit_price, total_price, normalized_price_per_base_unit
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [
+          receiptId,
+          norm.canonicalProductId,
+          rawDesc,
+          qty,
+          unitType,
+          unitPrice,
+          totalPrice,
+          normalizedPricePerBaseUnit
+        ]
+      );
+
+      let newReceiptTotal: number | undefined;
+      if (input.recalculateTotal) {
+        const sumRes = await client.query<{ sum_total: string }>(
+          `SELECT COALESCE(SUM(total_price), 0)::text AS sum_total FROM argus.receipt_items WHERE receipt_id = $1`,
+          [receiptId]
+        );
+        newReceiptTotal = Number(Number(sumRes.rows[0]?.sum_total || 0).toFixed(2));
+        await client.query(`UPDATE argus.receipts SET total_amount = $2 WHERE id = $1`, [
+          receiptId,
+          newReceiptTotal
+        ]);
+      }
+
+      return {
+        item: {
+          id: inserted.rows[0].id,
+          rawDescription: rawDesc,
+          canonicalProductName: norm.canonicalName,
+          category: norm.category,
+          quantity: qty,
+          unitType,
+          unitPrice,
+          totalPrice,
+          baseUnit: norm.baseUnit,
+          normalizedPricePerBaseUnit
+        },
+        newReceiptTotal
+      };
+    });
+  }
+
+  async updateReceiptItem(
+    receiptId: string,
+    itemId: string,
+    input: {
+      rawDescription: string;
+      quantity: number;
+      unitType: ReceiptUnitType;
+      unitPrice: number;
+      totalPrice?: number;
+      recalculateTotal?: boolean;
+    }
+  ) {
+    return withArgusTransaction(async (client) => {
+      const existing = await client.query<{ id: string }>(
+        `SELECT id FROM argus.receipt_items WHERE id = $1 AND receipt_id = $2`,
+        [itemId, receiptId]
+      );
+      if (existing.rows.length === 0) {
+        return null;
+      }
+
+      const rawDesc = input.rawDescription.trim().toUpperCase();
+      const qty = Math.max(0.001, Number(input.quantity) || 1);
+      const unitType = input.unitType || 'UN';
+      const unitPrice = Math.max(0, Number(input.unitPrice) || 0);
+      const totalPrice =
+        input.totalPrice !== undefined
+          ? Math.max(0, Number(Number(input.totalPrice).toFixed(2)))
+          : Number((qty * unitPrice).toFixed(2));
+
+      const norm = await this.resolveOrCreateCanonicalProduct(rawDesc, unitType, client);
+      const normalizedPricePerBaseUnit = this.computeNormalizedUnitPrice(
+        qty,
+        unitType,
+        norm.seenPackageSize,
+        totalPrice,
+        unitPrice
+      );
+
+      await client.query(
+        `UPDATE argus.receipt_items
+         SET canonical_product_id = $3,
+             raw_description = $4,
+             quantity = $5,
+             unit_type = $6,
+             unit_price = $7,
+             total_price = $8,
+             normalized_price_per_base_unit = $9
+         WHERE id = $1 AND receipt_id = $2`,
+        [
+          itemId,
+          receiptId,
+          norm.canonicalProductId,
+          rawDesc,
+          qty,
+          unitType,
+          unitPrice,
+          totalPrice,
+          normalizedPricePerBaseUnit
+        ]
+      );
+
+      let newReceiptTotal: number | undefined;
+      if (input.recalculateTotal) {
+        const sumRes = await client.query<{ sum_total: string }>(
+          `SELECT COALESCE(SUM(total_price), 0)::text AS sum_total FROM argus.receipt_items WHERE receipt_id = $1`,
+          [receiptId]
+        );
+        newReceiptTotal = Number(Number(sumRes.rows[0]?.sum_total || 0).toFixed(2));
+        await client.query(`UPDATE argus.receipts SET total_amount = $2 WHERE id = $1`, [
+          receiptId,
+          newReceiptTotal
+        ]);
+      }
+
+      return {
+        item: {
+          id: itemId,
+          rawDescription: rawDesc,
+          canonicalProductName: norm.canonicalName,
+          category: norm.category,
+          quantity: qty,
+          unitType,
+          unitPrice,
+          totalPrice,
+          baseUnit: norm.baseUnit,
+          normalizedPricePerBaseUnit
+        },
+        newReceiptTotal
+      };
+    });
+  }
+
+  async deleteReceiptItem(
+    receiptId: string,
+    itemId: string,
+    recalculateTotal = false
+  ): Promise<{ deleted: boolean; newReceiptTotal?: number }> {
+    return withArgusTransaction(async (client) => {
+      const del = await client.query<{ id: string }>(
+        `DELETE FROM argus.receipt_items WHERE id = $1 AND receipt_id = $2 RETURNING id`,
+        [itemId, receiptId]
+      );
+      if (del.rows.length === 0) {
+        return { deleted: false };
+      }
+
+      let newReceiptTotal: number | undefined;
+      if (recalculateTotal) {
+        const sumRes = await client.query<{ sum_total: string }>(
+          `SELECT COALESCE(SUM(total_price), 0)::text AS sum_total FROM argus.receipt_items WHERE receipt_id = $1`,
+          [receiptId]
+        );
+        newReceiptTotal = Number(Number(sumRes.rows[0]?.sum_total || 0).toFixed(2));
+        await client.query(`UPDATE argus.receipts SET total_amount = $2 WHERE id = $1`, [
+          receiptId,
+          newReceiptTotal
+        ]);
+      }
+
+      return { deleted: true, newReceiptTotal };
+    });
+  }
 }

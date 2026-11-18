@@ -13,10 +13,13 @@ import {
   Clock,
   CreditCard,
   Package,
+  Pencil,
+  Plus,
   Receipt,
   Search,
   Store,
   Tag,
+  Trash2,
   X
 } from 'lucide-react';
 import {
@@ -29,6 +32,7 @@ import { APP_VERSION_LABEL } from '@/config/version';
 import type {
   PaymentMethod,
   ReceiptDetailEntry,
+  ReceiptUnitType,
   StoreBiDetail
 } from '@/types/argus';
 
@@ -37,6 +41,33 @@ interface ReceiptsApiResponse {
   generatedAt?: string;
   receiptsDetailed?: ReceiptDetailEntry[];
   storesBi?: StoreBiDetail[];
+}
+
+const UNIT_TYPE_OPTIONS: { value: ReceiptUnitType; label: string }[] = [
+  { value: 'UN', label: 'Unidade (UN)' },
+  { value: 'KG', label: 'Quilo (KG)' },
+  { value: 'LT', label: 'Litro (LT)' }
+];
+
+const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: 'PIX', label: 'Pix' },
+  { value: 'CREDIT_CARD', label: 'Cartão de Crédito' },
+  { value: 'DEBIT', label: 'Cartão de Débito' },
+  { value: 'VR_VA', label: 'Vale Refeição / Alimentação' },
+  { value: 'CASH', label: 'Dinheiro' }
+];
+
+function toDateTimeLocalInput(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function fromDateTimeLocalInput(local: string): string {
+  if (!local) return new Date().toISOString();
+  const parsed = new Date(local);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
 }
 
 type SortOption = 'RECENT' | 'HIGHEST_VALUE' | 'MOST_ITEMS';
@@ -103,6 +134,255 @@ export default function ArgusReceiptsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [editingReceipt, setEditingReceipt] = useState<{
+    receiptId: string;
+    storeName: string;
+    purchaseDate: string;
+    paymentMethod: PaymentMethod;
+    totalAmount: string;
+    discountAmount: string;
+    reconciled: boolean;
+    itemsSum: number;
+  } | null>(null);
+  const [savingReceipt, setSavingReceipt] = useState(false);
+  const [itemModal, setItemModal] = useState<{
+    mode: 'ADD' | 'EDIT';
+    receiptId: string;
+    itemId?: string;
+    rawDescription: string;
+    quantity: string;
+    unitType: ReceiptUnitType;
+    unitPrice: string;
+    totalPrice: string;
+    recalculateTotal: boolean;
+  } | null>(null);
+  const [savingItem, setSavingItem] = useState(false);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<{
+    receiptId: string;
+    itemId: string;
+    rawDescription: string;
+    recalculateTotal: boolean;
+  } | null>(null);
+  const [deletingItem, setDeletingItem] = useState(false);
+
+  function openEditReceiptModal(rec: ReceiptDetailEntry) {
+    const itemsSum = rec.items.reduce((acc, it) => acc + it.totalPrice, 0);
+    setEditingReceipt({
+      receiptId: rec.receiptId,
+      storeName: rec.storeName,
+      purchaseDate: toDateTimeLocalInput(rec.purchaseDate),
+      paymentMethod: rec.paymentMethod,
+      totalAmount: rec.totalAmount.toFixed(2),
+      discountAmount: rec.discountAmount.toFixed(2),
+      reconciled: rec.reconciled,
+      itemsSum: Math.round(itemsSum * 100) / 100
+    });
+  }
+
+  async function handleSaveReceiptDetails(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingReceipt) return;
+    setSavingReceipt(true);
+    setActionMsg(null);
+    setErrorMsg(null);
+    try {
+      const totalAmount = Number.parseFloat(editingReceipt.totalAmount.replace(',', '.'));
+      const discountAmount = Number.parseFloat(editingReceipt.discountAmount.replace(',', '.'));
+      const payload = {
+        storeName: editingReceipt.storeName.trim(),
+        purchaseDate: fromDateTimeLocalInput(editingReceipt.purchaseDate),
+        paymentMethod: editingReceipt.paymentMethod,
+        totalAmount: Number.isFinite(totalAmount) ? totalAmount : 0,
+        discountAmount: Number.isFinite(discountAmount) ? discountAmount : 0,
+        reconciled: editingReceipt.reconciled
+      };
+      const url = resolvePublicApiUrl(`/api/receipts/${editingReceipt.receiptId}`);
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = (await res.json()) as {
+        status?: string;
+        message?: string;
+        storeId?: string;
+        storeName?: string;
+        storeAddress?: string;
+        purchaseDate?: string;
+        paymentMethod?: PaymentMethod;
+        totalAmount?: number;
+        discountAmount?: number;
+        reconciled?: boolean;
+      };
+      if (!res.ok) {
+        throw new Error(json.message || 'Falha ao atualizar os dados da nota.');
+      }
+      invalidatePublicSnapshotCache();
+      setReceipts((prev) =>
+        prev.map((r) =>
+          r.receiptId === editingReceipt.receiptId
+            ? {
+                ...r,
+                storeId: json.storeId ?? r.storeId,
+                storeName: json.storeName ?? payload.storeName ?? r.storeName,
+                storeAddress: json.storeAddress ?? r.storeAddress,
+                purchaseDate: json.purchaseDate ?? payload.purchaseDate,
+                paymentMethod: json.paymentMethod ?? payload.paymentMethod,
+                totalAmount: json.totalAmount ?? payload.totalAmount,
+                discountAmount: json.discountAmount ?? payload.discountAmount,
+                reconciled: json.reconciled ?? payload.reconciled
+              }
+            : r
+        )
+      );
+      setActionMsg('✅ Dados da nota fiscal atualizados com sucesso!');
+      setEditingReceipt(null);
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Erro ao salvar dados da nota fiscal.');
+    } finally {
+      setSavingReceipt(false);
+    }
+  }
+
+  function openAddItemModal(rec: ReceiptDetailEntry) {
+    setItemModal({
+      mode: 'ADD',
+      receiptId: rec.receiptId,
+      rawDescription: '',
+      quantity: '1',
+      unitType: 'UN',
+      unitPrice: '0.00',
+      totalPrice: '0.00',
+      recalculateTotal: true
+    });
+  }
+
+  function openEditItemModal(
+    rec: ReceiptDetailEntry,
+    item: ReceiptDetailEntry['items'][number]
+  ) {
+    const safeUnit: ReceiptUnitType =
+      item.unitType === 'KG' || item.unitType === 'LT' || item.unitType === 'UN'
+        ? item.unitType
+        : 'UN';
+    setItemModal({
+      mode: 'EDIT',
+      receiptId: rec.receiptId,
+      itemId: item.id,
+      rawDescription: item.rawDescription,
+      quantity: String(item.quantity),
+      unitType: safeUnit,
+      unitPrice: item.unitPrice.toFixed(2),
+      totalPrice: item.totalPrice.toFixed(2),
+      recalculateTotal: true
+    });
+  }
+
+  async function handleSaveItem(e: React.FormEvent) {
+    e.preventDefault();
+    if (!itemModal) return;
+    setSavingItem(true);
+    setActionMsg(null);
+    setErrorMsg(null);
+    try {
+      const quantity = Number.parseFloat(itemModal.quantity.replace(',', '.'));
+      const unitPrice = Number.parseFloat(itemModal.unitPrice.replace(',', '.'));
+      const totalPrice = Number.parseFloat(itemModal.totalPrice.replace(',', '.'));
+      const payload = {
+        rawDescription: itemModal.rawDescription.trim(),
+        quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+        unitType: itemModal.unitType,
+        unitPrice: Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : 0,
+        totalPrice: Number.isFinite(totalPrice) && totalPrice >= 0 ? totalPrice : undefined,
+        recalculateTotal: itemModal.recalculateTotal
+      };
+      const isEdit = itemModal.mode === 'EDIT' && itemModal.itemId;
+      const endpoint = isEdit
+        ? `/api/receipts/${itemModal.receiptId}/items/${itemModal.itemId}`
+        : `/api/receipts/${itemModal.receiptId}/items`;
+      const res = await fetch(resolvePublicApiUrl(endpoint), {
+        method: isEdit ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = (await res.json()) as {
+        status?: string;
+        message?: string;
+        item?: ReceiptDetailEntry['items'][number];
+        newReceiptTotal?: number;
+      };
+      if (!res.ok || !json.item) {
+        throw new Error(json.message || 'Falha ao salvar o produto.');
+      }
+      invalidatePublicSnapshotCache();
+      const savedItem = json.item;
+      setReceipts((prev) =>
+        prev.map((r) => {
+          if (r.receiptId !== itemModal.receiptId) return r;
+          const nextItems = isEdit
+            ? r.items.map((it) => (it.id === savedItem.id ? savedItem : it))
+            : [...r.items, savedItem];
+          return {
+            ...r,
+            items: nextItems,
+            itemsCount: nextItems.length,
+            totalAmount:
+              typeof json.newReceiptTotal === 'number' ? json.newReceiptTotal : r.totalAmount
+          };
+        })
+      );
+      setActionMsg(
+        isEdit
+          ? `✅ Produto "${savedItem.rawDescription}" atualizado!`
+          : `✅ Produto "${savedItem.rawDescription}" adicionado à nota!`
+      );
+      setItemModal(null);
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Erro ao salvar produto da nota.');
+    } finally {
+      setSavingItem(false);
+    }
+  }
+
+  async function handleConfirmDeleteItem() {
+    if (!confirmDeleteItem) return;
+    setDeletingItem(true);
+    setActionMsg(null);
+    setErrorMsg(null);
+    try {
+      const endpoint = `/api/receipts/${confirmDeleteItem.receiptId}/items/${confirmDeleteItem.itemId}?recalculateTotal=${confirmDeleteItem.recalculateTotal}`;
+      const res = await fetch(resolvePublicApiUrl(endpoint), { method: 'DELETE' });
+      const json = (await res.json()) as {
+        status?: string;
+        message?: string;
+        deleted?: boolean;
+        newReceiptTotal?: number;
+      };
+      if (!res.ok || !json.deleted) {
+        throw new Error(json.message || 'Falha ao remover produto da nota.');
+      }
+      invalidatePublicSnapshotCache();
+      setReceipts((prev) =>
+        prev.map((r) => {
+          if (r.receiptId !== confirmDeleteItem.receiptId) return r;
+          const nextItems = r.items.filter((it) => it.id !== confirmDeleteItem.itemId);
+          return {
+            ...r,
+            items: nextItems,
+            itemsCount: nextItems.length,
+            totalAmount:
+              typeof json.newReceiptTotal === 'number' ? json.newReceiptTotal : r.totalAmount
+          };
+        })
+      );
+      setActionMsg(`🗑️ Produto "${confirmDeleteItem.rawDescription}" removido da nota.`);
+      setConfirmDeleteItem(null);
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Erro ao remover produto.');
+    } finally {
+      setDeletingItem(false);
+    }
+  }
 
   async function handleConvertToFlyer(receipt: ReceiptDetailEntry) {
     setConvertingId(receipt.receiptId);
@@ -572,25 +852,56 @@ export default function ArgusReceiptsPage() {
                             <span className="text-[11px] text-slate-400">
                               {rec.totalAmount <= 0
                                 ? '⚠️ Registro com total R$ 0,00 (provável Flyer/Coleta).'
-                                : 'Não é uma compra real? Mova os preços para Flyer sem perder o histórico.'}
+                                : 'Precisa corrigir mercado, data, pagamento ou valor?'}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditReceiptModal(rec);
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 text-[11px] font-medium text-emerald-200 transition-colors"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Editar Nota
+                              </button>
+                              <button
+                                type="button"
+                                disabled={convertingId === rec.receiptId}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleConvertToFlyer(rec);
+                                }}
+                                className="rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 px-3 py-1.5 text-[11px] font-medium text-amber-200 transition-colors"
+                              >
+                                {convertingId === rec.receiptId
+                                  ? 'Convertendo...'
+                                  : '🏷️ Marcar como Flyer (Não é Nota Fiscal)'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                              Produtos da Nota ({rec.items.length})
                             </span>
                             <button
                               type="button"
-                              disabled={convertingId === rec.receiptId}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                void handleConvertToFlyer(rec);
+                                openAddItemModal(rec);
                               }}
-                              className="rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 px-3 py-1.5 text-[11px] font-medium text-amber-200 transition-colors"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 px-3 py-1.5 text-[11px] font-medium text-sky-200 transition-colors"
                             >
-                              {convertingId === rec.receiptId
-                                ? 'Convertendo...'
-                                : '🏷️ Marcar como Flyer (Não é Nota Fiscal)'}
+                              <Plus className="h-3.5 w-3.5" />
+                              Adicionar Produto
                             </button>
                           </div>
+
                           {rec.items.length === 0 ? (
                             <p className="text-xs text-slate-400">
-                              Nenhum item detalhado vinculado a este cupom.
+                              Nenhum item detalhado vinculado a este cupom. Use &quot;Adicionar Produto&quot; acima para incluir itens manualmente.
                             </p>
                           ) : (
                             <div className="overflow-x-auto">
@@ -602,7 +913,8 @@ export default function ArgusReceiptsPage() {
                                     <th className="py-2 pr-3">Categoria</th>
                                     <th className="py-2 pr-3 text-right">Qtd.</th>
                                     <th className="py-2 pr-3 text-right">Preço Unit.</th>
-                                    <th className="py-2 text-right">Total Item</th>
+                                    <th className="py-2 pr-3 text-right">Total Item</th>
+                                    <th className="py-2 text-right">Ações</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/50">
@@ -625,8 +937,39 @@ export default function ArgusReceiptsPage() {
                                       <td className="py-2 pr-3 text-right text-slate-300 tabular-nums">
                                         {formatCurrency(it.unitPrice)}
                                       </td>
-                                      <td className="py-2 text-right font-semibold text-emerald-300 tabular-nums">
+                                      <td className="py-2 pr-3 text-right font-semibold text-emerald-300 tabular-nums">
                                         {formatCurrency(it.totalPrice)}
+                                      </td>
+                                      <td className="py-2 text-right">
+                                        <div className="inline-flex items-center justify-end gap-1">
+                                          <button
+                                            type="button"
+                                            title="Editar produto"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openEditItemModal(rec, it);
+                                            }}
+                                            className="rounded-md border border-slate-700 bg-slate-900 hover:border-emerald-500/50 hover:text-emerald-300 p-1.5 text-slate-300 transition-colors"
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            title="Remover produto"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setConfirmDeleteItem({
+                                                receiptId: rec.receiptId,
+                                                itemId: it.id,
+                                                rawDescription: it.rawDescription,
+                                                recalculateTotal: true
+                                              });
+                                            }}
+                                            className="rounded-md border border-slate-700 bg-slate-900 hover:border-rose-500/50 hover:text-rose-300 p-1.5 text-slate-300 transition-colors"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
                                       </td>
                                     </tr>
                                   ))}
@@ -666,6 +1009,401 @@ export default function ArgusReceiptsPage() {
           </section>
         )}
       </div>
+
+      {/* Modal: Editar Dados da Nota Fiscal */}
+      {editingReceipt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+          onClick={() => !savingReceipt && setEditingReceipt(null)}
+        >
+          <form
+            onSubmit={handleSaveReceiptDetails}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-100">Editar Nota Fiscal</h2>
+                <p className="text-xs text-slate-400">
+                  Corrija mercado, data da compra, pagamento ou valor total.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={savingReceipt}
+                onClick={() => setEditingReceipt(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="mb-1 block font-medium text-slate-300">Mercado / Loja</label>
+                <input
+                  type="text"
+                  required
+                  value={editingReceipt.storeName}
+                  onChange={(e) =>
+                    setEditingReceipt((prev) => (prev ? { ...prev, storeName: e.target.value } : null))
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">Data e Hora da Compra</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={editingReceipt.purchaseDate}
+                    onChange={(e) =>
+                      setEditingReceipt((prev) =>
+                        prev ? { ...prev, purchaseDate: e.target.value } : null
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">Forma de Pagamento</label>
+                  <select
+                    value={editingReceipt.paymentMethod}
+                    onChange={(e) =>
+                      setEditingReceipt((prev) =>
+                        prev ? { ...prev, paymentMethod: e.target.value as PaymentMethod } : null
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  >
+                    {PAYMENT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="font-medium text-slate-300">Valor Total (R$)</label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingReceipt((prev) =>
+                          prev ? { ...prev, totalAmount: prev.itemsSum.toFixed(2) } : null
+                        )
+                      }
+                      className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300"
+                    >
+                      Usar soma dos itens ({formatCurrency(editingReceipt.itemsSum)})
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={editingReceipt.totalAmount}
+                    onChange={(e) =>
+                      setEditingReceipt((prev) =>
+                        prev ? { ...prev, totalAmount: e.target.value } : null
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">Desconto (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editingReceipt.discountAmount}
+                    onChange={(e) =>
+                      setEditingReceipt((prev) =>
+                        prev ? { ...prev, discountAmount: e.target.value } : null
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editingReceipt.reconciled}
+                  onChange={(e) =>
+                    setEditingReceipt((prev) =>
+                      prev ? { ...prev, reconciled: e.target.checked } : null
+                    )
+                  }
+                  className="h-4 w-4 accent-emerald-500"
+                />
+                <span className="text-slate-200">Nota conciliada / conferida</span>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={savingReceipt}
+                onClick={() => setEditingReceipt(null)}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={savingReceipt}
+                className="rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 px-4 py-2 text-xs font-semibold text-slate-950 transition-colors"
+              >
+                {savingReceipt ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Modal: Adicionar / Editar Produto da Nota */}
+      {itemModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+          onClick={() => !savingItem && setItemModal(null)}
+        >
+          <form
+            onSubmit={handleSaveItem}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-100">
+                  {itemModal.mode === 'EDIT' ? 'Editar Produto da Nota' : 'Adicionar Produto na Nota'}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Informe descrição, quantidade, unidade e valores do item.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={savingItem}
+                onClick={() => setItemModal(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="mb-1 block font-medium text-slate-300">
+                  Nome / Descrição do Produto
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex.: Leite Integral Italac 1L"
+                  value={itemModal.rawDescription}
+                  onChange={(e) =>
+                    setItemModal((prev) => (prev ? { ...prev, rawDescription: e.target.value } : null))
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">Quantidade</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    required
+                    value={itemModal.quantity}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setItemModal((prev) => {
+                        if (!prev) return null;
+                        const q = Number.parseFloat(val.replace(',', '.'));
+                        const u = Number.parseFloat(prev.unitPrice.replace(',', '.'));
+                        const nextTotal =
+                          Number.isFinite(q) && Number.isFinite(u) ? (q * u).toFixed(2) : prev.totalPrice;
+                        return { ...prev, quantity: val, totalPrice: nextTotal };
+                      });
+                    }}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">Unidade</label>
+                  <select
+                    value={itemModal.unitType}
+                    onChange={(e) =>
+                      setItemModal((prev) =>
+                        prev ? { ...prev, unitType: e.target.value as ReceiptUnitType } : null
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  >
+                    {UNIT_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">Preço Unitário (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={itemModal.unitPrice}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setItemModal((prev) => {
+                        if (!prev) return null;
+                        const q = Number.parseFloat(prev.quantity.replace(',', '.'));
+                        const u = Number.parseFloat(val.replace(',', '.'));
+                        const nextTotal =
+                          Number.isFinite(q) && Number.isFinite(u) ? (q * u).toFixed(2) : prev.totalPrice;
+                        return { ...prev, unitPrice: val, totalPrice: nextTotal };
+                      });
+                    }}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">Total do Item (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={itemModal.totalPrice}
+                    onChange={(e) =>
+                      setItemModal((prev) =>
+                        prev ? { ...prev, totalPrice: e.target.value } : null
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={itemModal.recalculateTotal}
+                  onChange={(e) =>
+                    setItemModal((prev) =>
+                      prev ? { ...prev, recalculateTotal: e.target.checked } : null
+                    )
+                  }
+                  className="h-4 w-4 accent-emerald-500"
+                />
+                <span className="text-slate-200">Recalcular valor total da nota automaticamente</span>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={savingItem}
+                onClick={() => setItemModal(null)}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={savingItem}
+                className="rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 px-4 py-2 text-xs font-semibold text-slate-950 transition-colors"
+              >
+                {savingItem
+                  ? 'Salvando...'
+                  : itemModal.mode === 'EDIT'
+                    ? 'Salvar Produto'
+                    : 'Adicionar Produto'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Modal: Confirmar Remoção de Produto */}
+      {confirmDeleteItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+          onClick={() => !deletingItem && setConfirmDeleteItem(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 className="text-base font-bold text-slate-100">Remover Produto da Nota</h2>
+              <button
+                type="button"
+                disabled={deletingItem}
+                onClick={() => setConfirmDeleteItem(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              Tem certeza que deseja remover{' '}
+              <span className="font-semibold text-white">{confirmDeleteItem.rawDescription}</span>{' '}
+              desta nota fiscal?
+            </p>
+
+            <label className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={confirmDeleteItem.recalculateTotal}
+                onChange={(e) =>
+                  setConfirmDeleteItem((prev) =>
+                    prev ? { ...prev, recalculateTotal: e.target.checked } : null
+                  )
+                }
+                className="h-4 w-4 accent-emerald-500"
+              />
+              <span className="text-slate-200">Recalcular valor total da nota após remover</span>
+            </label>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={deletingItem}
+                onClick={() => setConfirmDeleteItem(null)}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deletingItem}
+                onClick={() => void handleConfirmDeleteItem()}
+                className="rounded-lg bg-rose-500 hover:bg-rose-400 disabled:opacity-50 px-4 py-2 text-xs font-semibold text-white transition-colors"
+              >
+                {deletingItem ? 'Removendo...' : 'Remover Produto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
