@@ -77,6 +77,40 @@ export function createArgusBot(): Bot {
   const token = env.TELEGRAM_BOT_TOKEN || '0000000000:AAH_ARGUS_PLACEHOLDER_TOKEN_FOR_BUILD';
   const bot = new Bot(token);
 
+  // Auto-retry para falhas transitórias de rede na API do Telegram (ex.: ECONNREFUSED / fetch failed)
+  bot.api.config.use(async (prev, method, payload, signal) => {
+    if (method === 'getUpdates') {
+      return prev(method, payload, signal);
+    }
+    const maxAttempts = 3;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await prev(method, payload, signal);
+      } catch (err) {
+        lastErr = err;
+        const msg = (err instanceof Error ? err.message : String(err ?? '')).toLowerCase();
+        const isTransientNet =
+          msg.includes('econnrefused') ||
+          msg.includes('etimedout') ||
+          msg.includes('econnreset') ||
+          msg.includes('fetch failed') ||
+          msg.includes('network request') ||
+          msg.includes('socket hang up');
+        if (!isTransientNet || attempt >= maxAttempts) {
+          throw err;
+        }
+        const delayMs = attempt === 1 ? 600 : 1500;
+        logger.warn(
+          { method, attempt, maxAttempts, delayMs, err: msg.slice(0, 160) },
+          '[ArgusBot] Erro transitório de rede no Telegram; reexecutando chamada'
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+    throw lastErr;
+  });
+
   const processor = new ArgusReceiptProcessor();
   const optimizer = new ArgusOptimizerService();
   const reconciler = new ArgusReconciliationService();

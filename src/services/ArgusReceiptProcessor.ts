@@ -2,6 +2,12 @@ import crypto from 'node:crypto';
 import type { PoolClient, QueryResultRow } from 'pg';
 import sharp from 'sharp';
 import jsQR from 'jsqr';
+import {
+  BinaryBitmap,
+  HybridBinarizer,
+  QRCodeReader,
+  RGBLuminanceSource
+} from '@zxing/library';
 import * as cheerio from 'cheerio';
 import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '../config/env';
@@ -794,10 +800,13 @@ export class ArgusReceiptProcessor {
       if (info.height >= 400 && info.width >= 200) {
         const cropTop = Math.floor(info.height * 0.45);
         const cropHeight = info.height - cropTop;
-        const { data: cropData, info: cropInfo } = await base
+        const cropPipeline = base
           .clone()
           .extract({ left: 0, top: cropTop, width: info.width, height: cropHeight })
-          .resize({ width: 1100, withoutEnlargement: true })
+          .resize({ width: 1100, withoutEnlargement: true });
+
+        const { data: cropData, info: cropInfo } = await cropPipeline
+          .clone()
           .normalise()
           .ensureAlpha()
           .raw()
@@ -810,6 +819,54 @@ export class ArgusReceiptProcessor {
             '[ArgusReceiptProcessor] QR Code detectado localmente via recorte inferior sharp+jsqr'
           );
           return qrCrop.data;
+        }
+
+        // Terceira passada: binarização com threshold + sharpen para papel térmico desbotado
+        const { data: threshData, info: threshInfo } = await cropPipeline
+          .clone()
+          .grayscale()
+          .normalise()
+          .sharpen()
+          .threshold(135)
+          .ensureAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+
+        const qrThresh = jsQR(new Uint8ClampedArray(threshData), threshInfo.width, threshInfo.height);
+        if (qrThresh?.data) {
+          logger.info(
+            { qrUrl: qrThresh.data.slice(0, 60) },
+            '[ArgusReceiptProcessor] QR Code detectado localmente via threshold sharp+jsqr'
+          );
+          return qrThresh.data;
+        }
+
+        // Quarta passada: binarização adaptativa local via @zxing/library (HybridBinarizer)
+        try {
+          const { data: grayData, info: grayInfo } = await cropPipeline
+            .clone()
+            .grayscale()
+            .normalise()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+          const luminance = new RGBLuminanceSource(
+            new Uint8ClampedArray(grayData),
+            grayInfo.width,
+            grayInfo.height
+          );
+          const bitmap = new BinaryBitmap(new HybridBinarizer(luminance));
+          const zxingRes = new QRCodeReader().decode(bitmap);
+          const text = zxingRes?.getText();
+          if (text) {
+            logger.info(
+              { qrUrl: text.slice(0, 60) },
+              '[ArgusReceiptProcessor] QR Code detectado localmente via @zxing/library (HybridBinarizer)'
+            );
+            return text;
+          }
+        } catch {
+          // NotFoundException esperada quando não há QR legível
         }
       }
 
@@ -976,7 +1033,12 @@ export class ArgusReceiptProcessor {
           ) {
             geminiModelCooldownUntil.set(modelName, Date.now() + 24 * 60 * 60 * 1000);
           } else if (isQuotaExhaustedError(err)) {
-            geminiModelCooldownUntil.set(modelName, Date.now() + 15 * 60 * 1000);
+            const isDailyQuota =
+              errMsg.includes('PerDay') ||
+              errMsg.includes('free_tier_requests') ||
+              /retry in \d+h/i.test(errMsg);
+            const cooldownMs = isDailyQuota ? 2 * 60 * 60 * 1000 : 15 * 60 * 1000;
+            geminiModelCooldownUntil.set(modelName, Date.now() + cooldownMs);
           }
           logger.warn(
             { modelName, err: (err as Error).message },
