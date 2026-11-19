@@ -227,32 +227,102 @@ export class ArgusReceiptProcessor {
   }
 
   /**
-   * Normaliza datas brasileiras (ex: "11/11/2026 15:39:42") ou ISO para TIMESTAMPTZ seguro
+   * Normaliza datas brasileiras (ex: "11/11/2026 15:39:42") ou ISO para TIMESTAMPTZ seguro.
+   * Quando houver chave SEFAZ oficial (44 dígitos), valida/corrige ano e mês usando AAMM (posições 2..5)
+   * e protege contra anos absurdos alucinados por OCR (ex.: 2003, 2018).
    */
-  normalizeReceiptDate(rawDate?: string): string {
-    if (!rawDate) return new Date().toISOString();
-    const trimmed = rawDate.trim();
-    const brMatch = trimmed.match(
-      /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[\s,Tàs]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/i
-    );
-    if (brMatch) {
-      const day = brMatch[1].padStart(2, '0');
-      const month = brMatch[2].padStart(2, '0');
-      const year = brMatch[3].length === 2 ? `20${brMatch[3]}` : brMatch[3];
-      const hour = (brMatch[4] || '12').padStart(2, '0');
-      const min = (brMatch[5] || '00').padStart(2, '0');
-      const sec = (brMatch[6] || '00').padStart(2, '0');
-      const isoCandidate = `${year}-${month}-${day}T${hour}:${min}:${sec}-03:00`;
-      const parsed = new Date(isoCandidate);
-      if (!Number.isNaN(parsed.getTime())) {
-        return parsed.toISOString();
+  normalizeReceiptDate(rawDate?: string, officialAccessKey?: string): string {
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+
+    let parsed: Date | null = null;
+    if (rawDate) {
+      const trimmed = rawDate.trim();
+      const brMatch = trimmed.match(
+        /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[\s,Tàs]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/i
+      );
+      if (brMatch) {
+        const day = brMatch[1].padStart(2, '0');
+        const month = brMatch[2].padStart(2, '0');
+        const year = brMatch[3].length === 2 ? `20${brMatch[3]}` : brMatch[3];
+        const hour = (brMatch[4] || '12').padStart(2, '0');
+        const min = (brMatch[5] || '00').padStart(2, '0');
+        const sec = (brMatch[6] || '00').padStart(2, '0');
+        const candidate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}-03:00`);
+        if (!Number.isNaN(candidate.getTime())) {
+          parsed = candidate;
+        }
+      }
+      if (!parsed) {
+        const fallback = new Date(trimmed);
+        if (!Number.isNaN(fallback.getTime())) {
+          parsed = fallback;
+        }
       }
     }
-    const fallback = new Date(trimmed);
-    if (!Number.isNaN(fallback.getTime())) {
-      return fallback.toISOString();
+
+    if (!parsed) {
+      parsed = new Date(now.getTime());
     }
-    return new Date().toISOString();
+
+    // 1. Se houver chave SEFAZ oficial de 44 dígitos, usa AAMM (posições 2..5) como fonte da verdade para ano/mês
+    const cleanKey = (officialAccessKey || '').replace(/\D/g, '');
+    if (cleanKey.length === 44) {
+      const keyYear = 2000 + Number.parseInt(cleanKey.slice(2, 4), 10);
+      const keyMonth = Number.parseInt(cleanKey.slice(4, 6), 10);
+      if (
+        keyYear >= 2020 &&
+        keyYear <= currentYear + 1 &&
+        keyMonth >= 1 &&
+        keyMonth <= 12 &&
+        (parsed.getUTCFullYear() !== keyYear || parsed.getUTCMonth() + 1 !== keyMonth)
+      ) {
+        const maxDay = new Date(Date.UTC(keyYear, keyMonth, 0)).getUTCDate();
+        const safeDay = Math.min(parsed.getUTCDate(), maxDay);
+        parsed = new Date(
+          Date.UTC(
+            keyYear,
+            keyMonth - 1,
+            safeDay,
+            parsed.getUTCHours(),
+            parsed.getUTCMinutes(),
+            parsed.getUTCSeconds()
+          )
+        );
+      }
+    }
+
+    // 2. Proteção contra anos absurdos de OCR (ex.: 2003, 2018, 2099)
+    const y = parsed.getUTCFullYear();
+    if (y < 2024 || y > currentYear + 1) {
+      const maxDay = new Date(Date.UTC(currentYear, parsed.getUTCMonth() + 1, 0)).getUTCDate();
+      const safeDay = Math.min(parsed.getUTCDate(), maxDay);
+      let corrected = new Date(
+        Date.UTC(
+          currentYear,
+          parsed.getUTCMonth(),
+          safeDay,
+          parsed.getUTCHours(),
+          parsed.getUTCMinutes(),
+          parsed.getUTCSeconds()
+        )
+      );
+      if (corrected.getTime() > now.getTime() + 2 * 24 * 60 * 60 * 1000) {
+        corrected = new Date(
+          Date.UTC(
+            currentYear - 1,
+            parsed.getUTCMonth(),
+            safeDay,
+            parsed.getUTCHours(),
+            parsed.getUTCMinutes(),
+            parsed.getUTCSeconds()
+          )
+        );
+      }
+      parsed = corrected;
+    }
+
+    return parsed.toISOString();
   }
 
   /**
@@ -288,7 +358,6 @@ export class ArgusReceiptProcessor {
     const rawTrading = (raw.storeTradingName || raw.storeRawName || 'Mercado Identificado').trim();
     const storeTradingName = classifyAndNormalizeStoreName(rawTrading).canonicalName;
     const storeCnpj = this.normalizeStoreCnpj(raw.storeCnpj, storeTradingName);
-    const purchaseDate = this.normalizeReceiptDate(raw.purchaseDate);
     const totalAmount = Number(Number(raw.totalAmount || 0).toFixed(2));
 
     // Verifica se há uma Chave de Acesso SEFAZ oficial de 44 dígitos reais (não sintética 8888... nem preenchida artificialmente)
@@ -299,6 +368,11 @@ export class ArgusReceiptProcessor {
       !/^(\d)\1{15,}$/.test(cleanKeyDigits) &&
       !cleanKeyDigits.endsWith('9999999999') &&
       !cleanKeyDigits.endsWith('0000000000');
+
+    const purchaseDate = this.normalizeReceiptDate(
+      raw.purchaseDate,
+      isGenuine44Key ? cleanKeyDigits : undefined
+    );
 
     // Extrai/normaliza identificador secundário (COO / Extrato / Nº do Cupom / Pedido)
     const rawReceiptNum = (raw.receiptNumber || '')
@@ -1390,7 +1464,14 @@ REGRAS ESTRITAS:
 2. Em receiptNumber, extraia APENAS o código/número do Pedido, COO ou Extrato (ex: "2596437", "2593977").
 3. Se o CNPJ não estiver visível, retorne "" em storeCnpj.
 4. Se imageQuality = 'UNREADABLE', retorne documents: [] e documentsCount: 0.
-5. Em purchaseDate, extraia OBRIGATORIAMENTE a DATA e HORA IMPRESSA NO PAPEL do cupom/NF (ex: "14/09/2026 18:22:10"). NUNCA use a data de hoje se houver uma data impressa no papel; se a hora não estiver visível, use "12:00:00". Só retorne "" se não houver nenhuma data impressa na foto.`
+5. Em purchaseDate, extraia OBRIGATORIAMENTE a DATA e HORA IMPRESSA NO PAPEL do cupom/NF (ex: "14/09/2026 18:22:10"). NUNCA use a data de hoje se houver uma data impressa no papel; se a hora não estiver visível, use "12:00:00". Confira os 4 dígitos do ano com extremo cuidado (cupons atuais são de 2025/2026 — não confunda "2026" borrado com "2003", "2018" ou "2024"; se a chave de 44 dígitos estiver visível, os dígitos 3º-6º são AAMM da emissão). Só retorne "" se não houver nenhuma data impressa na foto.
+6. Em paymentMethod, leia a linha exata de FORMA DE PAGAMENTO / VALOR PAGO no rodapé do cupom e mapeie rigorosamente:
+   - 'VR_VA': Vale Alimentação, Vale Refeição, VA, VR, Alelo, Sodexo, Pluxee, Ticket, Ben Visa Vale, Caju, Flash, Swile, Cartão Alimentação/Refeição.
+   - 'PIX': Pix, QR Code Pix, Pagamento Instantâneo.
+   - 'DEBIT': Cartão de Débito, Débito, Visa Electron, Maestro, Elo Débito.
+   - 'CREDIT_CARD': Cartão de Crédito, Crédito.
+   - 'CASH': Dinheiro, Espécie, Troco em dinheiro.
+   Nunca chute 'CREDIT_CARD' se o cupom indicar Alimentação/VR/VA, Débito, Pix ou Dinheiro.`
               }
             ],
             config: {
