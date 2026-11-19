@@ -1,6 +1,6 @@
 {
   "name": "moneta-argus",
-  "version": "1.20.5",
+  "version": "1.20.6",
   "private": true,
   "description": "Argus (moneta-argus) - O Olho Fiscal do ecossistema Moneta: Market Arbitrage, Recipe Costing & Open Finance Intelligence",
   "scripts": {

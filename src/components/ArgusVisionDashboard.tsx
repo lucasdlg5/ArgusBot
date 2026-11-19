@@ -6,6 +6,11 @@ import dynamic from 'next/dynamic';
 import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
+
+function safeFixed(val: unknown, digits = 2): string {
+  const n = Number(val);
+  return Number.isFinite(n) ? n.toFixed(digits) : (0).toFixed(digits);
+}
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   Eye,
@@ -217,14 +222,14 @@ export default function ArgusVisionDashboard() {
       '👁️ *ARGUS (@MonetaArgusBot) — LISTA DE COMPRAS OTIMIZADA*',
       `_${scenario.title}_`,
       `📍 Rota OSRM: *${scenario.totalDistanceKm} km* (${scenario.totalDurationMin} min)`,
-      `⛽ Custo Carro: R$ ${scenario.gasCost.toFixed(2)} | 🚗 Uber: R$ ${scenario.uberCost.toFixed(2)}`,
+      `⛽ Custo Carro: R$ ${safeFixed(scenario.gasCost, 2)} | 🚗 Uber: R$ ${safeFixed(scenario.uberCost, 2)}`,
       ''
     ];
 
     for (const st of scenario.storesVisited) {
-      lines.push(`🏪 *${st.storeName}* (Subtotal: R$ ${st.subtotalProducts.toFixed(2)})`);
+      lines.push(`🏪 *${st.storeName}* (Subtotal: R$ ${safeFixed(st.subtotalProducts, 2)})`);
       for (const it of st.items.slice(0, 8)) {
-        lines.push(`  • ${it.packages}x ${it.productName} — R$ ${it.lineTotal.toFixed(2)}`);
+        lines.push(`  • ${it.packages}x ${it.productName} — R$ ${safeFixed(it.lineTotal, 2)}`);
       }
       lines.push('');
     }
@@ -711,7 +716,7 @@ export default function ArgusVisionDashboard() {
                   <CreditCard className="h-4 w-4 text-emerald-400" />
                 </div>
                 <p className="mt-2 text-2xl font-bold text-white">
-                  R$ {data.kpis.totalMonthSpent.toFixed(2)}
+                  R$ {safeFixed(data.kpis?.totalMonthSpent, 2)}
                 </p>
                 <p className="mt-1 text-[11px] text-emerald-400">
                   Calculado item a item pelas notas
@@ -724,7 +729,7 @@ export default function ArgusVisionDashboard() {
                   <TrendingDown className="h-4 w-4 text-emerald-400" />
                 </div>
                 <p className="mt-2 text-2xl font-bold text-emerald-400">
-                  R$ {data.kpis.potentialMonthlySavings.toFixed(2)}/mês
+                  R$ {safeFixed(data.kpis?.potentialMonthlySavings, 2)}/mês
                 </p>
                 <p className="mt-1 text-[11px] text-slate-300">
                   Comprando no mercado mais barato + menos supérfluos
@@ -737,9 +742,9 @@ export default function ArgusVisionDashboard() {
                   <Flame className="h-4 w-4 text-amber-400" />
                 </div>
                 <p className="mt-2 text-2xl font-bold text-white">
-                  {data.kpis.vrVaBurnRatePct}%{' '}
+                  {Number.isFinite(Number(data.kpis?.vrVaBurnRatePct)) ? data.kpis.vrVaBurnRatePct : 0}%{' '}
                   <span className="text-sm font-normal text-slate-400">
-                    (R$ {data.kpis.vrVaBurnAmount.toFixed(2)})
+                    (R$ {safeFixed(data.kpis?.vrVaBurnAmount, 2)})
                   </span>
                 </p>
                 <div className="mt-2 h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
@@ -1008,12 +1013,12 @@ export default function ArgusVisionDashboard() {
                         <div>
                           <p className="font-medium text-white">{op.product_name}</p>
                           <p className="text-[11px] text-slate-400">
-                            🏪 {op.store_name} • Máx hist: R$ {op.max_historical_price.toFixed(2)}
+                            🏪 {op.store_name} • Máx hist: R$ {safeFixed(op.max_historical_price, 2)}
                           </p>
                         </div>
                         <div className="text-right">
                           <span className="font-bold text-emerald-400">
-                            R$ {op.estimated_package_price.toFixed(2)}
+                            R$ {safeFixed(op.estimated_package_price, 2)}
                           </span>
                           <span className="block text-[10px] text-emerald-300">
                             Mínimo Histórico!
@@ -1110,7 +1115,7 @@ export default function ArgusVisionDashboard() {
                                     Índice {cell.competitiveness_index}
                                   </span>
                                   <span className="block text-[11px] text-slate-400 mt-1">
-                                    Cesta: R$ {cell.basket_category_cost.toFixed(2)}
+                                    Cesta: R$ {safeFixed(cell.basket_category_cost, 2)}
                                   </span>
                                 </div>
                                 <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-emerald-400">
@@ -1262,7 +1267,7 @@ export default function ArgusVisionDashboard() {
                                 </p>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   <span className="text-xs font-bold text-emerald-400 tabular-nums">
-                                    R$ {rec.proportionalCostPerPortion.toFixed(2)}/porção
+                                    R$ {safeFixed(rec.proportionalCostPerPortion, 2)}/porção
                                   </span>
                                   <motion.span
                                     animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -1286,7 +1291,7 @@ export default function ArgusVisionDashboard() {
                                 </span>
                                 <span aria-hidden="true">·</span>
                                 <span className="text-amber-300/90">
-                                  Caixa R$ {rec.lowestPossibleCashCost.toFixed(2)}
+                                  Caixa R$ {safeFixed(rec.lowestPossibleCashCost, 2)}
                                 </span>
                               </div>
                             </button>
@@ -1579,13 +1584,13 @@ export default function ArgusVisionDashboard() {
                     <div>
                       <span className="text-slate-400 block">Economia Líquida (Carro):</span>
                       <strong className="text-emerald-400 text-sm">
-                        R$ {data.logisticsVerdict.netSavingsWithGas.toFixed(2)}
+                        R$ {safeFixed(data.logisticsVerdict?.netSavingsWithGas, 2)}
                       </strong>
                     </div>
                     <div>
                       <span className="text-slate-400 block">Economia Líquida (Uber):</span>
                       <strong className="text-amber-300 text-sm">
-                        R$ {data.logisticsVerdict.netSavingsWithUber.toFixed(2)}
+                        R$ {safeFixed(data.logisticsVerdict?.netSavingsWithUber, 2)}
                       </strong>
                     </div>
                   </div>

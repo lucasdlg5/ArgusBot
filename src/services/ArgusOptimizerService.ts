@@ -1483,9 +1483,14 @@ export class ArgusOptimizerService {
 
         if (!pRow) continue;
 
-        const stdPkg = Number(pRow.standard_package_size);
-        const packages = Math.max(1, Math.ceil(basketItem.requiredBaseQty / stdPkg));
-        const pkgPrice = Number(pRow.estimated_package_price);
+        const rawStdPkg = Number(pRow.standard_package_size);
+        const stdPkg = Number.isFinite(rawStdPkg) && rawStdPkg > 0 ? rawStdPkg : 1;
+        const rawReqQty = Number(basketItem.requiredBaseQty);
+        const reqQty = Number.isFinite(rawReqQty) && rawReqQty > 0 ? rawReqQty : stdPkg;
+        const packages = Math.max(1, Math.ceil(reqQty / stdPkg));
+        const rawPkgPrice = Number(pRow.estimated_package_price);
+        if (!Number.isFinite(rawPkgPrice) || rawPkgPrice < 0) continue;
+        const pkgPrice = rawPkgPrice;
         const lineTotal = Number((packages * pkgPrice).toFixed(2));
         productsCost += lineTotal;
 
@@ -1565,9 +1570,14 @@ export class ArgusOptimizerService {
       const best = candidates[0];
       if (!best) continue;
 
-      const stdPkg = Number(best.standard_package_size);
-      const packages = Math.max(1, Math.ceil(basketItem.requiredBaseQty / stdPkg));
-      const pkgPrice = Number(best.estimated_package_price);
+      const rawStdPkg = Number(best.standard_package_size);
+      const stdPkg = Number.isFinite(rawStdPkg) && rawStdPkg > 0 ? rawStdPkg : 1;
+      const rawReqQty = Number(basketItem.requiredBaseQty);
+      const reqQty = Number.isFinite(rawReqQty) && rawReqQty > 0 ? rawReqQty : stdPkg;
+      const packages = Math.max(1, Math.ceil(reqQty / stdPkg));
+      const rawPkgPrice = Number(best.estimated_package_price);
+      if (!Number.isFinite(rawPkgPrice) || rawPkgPrice < 0) continue;
+      const pkgPrice = rawPkgPrice;
       const lineTotal = Number((packages * pkgPrice).toFixed(2));
       splitProductsCost += lineTotal;
 
@@ -1633,14 +1643,15 @@ export class ArgusOptimizerService {
       routeLegs: [leg1, leg2, leg3]
     };
 
-    const grossProductSavings = Number(
-      (singleStoreBest.productsCost - splitStoreBest.productsCost).toFixed(2)
+    const safeMoney = (v: number): number => (Number.isFinite(v) ? Number(v.toFixed(2)) : 0);
+    const grossProductSavings = safeMoney(
+      singleStoreBest.productsCost - splitStoreBest.productsCost
     );
-    const netSavingsWithGas = Number(
-      (singleStoreBest.totalWithGas - splitStoreBest.totalWithGas).toFixed(2)
+    const netSavingsWithGas = safeMoney(
+      singleStoreBest.totalWithGas - splitStoreBest.totalWithGas
     );
-    const netSavingsWithUber = Number(
-      (singleStoreBest.totalWithUber - splitStoreBest.totalWithUber).toFixed(2)
+    const netSavingsWithUber = safeMoney(
+      singleStoreBest.totalWithUber - splitStoreBest.totalWithUber
     );
 
     const hurdle = env.MIN_SAVINGS_HURDLE;

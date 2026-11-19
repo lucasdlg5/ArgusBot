@@ -152,6 +152,9 @@ export class ArgusDashboardBuilderService {
       .filter((s) => s.spending_pillar === 'Besteiras/Impulso')
       .reduce((acc, s) => acc + s.total_spent, 0);
 
+    const safeMoney = (v: number): number => (Number.isFinite(v) ? Number(v.toFixed(2)) : 0);
+    const safePct = (v: number): number => (Number.isFinite(v) ? Number(v.toFixed(1)) : 0);
+
     return {
       status: 'ok',
       generatedAt: new Date().toISOString(),
@@ -161,13 +164,16 @@ export class ArgusDashboardBuilderService {
         address: env.HOME_ADDRESS
       },
       kpis: {
-        totalMonthSpent: Number(totalMonthSpent.toFixed(2)),
-        potentialMonthlySavings: Number(
-          (logisticsVerdict.grossProductSavings + impulseMonthSpent * 0.5).toFixed(2)
+        totalMonthSpent: safeMoney(totalMonthSpent),
+        potentialMonthlySavings: safeMoney(
+          (Number.isFinite(logisticsVerdict.grossProductSavings)
+            ? logisticsVerdict.grossProductSavings
+            : 0) +
+            impulseMonthSpent * 0.5
         ),
-        vrVaBurnAmount: Number(vrVaMonthSpent.toFixed(2)),
+        vrVaBurnAmount: safeMoney(vrVaMonthSpent),
         vrVaMonthlyBudget: 850.0,
-        vrVaBurnRatePct: Number(((vrVaMonthSpent / 850.0) * 100).toFixed(1)),
+        vrVaBurnRatePct: safePct((vrVaMonthSpent / 850.0) * 100),
         reconciliationRatePct: reconciliationResult.summary.reconciliationRatePct,
         scannedReceiptsCount: reconciliationResult.summary.scannedReceipts,
         pluggyTransactionsCount: reconciliationResult.summary.pluggyTransactions,
