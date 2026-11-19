@@ -1,6 +1,6 @@
 {
   "name": "moneta-argus",
-  "version": "1.21.1",
+  "version": "1.21.2",
   "private": true,
   "description": "Argus (moneta-argus) - O Olho Fiscal do ecossistema Moneta: Market Arbitrage, Recipe Costing & Open Finance Intelligence",
   "scripts": {
@@ -12,8 +12,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "bot:dev": "tsx watch src/bot/index.ts",
+    "build:bot": "esbuild src/bot/render-server.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/render-server.mjs",
     "bot:start": "tsx src/bot/index.ts",
-    "bot:render": "tsx src/bot/render-server.ts",
+    "bot:render": "node scripts/start-render-bot.mjs",
     "setup:env": "tsx scripts/setup-env.ts",
     "setup:resources": "tsx scripts/setup-resources.ts",
     "db:migrate": "tsx scripts/run-migrations.ts",

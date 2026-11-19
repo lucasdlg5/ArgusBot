@@ -96,6 +96,13 @@ function getPublicBaseUrl(): string {
 }
 
 async function main() {
+  process.env.ARGUS_RENDER_SERVER = '1';
+  const bootStartMs = Date.now();
+  logger.info(
+    { version: APP_VERSION, port: PORT, node: process.version },
+    `[ArgusRender] Iniciando boot v${APP_VERSION}...`
+  );
+
   if (!env.TELEGRAM_BOT_TOKEN) {
     logger.error('[ArgusRender] TELEGRAM_BOT_TOKEN não configurado.');
     process.exit(1);
@@ -107,6 +114,10 @@ async function main() {
   const pantryGuideService = new ArgusPantryGuideService();
   const catalogBiService = new ArgusCatalogBiService();
   const receiptProcessor = new ArgusReceiptProcessor();
+  logger.info(
+    { elapsedMs: Date.now() - bootStartMs },
+    '[ArgusRender] Serviços inicializados; abrindo servidor HTTP...'
+  );
   const publicBaseUrl = getPublicBaseUrl();
   const useWebhook =
     Boolean(publicBaseUrl) && process.env.TELEGRAM_BOT_MODE !== 'polling';

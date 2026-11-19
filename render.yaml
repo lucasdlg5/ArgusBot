@@ -5,7 +5,7 @@ services:
     plan: free
     region: ohio
     branch: main
-    buildCommand: npm install --include=dev --legacy-peer-deps --no-audit --no-fund
+    buildCommand: npm install --include=dev --legacy-peer-deps --no-audit --no-fund && npm run build:bot
     startCommand: npm run bot:render
     healthCheckPath: /health
     autoDeploy: true

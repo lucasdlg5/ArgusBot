@@ -3289,6 +3289,7 @@ export function createArgusBot(): Bot {
 
 const isMainModule =
   typeof process !== 'undefined' &&
+  !process.env.ARGUS_RENDER_SERVER &&
   process.argv[1] &&
   fileURLToPath(import.meta.url) === process.argv[1];
 
