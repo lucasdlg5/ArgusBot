@@ -8,6 +8,10 @@ import {
   QRCodeReader,
   RGBLuminanceSource
 } from '@zxing/library';
+
+// Evita acúmulo de cache nativo libvips em lotes grandes no plano Free (512 MB RAM)
+sharp.cache(false);
+sharp.concurrency(1);
 import * as cheerio from 'cheerio';
 import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '../config/env';
@@ -778,92 +782,132 @@ export class ArgusReceiptProcessor {
   }
 
   /**
-   * 1. Decodifica QR Code 100% localmente usando `sharp` + `jsqr`
-   *    (tenta imagem inteira rotacionada por EXIF e, em seguida, recorte da metade inferior com contraste)
+   * 1. Decodifica QR Code 100% localmente usando `sharp` + `jsqr` + `@zxing/library`
+   *    (limita largura para conter RAM, força sRGB+RGBA para jsQR e isola cada passada)
    */
   async decodeQrCodeFromImage(imageBuffer: Buffer): Promise<string | null> {
     try {
-      const base = sharp(imageBuffer).rotate();
-      const { data, info } = await base
-        .clone()
-        .ensureAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: true });
+      const base = sharp(imageBuffer)
+        .rotate()
+        .resize({ width: 1400, withoutEnlargement: true });
 
-      const qrFull = jsQR(new Uint8ClampedArray(data), info.width, info.height);
-      if (qrFull?.data) {
-        logger.info({ qrUrl: qrFull.data.slice(0, 60) }, '[ArgusReceiptProcessor] QR Code detectado localmente via sharp+jsqr');
-        return qrFull.data;
+      let baseWidth = 0;
+      let baseHeight = 0;
+
+      // Passada 1: imagem inteira (RGBA 4 canais)
+      try {
+        const { data, info } = await base
+          .clone()
+          .toColourspace('srgb')
+          .ensureAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+        baseWidth = info.width;
+        baseHeight = info.height;
+
+        if (info.channels === 4) {
+          const qrFull = jsQR(new Uint8ClampedArray(data), info.width, info.height);
+          if (qrFull?.data) {
+            logger.info(
+              { qrUrl: qrFull.data.slice(0, 60) },
+              '[ArgusReceiptProcessor] QR Code detectado localmente via sharp+jsqr'
+            );
+            return qrFull.data;
+          }
+        }
+      } catch (err) {
+        logger.debug({ err }, '[ArgusReceiptProcessor] Passada 1 (full) de QR local sem leitura');
       }
 
-      // Segunda passada rápida: metade inferior do cupom (onde fica o QR Code) com normalise
-      if (info.height >= 400 && info.width >= 200) {
-        const cropTop = Math.floor(info.height * 0.45);
-        const cropHeight = info.height - cropTop;
-        const cropPipeline = base
+      // Passadas 2, 3 e 4: metade inferior do cupom (onde fica o QR Code)
+      if (baseHeight >= 400 && baseWidth >= 200) {
+        const cropTop = Math.floor(baseHeight * 0.45);
+        const cropHeight = baseHeight - cropTop;
+        const cropBuffer = await base
           .clone()
-          .extract({ left: 0, top: cropTop, width: info.width, height: cropHeight })
-          .resize({ width: 1100, withoutEnlargement: true });
+          .extract({ left: 0, top: cropTop, width: baseWidth, height: cropHeight })
+          .resize({ width: 1100, withoutEnlargement: true })
+          .png()
+          .toBuffer();
 
-        const { data: cropData, info: cropInfo } = await cropPipeline
-          .clone()
-          .normalise()
-          .ensureAlpha()
-          .raw()
-          .toBuffer({ resolveWithObject: true });
-
-        const qrCrop = jsQR(new Uint8ClampedArray(cropData), cropInfo.width, cropInfo.height);
-        if (qrCrop?.data) {
-          logger.info(
-            { qrUrl: qrCrop.data.slice(0, 60) },
-            '[ArgusReceiptProcessor] QR Code detectado localmente via recorte inferior sharp+jsqr'
-          );
-          return qrCrop.data;
-        }
-
-        // Terceira passada: binarização com threshold + sharpen para papel térmico desbotado
-        const { data: threshData, info: threshInfo } = await cropPipeline
-          .clone()
-          .grayscale()
-          .normalise()
-          .sharpen()
-          .threshold(135)
-          .ensureAlpha()
-          .raw()
-          .toBuffer({ resolveWithObject: true });
-
-        const qrThresh = jsQR(new Uint8ClampedArray(threshData), threshInfo.width, threshInfo.height);
-        if (qrThresh?.data) {
-          logger.info(
-            { qrUrl: qrThresh.data.slice(0, 60) },
-            '[ArgusReceiptProcessor] QR Code detectado localmente via threshold sharp+jsqr'
-          );
-          return qrThresh.data;
-        }
-
-        // Quarta passada: binarização adaptativa local via @zxing/library (HybridBinarizer)
+        // Passada 2: recorte inferior com normalise (RGBA 4 canais)
         try {
-          const { data: grayData, info: grayInfo } = await cropPipeline
-            .clone()
-            .grayscale()
+          const { data: cropData, info: cropInfo } = await sharp(cropBuffer)
             .normalise()
+            .toColourspace('srgb')
+            .ensureAlpha()
             .raw()
             .toBuffer({ resolveWithObject: true });
 
-          const luminance = new RGBLuminanceSource(
-            new Uint8ClampedArray(grayData),
-            grayInfo.width,
-            grayInfo.height
-          );
-          const bitmap = new BinaryBitmap(new HybridBinarizer(luminance));
-          const zxingRes = new QRCodeReader().decode(bitmap);
-          const text = zxingRes?.getText();
-          if (text) {
-            logger.info(
-              { qrUrl: text.slice(0, 60) },
-              '[ArgusReceiptProcessor] QR Code detectado localmente via @zxing/library (HybridBinarizer)'
+          if (cropInfo.channels === 4) {
+            const qrCrop = jsQR(new Uint8ClampedArray(cropData), cropInfo.width, cropInfo.height);
+            if (qrCrop?.data) {
+              logger.info(
+                { qrUrl: qrCrop.data.slice(0, 60) },
+                '[ArgusReceiptProcessor] QR Code detectado localmente via recorte inferior sharp+jsqr'
+              );
+              return qrCrop.data;
+            }
+          }
+        } catch (err) {
+          logger.debug({ err }, '[ArgusReceiptProcessor] Passada 2 (crop) de QR local sem leitura');
+        }
+
+        // Passada 3: binarização com threshold + sharpen convertida de volta para sRGB+RGBA (4 canais)
+        try {
+          const { data: threshData, info: threshInfo } = await sharp(cropBuffer)
+            .grayscale()
+            .normalise()
+            .sharpen()
+            .threshold(135)
+            .toColourspace('srgb')
+            .ensureAlpha()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+          if (threshInfo.channels === 4) {
+            const qrThresh = jsQR(
+              new Uint8ClampedArray(threshData),
+              threshInfo.width,
+              threshInfo.height
             );
-            return text;
+            if (qrThresh?.data) {
+              logger.info(
+                { qrUrl: qrThresh.data.slice(0, 60) },
+                '[ArgusReceiptProcessor] QR Code detectado localmente via threshold sharp+jsqr'
+              );
+              return qrThresh.data;
+            }
+          }
+        } catch (err) {
+          logger.debug({ err }, '[ArgusReceiptProcessor] Passada 3 (threshold) de QR local sem leitura');
+        }
+
+        // Passada 4: binarização adaptativa local via @zxing/library (HybridBinarizer)
+        try {
+          const { data: grayData, info: grayInfo } = await sharp(cropBuffer)
+            .grayscale()
+            .normalise()
+            .toColourspace('b-w')
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+          if (grayInfo.channels === 1 && grayData.length === grayInfo.width * grayInfo.height) {
+            const luminance = new RGBLuminanceSource(
+              new Uint8ClampedArray(grayData),
+              grayInfo.width,
+              grayInfo.height
+            );
+            const bitmap = new BinaryBitmap(new HybridBinarizer(luminance));
+            const zxingRes = new QRCodeReader().decode(bitmap);
+            const text = zxingRes?.getText();
+            if (text) {
+              logger.info(
+                { qrUrl: text.slice(0, 60) },
+                '[ArgusReceiptProcessor] QR Code detectado localmente via @zxing/library (HybridBinarizer)'
+              );
+              return text;
+            }
           }
         } catch {
           // NotFoundException esperada quando não há QR legível

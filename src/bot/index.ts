@@ -1513,11 +1513,11 @@ export function createArgusBot(): Bot {
         existing.entries.push(entry);
         existing.timer = setTimeout(() => {
           void processMediaGroup(mediaGroupId);
-        }, 1800);
+        }, 2600);
       } else {
         const timer = setTimeout(() => {
           void processMediaGroup(mediaGroupId);
-        }, 1800);
+        }, 2600);
         pendingMediaGroups.set(mediaGroupId, { entries: [entry], timer });
       }
       return;
