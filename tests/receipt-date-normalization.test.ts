@@ -30,4 +30,19 @@ describe('ArgusReceiptProcessor.normalizeReceiptDate', () => {
     const iso = processor.normalizeReceiptDate('14/08/2024 18:10:00', sefazKey);
     expect(iso.startsWith('2026-07-14T')).toBe(true);
   });
+
+  it('extracts printed date and VR_VA payment from raw OCR text (Mercado Souza receipt)', () => {
+    const rawOcr = `
+      PEDIDO
+      MERCADO SOUZA
+      VENDEDOR : 3 - JOAO TELLES
+      12/09/26 17:38:36 Pedido: 2536717
+      TOTAL : 23,87
+      ALIMENTACAO : 23,87
+      TROCO : 0,00
+    `;
+    const hints = processor.extractPrintedDateAndPaymentFromRawText(rawOcr);
+    expect(hints.printedDate).toBe('12/09/2026 17:38:36');
+    expect(hints.paymentMethod).toBe('VR_VA');
+  });
 });

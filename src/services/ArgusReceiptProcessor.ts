@@ -365,6 +365,58 @@ export class ArgusReceiptProcessor {
   }
 
   /**
+   * Extrai data/hora impressa e meio de pagamento diretamente do texto bruto OCR (custo zero de tokens)
+   * para dupla checagem híbrida OCR + LLM.
+   */
+  extractPrintedDateAndPaymentFromRawText(rawText?: string | null): {
+    printedDate?: string;
+    paymentMethod?: PaymentMethod;
+  } {
+    if (!rawText || !rawText.trim()) return {};
+
+    // Data/hora brasileira impressa no cupom (ex.: "12/09/26 17:38:36" ou "12/09/2026 17:38")
+    const dateMatch = rawText.match(
+      /(?<!\d)(\d{2})[\/\-](\d{2})[\/\-](\d{2,4})(?!\d)(?:[\s,Tàs]+(\d{2}):(\d{2})(?::(\d{2}))?)?/i
+    );
+    let printedDate: string | undefined;
+    if (dateMatch) {
+      const dd = Number.parseInt(dateMatch[1], 10);
+      const mm = Number.parseInt(dateMatch[2], 10);
+      if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
+        const yyyy = dateMatch[3].length === 2 ? `20${dateMatch[3]}` : dateMatch[3];
+        const hh = dateMatch[4] || '12';
+        const mi = dateMatch[5] || '00';
+        const ss = dateMatch[6] || '00';
+        printedDate = `${dateMatch[1]}/${dateMatch[2]}/${yyyy} ${hh}:${mi}:${ss}`;
+      }
+    }
+
+    const normalized = rawText
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase();
+
+    let paymentMethod: PaymentMethod | undefined;
+    if (
+      /\b(VALE\s+ALIMENTACAO|VALE\s+REFEICAO|ALIMENTACAO|REFEICAO|ALELO|SODEXO|PLUXEE|TICKET|BEN\s+VISA|CAJU|FLASH|SWILE|VR|VA)\b/.test(
+        normalized
+      )
+    ) {
+      paymentMethod = 'VR_VA';
+    } else if (/\bPIX\b/.test(normalized)) {
+      paymentMethod = 'PIX';
+    } else if (/\b(DEBITO|CARTAO\s+DE\s+DEBITO|VISA\s+ELECTRON|MAESTRO)\b/.test(normalized)) {
+      paymentMethod = 'DEBIT';
+    } else if (/\b(CREDITO|CARTAO\s+DE\s+CREDITO)\b/.test(normalized)) {
+      paymentMethod = 'CREDIT_CARD';
+    } else if (/\b(DINHEIRO|ESPECIE)\b/.test(normalized)) {
+      paymentMethod = 'CASH';
+    }
+
+    return { printedDate, paymentMethod };
+  }
+
+  /**
    * Normaliza o CNPJ da loja; se o cupom não tiver CNPJ visível, gera um CNPJ sintético determinístico
    * baseado no nome do mercado para que mercados distintos nunca colidam no mesmo placeholder.
    */
@@ -1546,16 +1598,40 @@ REGRAS ESTRITAS:
 
     const rawDocs = Array.isArray(parsed.documents) ? parsed.documents : [];
 
-    // Dupla checagem focalizada (2ª passada LLM) apenas quando houver anomalia na 1ª leitura
-    // (ex.: data ausente/futura/ano suspeito ou divergência matemática > R$ 1,00 em cupom fiscal único)
+    // Dupla checagem híbrida (OCR local/OpenCV custo zero + 2ª passada LLM apenas quando houver anomalia/divergência)
     if (
       rawDocs.length === 1 &&
       rawDocs[0].detectedDocumentType === 'FISCAL_RECEIPT' &&
       (parsed.imageQuality === 'GOOD' || parsed.imageQuality === 'ACCEPTABLE')
     ) {
       const candidateDoc = rawDocs[0];
+      const ocrHints = this.extractPrintedDateAndPaymentFromRawText(visionPre?.rawOcrText);
+
+      // Se o OCR detectou pagamento explícito (ex.: ALIMENTACAO -> VR_VA) e o LLM chutou outro, corrige sem custo de tokens
+      if (ocrHints.paymentMethod && ocrHints.paymentMethod !== candidateDoc.paymentMethod) {
+        logger.info(
+          { llmPayment: candidateDoc.paymentMethod, ocrPayment: ocrHints.paymentMethod },
+          '[ArgusReceiptProcessor] Pagamento ajustado por dupla checagem híbrida OCR'
+        );
+        candidateDoc.paymentMethod = ocrHints.paymentMethod;
+      }
+
       const rawDateStr = (candidateDoc.purchaseDate || '').trim();
-      const parsedPreview = rawDateStr ? new Date(this.normalizeReceiptDate(rawDateStr)) : null;
+      if (!rawDateStr && ocrHints.printedDate) {
+        candidateDoc.purchaseDate = ocrHints.printedDate;
+      }
+
+      const effectiveRawDate = (candidateDoc.purchaseDate || '').trim();
+      const parsedPreview = effectiveRawDate
+        ? new Date(this.normalizeReceiptDate(effectiveRawDate))
+        : null;
+      const ocrDatePreview = ocrHints.printedDate
+        ? new Date(this.normalizeReceiptDate(ocrHints.printedDate))
+        : null;
+      const ocrDateMismatch =
+        Boolean(parsedPreview && ocrDatePreview) &&
+        parsedPreview!.toISOString().slice(0, 10) !== ocrDatePreview!.toISOString().slice(0, 10);
+
       const nowMs = Date.now();
       const itemsSum = (candidateDoc.items || []).reduce(
         (acc, it) => acc + Number(it.totalPrice || 0),
@@ -1564,23 +1640,29 @@ REGRAS ESTRITAS:
       const mathGap =
         candidateDoc.totalAmount > 0 ? Math.abs(itemsSum - Number(candidateDoc.totalAmount)) : 0;
       const needsDoubleCheck =
-        !rawDateStr ||
+        !effectiveRawDate ||
         !parsedPreview ||
         parsedPreview.getTime() > nowMs + 2 * 24 * 60 * 60 * 1000 ||
         parsedPreview.getUTCFullYear() < 2025 ||
+        ocrDateMismatch ||
         mathGap > 1.0;
 
       if (needsDoubleCheck) {
         try {
           logger.info(
             {
-              rawDate: rawDateStr || null,
+              rawDate: effectiveRawDate || null,
+              ocrDate: ocrHints.printedDate || null,
+              ocrDateMismatch,
               paymentMethod: candidateDoc.paymentMethod,
               totalAmount: candidateDoc.totalAmount,
               mathGap: Number(mathGap.toFixed(2))
             },
             '[ArgusReceiptProcessor] Acionando dupla checagem focalizada (2ª passada LLM) para data/pagamento/total'
           );
+          const ocrHintLine = ocrHints.printedDate
+            ? `\nDICA DO OCR: o OCR leu "${ocrHints.printedDate}". Confirme olhando diretamente na foto qual data está realmente impressa.`
+            : '';
           const verifyRes = await this.generateWithModelFallback(
             {
               model: env.GEMINI_MODEL,
@@ -1593,7 +1675,7 @@ REGRAS ESTRITAS:
                 },
                 {
                   text: `Auditoria de dupla checagem deste cupom fiscal. Leia APENAS os campos exatos impressos no papel:
-1. rawPrintedDateTime: transcreva LITERALMENTE a data e hora impressas no papel no formato DD/MM/YYYY HH:mm:ss (ex: "12/09/2026 17:38:36"). Se o ano tiver 2 dígitos (ex: "12/09/26"), expanda para 4 dígitos ("12/09/2026").
+1. rawPrintedDateTime: transcreva LITERALMENTE a data e hora impressas no papel no formato DD/MM/YYYY HH:mm:ss (ex: "12/09/2026 17:38:36"). Se o ano tiver 2 dígitos (ex: "12/09/26"), expanda para 4 dígitos ("12/09/2026").${ocrHintLine}
 2. paymentMethod: mapeie a linha exata de FORMA DE PAGAMENTO / VALOR PAGO ('VR_VA' para Alimentação/Refeição/Alelo/Sodexo/Pluxee/Ticket/VR/VA; 'PIX'; 'DEBIT'; 'CREDIT_CARD'; 'CASH').
 3. totalAmount: valor total numérico impresso na linha TOTAL.`
                 }
