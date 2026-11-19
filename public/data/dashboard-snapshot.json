@@ -1,27 +1,658 @@
 {
   "status": "ok",
-  "generatedAt": "2026-11-19T04:17:16.719Z",
+  "generatedAt": "2026-11-19T13:36:37.582Z",
   "homeLocation": {
     "lat": -23.305,
     "lng": -45.965,
     "address": "Jacareí / São Paulo - SP (Coordenadas Protegidas OpSec)"
   },
   "kpis": {
-    "totalMonthSpent": 0,
-    "potentialMonthlySavings": 0,
+    "totalMonthSpent": 115.51,
+    "potentialMonthlySavings": 17.88,
     "vrVaBurnAmount": 0,
     "vrVaMonthlyBudget": 850,
     "vrVaBurnRatePct": 0,
-    "reconciliationRatePct": 0,
-    "scannedReceiptsCount": 0,
+    "reconciliationRatePct": 50,
+    "scannedReceiptsCount": 2,
     "pluggyTransactionsCount": 0,
     "collectedPricesCount": 0
   },
-  "currentPrices": [],
-  "heatmap": [],
-  "inflation": [],
-  "spendingBreakdown": [],
-  "priceEvolutionSeries": [],
+  "currentPrices": [
+    {
+      "canonical_product_id": "105c5539-9bad-42ea-829b-a5eb712f41a6",
+      "product_name": "BISCOITO AMANTEIGADO AB",
+      "category": "Besteiras/Impulso",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "is_essential": false,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 0.065,
+      "estimated_package_price": 65,
+      "min_historical_price": 65,
+      "max_historical_price": 65,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "65d0beca-a708-4f8d-881c-5654403a662b",
+      "product_name": "CENOURA KG",
+      "category": "Hortifruti",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 0.0065,
+      "estimated_package_price": 6.5,
+      "min_historical_price": 6.5,
+      "max_historical_price": 6.5,
+      "days_since_last_seen": 67,
+      "last_seen_at": "2026-09-12T20:38:36.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+      "product_name": "DIVERSOS",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 3.443,
+      "estimated_package_price": 3.44,
+      "min_historical_price": 1,
+      "max_historical_price": 4.49,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 2
+    },
+    {
+      "canonical_product_id": "4c9b5cc8-ff38-47d4-80cd-3c572c8512b9",
+      "product_name": "DOCES DIVERSOS PADARIA",
+      "category": "Besteiras/Impulso",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "is_essential": false,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 0.038974,
+      "estimated_package_price": 38.97,
+      "min_historical_price": 38.97,
+      "max_historical_price": 38.97,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+      "product_name": "GRAPE FRUIT DRAFT PEACH",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 13.99,
+      "estimated_package_price": 13.99,
+      "min_historical_price": 13.99,
+      "max_historical_price": 13.99,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+      "product_name": "MACARRAO ADRIA PENA 500",
+      "category": "Hortifruti",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 4.39,
+      "estimated_package_price": 4.39,
+      "min_historical_price": 4.39,
+      "max_historical_price": 4.39,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+      "product_name": "MANTEIGA AVIACAO 200GR",
+      "category": "Laticínios",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 6.99,
+      "estimated_package_price": 6.99,
+      "min_historical_price": 6.99,
+      "max_historical_price": 6.99,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+      "product_name": "MIST BOLO D BENTA FESTA",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 6.99,
+      "estimated_package_price": 6.99,
+      "min_historical_price": 6.99,
+      "max_historical_price": 6.99,
+      "days_since_last_seen": 67,
+      "last_seen_at": "2026-09-12T20:38:36.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+      "product_name": "MIST BOLO RENATA BROWNI",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 5.99,
+      "estimated_package_price": 5.99,
+      "min_historical_price": 5.99,
+      "max_historical_price": 5.99,
+      "days_since_last_seen": 67,
+      "last_seen_at": "2026-09-12T20:38:36.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+      "product_name": "MOLHO DE TOMATE QUERO 2",
+      "category": "Hortifruti",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 1.58,
+      "estimated_package_price": 1.58,
+      "min_historical_price": 1.58,
+      "max_historical_price": 1.58,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+      "product_name": "MUSSARELA",
+      "category": "Mercearia",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 0.055,
+      "estimated_package_price": 55,
+      "min_historical_price": 55,
+      "max_historical_price": 55,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+      "product_name": "PRESUNTO SEARA",
+      "category": "Mercearia",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 0.035,
+      "estimated_package_price": 35,
+      "min_historical_price": 35,
+      "max_historical_price": 35,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "3f4e4080-3049-4ba9-aaf1-e94ef30b3129",
+      "product_name": "REFRIG FANTA MARACUJA 2",
+      "category": "Besteiras/Impulso",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": false,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 9.39,
+      "estimated_package_price": 9.39,
+      "min_historical_price": 9.39,
+      "max_historical_price": 9.39,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+      "product_name": "ROCAMBOLE SABORES",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 1.39,
+      "estimated_package_price": 1.39,
+      "min_historical_price": 1.39,
+      "max_historical_price": 1.39,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+      "product_name": "SALGADO ASSADO",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 1.98,
+      "estimated_package_price": 1.98,
+      "min_historical_price": 1.98,
+      "max_historical_price": 1.98,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    },
+    {
+      "canonical_product_id": "91d17612-ac3d-4927-8f7b-bba096563487",
+      "product_name": "SALSICHA PERDIGAO",
+      "category": "Mercearia",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "is_essential": true,
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "estimated_base_price": 0.012983,
+      "estimated_package_price": 12.98,
+      "min_historical_price": 12.98,
+      "max_historical_price": 12.98,
+      "days_since_last_seen": 0,
+      "last_seen_at": "2026-11-25T21:49:40.000Z",
+      "observations_count": 1
+    }
+  ],
+  "heatmap": [
+    {
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "category": "Besteiras/Impulso",
+      "products_tracked": 3,
+      "competitiveness_index": 100,
+      "basket_category_cost": 113.36,
+      "min_days_since_seen": 0,
+      "max_days_since_seen": 0,
+      "freshness_tier": "< 15 dias"
+    },
+    {
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "category": "Hortifruti",
+      "products_tracked": 3,
+      "competitiveness_index": 100,
+      "basket_category_cost": 12.47,
+      "min_days_since_seen": 0,
+      "max_days_since_seen": 67,
+      "freshness_tier": "15-30 dias"
+    },
+    {
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "category": "Laticínios",
+      "products_tracked": 1,
+      "competitiveness_index": 100,
+      "basket_category_cost": 6.99,
+      "min_days_since_seen": 0,
+      "max_days_since_seen": 0,
+      "freshness_tier": "< 15 dias"
+    },
+    {
+      "store_id": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "store_name": "MERCADO SOUZA",
+      "category": "Mercearia",
+      "products_tracked": 9,
+      "competitiveness_index": 100,
+      "basket_category_cost": 136.76,
+      "min_days_since_seen": 0,
+      "max_days_since_seen": 67,
+      "freshness_tier": "< 15 dias"
+    }
+  ],
+  "inflation": [
+    {
+      "canonical_product_id": "105c5539-9bad-42ea-829b-a5eb712f41a6",
+      "product_name": "BISCOITO AMANTEIGADO AB",
+      "category": "Besteiras/Impulso",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "latest_seen_package_size": 1000,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 65,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+      "product_name": "DIVERSOS",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 4.49,
+      "mom_inflation_pct": 349,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "4c9b5cc8-ff38-47d4-80cd-3c572c8512b9",
+      "product_name": "DOCES DIVERSOS PADARIA",
+      "category": "Besteiras/Impulso",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "latest_seen_package_size": 1000,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 38.97,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+      "product_name": "GRAPE FRUIT DRAFT PEACH",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 13.99,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+      "product_name": "MACARRAO ADRIA PENA 500",
+      "category": "Hortifruti",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 4.39,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+      "product_name": "MANTEIGA AVIACAO 200GR",
+      "category": "Laticínios",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 6.99,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+      "product_name": "MOLHO DE TOMATE QUERO 2",
+      "category": "Hortifruti",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 1.58,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+      "product_name": "MUSSARELA",
+      "category": "Mercearia",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "latest_seen_package_size": 1000,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 55,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+      "product_name": "PRESUNTO SEARA",
+      "category": "Mercearia",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "latest_seen_package_size": 1000,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 35,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "3f4e4080-3049-4ba9-aaf1-e94ef30b3129",
+      "product_name": "REFRIG FANTA MARACUJA 2",
+      "category": "Besteiras/Impulso",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 9.39,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+      "product_name": "ROCAMBOLE SABORES",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 1.39,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+      "product_name": "SALGADO ASSADO",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 1.98,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "91d17612-ac3d-4927-8f7b-bba096563487",
+      "product_name": "SALSICHA PERDIGAO",
+      "category": "Mercearia",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "latest_seen_package_size": 1000,
+      "ref_month": "2026-11-01T00:00:00.000Z",
+      "avg_std_package_price": 12.98,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "65d0beca-a708-4f8d-881c-5654403a662b",
+      "product_name": "CENOURA KG",
+      "category": "Hortifruti",
+      "base_unit": "g",
+      "standard_package_size": 1000,
+      "latest_seen_package_size": 1000,
+      "ref_month": "2026-09-01T00:00:00.000Z",
+      "avg_std_package_price": 6.5,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+      "product_name": "DIVERSOS",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-09-01T00:00:00.000Z",
+      "avg_std_package_price": 1,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+      "product_name": "MIST BOLO D BENTA FESTA",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-09-01T00:00:00.000Z",
+      "avg_std_package_price": 6.99,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    },
+    {
+      "canonical_product_id": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+      "product_name": "MIST BOLO RENATA BROWNI",
+      "category": "Mercearia",
+      "base_unit": "un",
+      "standard_package_size": 1,
+      "latest_seen_package_size": 1,
+      "ref_month": "2026-09-01T00:00:00.000Z",
+      "avg_std_package_price": 5.99,
+      "mom_inflation_pct": 0,
+      "shrinkflation_detected": false,
+      "package_reduction_pct": 0
+    }
+  ],
+  "spendingBreakdown": [
+    {
+      "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+      "wallet_source": "BANK_ACCOUNT",
+      "payment_method": "CREDIT_CARD",
+      "category": "Mercearia",
+      "is_essential": true,
+      "spending_pillar": "Alimentação Essencial",
+      "receipts_count": 1,
+      "reconciled_receipts_count": 0,
+      "total_spent": 66.8
+    },
+    {
+      "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+      "wallet_source": "BANK_ACCOUNT",
+      "payment_method": "CREDIT_CARD",
+      "category": "Besteiras/Impulso",
+      "is_essential": false,
+      "spending_pillar": "Besteiras/Impulso",
+      "receipts_count": 1,
+      "reconciled_receipts_count": 0,
+      "total_spent": 35.75
+    },
+    {
+      "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+      "wallet_source": "BANK_ACCOUNT",
+      "payment_method": "CREDIT_CARD",
+      "category": "Laticínios",
+      "is_essential": true,
+      "spending_pillar": "Alimentação Essencial",
+      "receipts_count": 1,
+      "reconciled_receipts_count": 0,
+      "total_spent": 6.99
+    },
+    {
+      "ref_month": "Sun Nov 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+      "wallet_source": "BANK_ACCOUNT",
+      "payment_method": "CREDIT_CARD",
+      "category": "Hortifruti",
+      "is_essential": true,
+      "spending_pillar": "Alimentação Essencial",
+      "receipts_count": 1,
+      "reconciled_receipts_count": 0,
+      "total_spent": 5.97
+    },
+    {
+      "ref_month": "Tue Sep 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+      "wallet_source": "VR_VA",
+      "payment_method": "VR_VA",
+      "category": "Mercearia",
+      "is_essential": true,
+      "spending_pillar": "Alimentação Essencial",
+      "receipts_count": 1,
+      "reconciled_receipts_count": 1,
+      "total_spent": 22.96
+    },
+    {
+      "ref_month": "Tue Sep 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+      "wallet_source": "VR_VA",
+      "payment_method": "VR_VA",
+      "category": "Hortifruti",
+      "is_essential": true,
+      "spending_pillar": "Alimentação Essencial",
+      "receipts_count": 1,
+      "reconciled_receipts_count": 1,
+      "total_spent": 0.91
+    }
+  ],
+  "priceEvolutionSeries": [
+    {
+      "month": "2026-09",
+      "CENOURA KG": 6.5,
+      "DIVERSOS": 1,
+      "MIST BOLO D BENTA FESTA": 6.99,
+      "MIST BOLO RENATA BROWNI": 5.99
+    },
+    {
+      "month": "2026-11",
+      "MOLHO DE TOMATE QUERO 2": 1.58,
+      "MANTEIGA AVIACAO 200GR": 6.99,
+      "MUSSARELA": 55,
+      "GRAPE FRUIT DRAFT PEACH": 13.99,
+      "REFRIG FANTA MARACUJA 2": 9.39,
+      "DOCES DIVERSOS PADARIA": 38.97,
+      "SALGADO ASSADO": 1.98,
+      "PRESUNTO SEARA": 35,
+      "MACARRAO ADRIA PENA 500": 4.39,
+      "BISCOITO AMANTEIGADO AB": 65,
+      "DIVERSOS": 4.49,
+      "ROCAMBOLE SABORES": 1.39,
+      "SALSICHA PERDIGAO": 12.98
+    }
+  ],
   "recipesEvaluations": [
     {
       "recipeId": "7cc854b3-79f8-49a2-a088-7bf1bd33c085",
@@ -71549,18 +72180,110 @@
           "storeName": "CLUBE SEMAR",
           "lat": -23.571414,
           "lng": -46.665881,
-          "itemsCount": 0,
-          "subtotalProducts": 0,
-          "items": []
+          "itemsCount": 13,
+          "subtotalProducts": 319.43,
+          "items": [
+            {
+              "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+              "productName": "CENOURA KG",
+              "packages": 2,
+              "packagePrice": 6.5,
+              "lineTotal": 13
+            },
+            {
+              "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+              "productName": "DIVERSOS",
+              "packages": 2,
+              "packagePrice": 3.44,
+              "lineTotal": 6.88
+            },
+            {
+              "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+              "productName": "GRAPE FRUIT DRAFT PEACH",
+              "packages": 2,
+              "packagePrice": 13.99,
+              "lineTotal": 27.98
+            },
+            {
+              "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+              "productName": "MACARRAO ADRIA PENA 500",
+              "packages": 2,
+              "packagePrice": 4.39,
+              "lineTotal": 8.78
+            },
+            {
+              "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+              "productName": "MANTEIGA AVIACAO 200GR",
+              "packages": 3,
+              "packagePrice": 6.99,
+              "lineTotal": 20.97
+            },
+            {
+              "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+              "productName": "MIST BOLO D BENTA FESTA",
+              "packages": 2,
+              "packagePrice": 6.99,
+              "lineTotal": 13.98
+            },
+            {
+              "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+              "productName": "MIST BOLO RENATA BROWNI",
+              "packages": 2,
+              "packagePrice": 5.99,
+              "lineTotal": 11.98
+            },
+            {
+              "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+              "productName": "MOLHO DE TOMATE QUERO 2",
+              "packages": 2,
+              "packagePrice": 1.58,
+              "lineTotal": 3.16
+            },
+            {
+              "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+              "productName": "MUSSARELA",
+              "packages": 2,
+              "packagePrice": 55,
+              "lineTotal": 110
+            },
+            {
+              "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+              "productName": "PRESUNTO SEARA",
+              "packages": 2,
+              "packagePrice": 35,
+              "lineTotal": 70
+            },
+            {
+              "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+              "productName": "ROCAMBOLE SABORES",
+              "packages": 2,
+              "packagePrice": 1.39,
+              "lineTotal": 2.78
+            },
+            {
+              "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+              "productName": "SALGADO ASSADO",
+              "packages": 2,
+              "packagePrice": 1.98,
+              "lineTotal": 3.96
+            },
+            {
+              "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+              "productName": "SALSICHA PERDIGAO",
+              "packages": 2,
+              "packagePrice": 12.98,
+              "lineTotal": 25.96
+            }
+          ]
         }
       ],
-      "productsCost": 0,
+      "productsCost": 319.43,
       "totalDistanceKm": 5.14,
       "totalDurationMin": 9,
       "gasCost": 2.88,
       "uberCost": 19.77,
-      "totalWithGas": 2.88,
-      "totalWithUber": 19.77,
+      "totalWithGas": 322.31,
+      "totalWithUber": 339.2,
       "routeLegs": [
         {
           "fromName": "Minha Casa",
@@ -72206,21 +72929,123 @@
     },
     "splitStoreBest": {
       "mode": "SPLIT_STORES",
-      "title": "Compra Dividida (CLUBE SEMAR + COMERCIAL)",
-      "storesVisited": [],
-      "productsCost": 0,
-      "totalDistanceKm": 6.66,
-      "totalDurationMin": 13,
-      "gasCost": 3.74,
-      "uberCost": 29.96,
-      "totalWithGas": 3.74,
-      "totalWithUber": 29.96,
+      "title": "Compra Dividida (MERCADO SOUZA + COMERCIAL)",
+      "storesVisited": [
+        {
+          "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+          "storeName": "MERCADO SOUZA",
+          "lat": -23.573414,
+          "lng": -46.670881,
+          "itemsCount": 13,
+          "subtotalProducts": 319.43,
+          "items": [
+            {
+              "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+              "productName": "CENOURA KG",
+              "packages": 2,
+              "packagePrice": 6.5,
+              "lineTotal": 13
+            },
+            {
+              "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+              "productName": "DIVERSOS",
+              "packages": 2,
+              "packagePrice": 3.44,
+              "lineTotal": 6.88
+            },
+            {
+              "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+              "productName": "GRAPE FRUIT DRAFT PEACH",
+              "packages": 2,
+              "packagePrice": 13.99,
+              "lineTotal": 27.98
+            },
+            {
+              "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+              "productName": "MACARRAO ADRIA PENA 500",
+              "packages": 2,
+              "packagePrice": 4.39,
+              "lineTotal": 8.78
+            },
+            {
+              "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+              "productName": "MANTEIGA AVIACAO 200GR",
+              "packages": 3,
+              "packagePrice": 6.99,
+              "lineTotal": 20.97
+            },
+            {
+              "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+              "productName": "MIST BOLO D BENTA FESTA",
+              "packages": 2,
+              "packagePrice": 6.99,
+              "lineTotal": 13.98
+            },
+            {
+              "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+              "productName": "MIST BOLO RENATA BROWNI",
+              "packages": 2,
+              "packagePrice": 5.99,
+              "lineTotal": 11.98
+            },
+            {
+              "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+              "productName": "MOLHO DE TOMATE QUERO 2",
+              "packages": 2,
+              "packagePrice": 1.58,
+              "lineTotal": 3.16
+            },
+            {
+              "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+              "productName": "MUSSARELA",
+              "packages": 2,
+              "packagePrice": 55,
+              "lineTotal": 110
+            },
+            {
+              "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+              "productName": "PRESUNTO SEARA",
+              "packages": 2,
+              "packagePrice": 35,
+              "lineTotal": 70
+            },
+            {
+              "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+              "productName": "ROCAMBOLE SABORES",
+              "packages": 2,
+              "packagePrice": 1.39,
+              "lineTotal": 2.78
+            },
+            {
+              "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+              "productName": "SALGADO ASSADO",
+              "packages": 2,
+              "packagePrice": 1.98,
+              "lineTotal": 3.96
+            },
+            {
+              "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+              "productName": "SALSICHA PERDIGAO",
+              "packages": 2,
+              "packagePrice": 12.98,
+              "lineTotal": 25.96
+            }
+          ]
+        }
+      ],
+      "productsCost": 319.43,
+      "totalDistanceKm": 6.7,
+      "totalDurationMin": 14,
+      "gasCost": 3.76,
+      "uberCost": 30.04,
+      "totalWithGas": 323.19,
+      "totalWithUber": 349.47,
       "routeLegs": [
         {
           "fromName": "Minha Casa",
-          "toName": "CLUBE SEMAR",
-          "distanceKm": 1.69,
-          "durationMin": 3,
+          "toName": "MERCADO SOUZA",
+          "distanceKm": 2.64,
+          "durationMin": 4,
           "coordinates": [
             [
               -23.561442,
@@ -72395,156 +73220,168 @@
               -46.664851
             ],
             [
-              -23.572167,
-              -46.664883
+              -23.57232,
+              -46.664942
             ],
             [
-              -23.572127,
-              -46.664902
+              -23.572348,
+              -46.664979
             ],
             [
-              -23.572044,
-              -46.664967
+              -23.572397,
+              -46.665046
             ],
             [
-              -23.571896,
-              -46.665092
+              -23.572435,
+              -46.665099
             ],
             [
-              -23.571789,
-              -46.665195
+              -23.572471,
+              -46.665146
             ],
             [
-              -23.571619,
-              -46.665393
+              -23.572873,
+              -46.665699
             ],
             [
-              -23.571535,
-              -46.665495
+              -23.573192,
+              -46.666136
             ],
             [
-              -23.571527,
-              -46.66551
+              -23.573286,
+              -46.666265
             ],
             [
-              -23.571469,
-              -46.665607
+              -23.573442,
+              -46.666481
             ],
             [
-              -23.571406,
-              -46.665746
+              -23.573575,
+              -46.666661
             ],
             [
-              -23.571373,
-              -46.665847
+              -23.573827,
+              -46.667006
             ],
             [
-              -23.571403,
-              -46.66589
-            ]
-          ]
-        },
-        {
-          "fromName": "CLUBE SEMAR",
-          "toName": "COMERCIAL",
-          "distanceKm": 0.91,
-          "durationMin": 3,
-          "coordinates": [
-            [
-              -23.571403,
-              -46.66589
+              -23.573904,
+              -46.667107
             ],
             [
-              -23.571437,
-              -46.665937
+              -23.573944,
+              -46.667162
             ],
             [
-              -23.571504,
-              -46.66603
+              -23.573982,
+              -46.667214
             ],
             [
-              -23.571537,
-              -46.666075
+              -23.574034,
+              -46.667287
             ],
             [
-              -23.571632,
-              -46.666207
+              -23.574881,
+              -46.668453
             ],
             [
-              -23.571874,
-              -46.666542
+              -23.574915,
+              -46.668501
             ],
             [
-              -23.572264,
-              -46.6671
+              -23.574986,
+              -46.668598
             ],
             [
-              -23.572497,
-              -46.667435
+              -23.575048,
+              -46.668682
             ],
             [
-              -23.572527,
-              -46.667478
+              -23.575072,
+              -46.668714
             ],
             [
-              -23.572671,
-              -46.667686
+              -23.575398,
+              -46.669159
             ],
             [
-              -23.572734,
-              -46.667777
+              -23.57587,
+              -46.669823
             ],
             [
-              -23.572906,
-              -46.668014
+              -23.575877,
+              -46.669899
             ],
             [
-              -23.572962,
-              -46.668091
+              -23.575882,
+              -46.669962
             ],
             [
-              -23.573048,
-              -46.66822
+              -23.575883,
+              -46.670017
             ],
             [
-              -23.573094,
-              -46.668282
+              -23.575877,
+              -46.67009
             ],
             [
-              -23.573248,
-              -46.668495
+              -23.575854,
+              -46.670226
             ],
             [
-              -23.573671,
-              -46.669094
+              -23.575774,
+              -46.670361
             ],
             [
-              -23.573954,
-              -46.669482
+              -23.575716,
+              -46.670444
             ],
             [
-              -23.573984,
-              -46.669524
+              -23.575666,
+              -46.6705
             ],
             [
-              -23.574251,
-              -46.669895
+              -23.57563,
+              -46.670565
             ],
             [
-              -23.57475,
-              -46.67065
+              -23.575566,
+              -46.670628
             ],
             [
-              -23.57479,
-              -46.670863
+              -23.5755,
+              -46.670675
             ],
             [
-              -23.574794,
-              -46.670961
+              -23.575413,
+              -46.670684
             ],
             [
-              -23.57479,
-              -46.671079
+              -23.575369,
+              -46.670713
+            ],
+            [
+              -23.575295,
+              -46.670751
+            ],
+            [
+              -23.575204,
+              -46.670934
+            ],
+            [
+              -23.575146,
+              -46.671003
+            ],
+            [
+              -23.575086,
+              -46.671059
+            ],
+            [
+              -23.575012,
+              -46.67111
+            ],
+            [
+              -23.574901,
+              -46.67117
             ],
             [
               -23.574774,
@@ -72621,6 +73458,22 @@
             [
               -23.573177,
               -46.671488
+            ],
+            [
+              -23.573015,
+              -46.671307
+            ]
+          ]
+        },
+        {
+          "fromName": "MERCADO SOUZA",
+          "toName": "COMERCIAL",
+          "distanceKm": 0,
+          "durationMin": 3,
+          "coordinates": [
+            [
+              -23.573015,
+              -46.671307
             ],
             [
               -23.573015,
@@ -73160,18 +74013,110 @@
             "storeName": "Comercial Melhor",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 2.88,
-        "totalWithUber": 19.77,
+        "totalWithGas": 322.31,
+        "totalWithUber": 339.2,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -73824,18 +74769,110 @@
             "storeName": "Desconhecido/Não visível na imagem",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 2.88,
-        "totalWithUber": 19.77,
+        "totalWithGas": 322.31,
+        "totalWithUber": 339.2,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -74488,18 +75525,110 @@
             "storeName": "Friboi",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 2.88,
-        "totalWithUber": 19.77,
+        "totalWithGas": 322.31,
+        "totalWithUber": 339.2,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -75152,18 +76281,110 @@
             "storeName": "LJ-36 (Rede Desconhecida)",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 2.88,
-        "totalWithUber": 19.77,
+        "totalWithGas": 322.31,
+        "totalWithUber": 339.2,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -75816,18 +77037,110 @@
             "storeName": "Semar",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 2.88,
-        "totalWithUber": 19.77,
+        "totalWithGas": 322.31,
+        "totalWithUber": 339.2,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -76480,18 +77793,110 @@
             "storeName": "Semar Supermercados",
             "lat": -23.571414,
             "lng": -46.665881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 5.14,
         "totalDurationMin": 9,
         "gasCost": 2.88,
         "uberCost": 19.77,
-        "totalWithGas": 2.88,
-        "totalWithUber": 19.77,
+        "totalWithGas": 322.31,
+        "totalWithUber": 339.2,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -77144,18 +78549,110 @@
             "storeName": "COMERCIAL",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -78112,18 +79609,110 @@
             "storeName": "COMERCIAL MATRIT",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -79080,18 +80669,110 @@
             "storeName": "COMERCIAL MATRIZ LTDA",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -80048,18 +81729,110 @@
             "storeName": "COMERCIAL WATT LTDA",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -81016,18 +82789,110 @@
             "storeName": "COMERCIAL WHITTIT LTDA",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -81984,18 +83849,110 @@
             "storeName": "MANDARIN",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -82952,18 +84909,110 @@
             "storeName": "MERCADO",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -83920,18 +85969,110 @@
             "storeName": "Mercado Identificado",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -84888,18 +87029,110 @@
             "storeName": "MERCADO SOUZA",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -85856,18 +88089,110 @@
             "storeName": "MERCED",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -86824,18 +89149,110 @@
             "storeName": "NE SUPERMERCADO",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -87792,18 +90209,110 @@
             "storeName": "PEDIDO",
             "lat": -23.573414,
             "lng": -46.670881,
-            "itemsCount": 0,
-            "subtotalProducts": 0,
-            "items": []
+            "itemsCount": 13,
+            "subtotalProducts": 319.43,
+            "items": [
+              {
+                "productId": "65d0beca-a708-4f8d-881c-5654403a662b",
+                "productName": "CENOURA KG",
+                "packages": 2,
+                "packagePrice": 6.5,
+                "lineTotal": 13
+              },
+              {
+                "productId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+                "productName": "DIVERSOS",
+                "packages": 2,
+                "packagePrice": 3.44,
+                "lineTotal": 6.88
+              },
+              {
+                "productId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+                "productName": "GRAPE FRUIT DRAFT PEACH",
+                "packages": 2,
+                "packagePrice": 13.99,
+                "lineTotal": 27.98
+              },
+              {
+                "productId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+                "productName": "MACARRAO ADRIA PENA 500",
+                "packages": 2,
+                "packagePrice": 4.39,
+                "lineTotal": 8.78
+              },
+              {
+                "productId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+                "productName": "MANTEIGA AVIACAO 200GR",
+                "packages": 3,
+                "packagePrice": 6.99,
+                "lineTotal": 20.97
+              },
+              {
+                "productId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+                "productName": "MIST BOLO D BENTA FESTA",
+                "packages": 2,
+                "packagePrice": 6.99,
+                "lineTotal": 13.98
+              },
+              {
+                "productId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+                "productName": "MIST BOLO RENATA BROWNI",
+                "packages": 2,
+                "packagePrice": 5.99,
+                "lineTotal": 11.98
+              },
+              {
+                "productId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+                "productName": "MOLHO DE TOMATE QUERO 2",
+                "packages": 2,
+                "packagePrice": 1.58,
+                "lineTotal": 3.16
+              },
+              {
+                "productId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+                "productName": "MUSSARELA",
+                "packages": 2,
+                "packagePrice": 55,
+                "lineTotal": 110
+              },
+              {
+                "productId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+                "productName": "PRESUNTO SEARA",
+                "packages": 2,
+                "packagePrice": 35,
+                "lineTotal": 70
+              },
+              {
+                "productId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+                "productName": "ROCAMBOLE SABORES",
+                "packages": 2,
+                "packagePrice": 1.39,
+                "lineTotal": 2.78
+              },
+              {
+                "productId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+                "productName": "SALGADO ASSADO",
+                "packages": 2,
+                "packagePrice": 1.98,
+                "lineTotal": 3.96
+              },
+              {
+                "productId": "91d17612-ac3d-4927-8f7b-bba096563487",
+                "productName": "SALSICHA PERDIGAO",
+                "packages": 2,
+                "packagePrice": 12.98,
+                "lineTotal": 25.96
+              }
+            ]
           }
         ],
-        "productsCost": 0,
+        "productsCost": 319.43,
         "totalDistanceKm": 6.7,
         "totalDurationMin": 11,
         "gasCost": 3.76,
         "uberCost": 21.14,
-        "totalWithGas": 3.76,
-        "totalWithUber": 21.14,
+        "totalWithGas": 323.19,
+        "totalWithUber": 340.57,
         "routeLegs": [
           {
             "fromName": "Minha Casa",
@@ -88753,29 +91262,922 @@
       }
     ],
     "grossProductSavings": 0,
-    "netSavingsWithGas": -0.86,
-    "netSavingsWithUber": -10.19,
+    "netSavingsWithGas": -0.88,
+    "netSavingsWithUber": -10.27,
     "minSavingsHurdle": 25,
     "recommendSplitWithGas": false,
     "recommendSplitWithUber": false,
     "recommendedTransportMode": "CAR_GAS",
-    "argusVerdictText": "👁️ VEREDITO ARGUS: NÃO divida a compra! A economia líquida após combustível (R$ -0.86) fica abaixo da trava mínima de R$ 25.00. Concentre 100% da compra no CLUBE SEMAR."
+    "argusVerdictText": "👁️ VEREDITO ARGUS: NÃO divida a compra! A economia líquida após combustível (R$ -0.88) fica abaixo da trava mínima de R$ 25.00. Concentre 100% da compra no CLUBE SEMAR."
   },
   "reconciliation": {
-    "scannedReceipts": 0,
+    "scannedReceipts": 2,
     "pluggyTransactions": 0,
     "newlyMatched": 0,
-    "totalReconciled": 0,
-    "reconciliationRatePct": 0,
-    "vrVaSyncedCount": 0,
-    "sheetsSyncedRows": 0,
+    "totalReconciled": 1,
+    "reconciliationRatePct": 50,
+    "vrVaSyncedCount": 1,
+    "sheetsSyncedRows": 33,
     "matches": []
   },
   "openFinanceTransactions": [],
   "collectedPrices": [],
-  "queueSummary": [],
-  "scannedProducts": [],
+  "queueSummary": [
+    {
+      "status": "SUCCEEDED",
+      "total": 2
+    }
+  ],
+  "scannedProducts": [
+    {
+      "id": "e9396f86-a670-4e55-91ec-d9fb0392f6d8",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "MACARRAO ADRIA PENA 500",
+      "brandName": "Adria",
+      "canonicalProductId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+      "canonicalProductName": "MACARRAO ADRIA PENA 500",
+      "category": "Hortifruti",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 4.39,
+      "totalPrice": 4.39,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 4.39,
+      "normalizedPackagePrice": 4.39,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "b2f4b2f3-9aab-4c84-b9a4-aede01145732",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "MANTEIGA AVIACAO 200GR",
+      "brandName": "Aviação",
+      "canonicalProductId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+      "canonicalProductName": "MANTEIGA AVIACAO 200GR",
+      "category": "Laticínios",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 6.99,
+      "totalPrice": 6.99,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 6.99,
+      "normalizedPackagePrice": 6.99,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "92cac043-8de6-45fb-acb8-2c702b1a8d77",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "REFRIG FANTA MARACUJA 2",
+      "brandName": "Fanta",
+      "canonicalProductId": "3f4e4080-3049-4ba9-aaf1-e94ef30b3129",
+      "canonicalProductName": "REFRIG FANTA MARACUJA 2",
+      "category": "Besteiras/Impulso",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": false,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 9.39,
+      "totalPrice": 9.39,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 9.39,
+      "normalizedPackagePrice": 9.39,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "8c5cc46a-625f-492f-8dda-3d05659e1277",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "SALGADO ASSADO",
+      "brandName": "Não especificada",
+      "canonicalProductId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+      "canonicalProductName": "SALGADO ASSADO",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 1.98,
+      "totalPrice": 1.98,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 1.98,
+      "normalizedPackagePrice": 1.98,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "7eb338de-e997-4d99-8b2a-db8b75f24475",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "SALSICHA PERDIGAO",
+      "brandName": "Perdigão",
+      "canonicalProductId": "91d17612-ac3d-4927-8f7b-bba096563487",
+      "canonicalProductName": "SALSICHA PERDIGAO",
+      "category": "Mercearia",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": true,
+      "quantity": 0.362,
+      "unitType": "KG",
+      "unitPrice": 12.99,
+      "totalPrice": 4.7,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.012983,
+      "normalizedPackagePrice": 12.98,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "7c4281b8-d330-4273-9454-dc864b8fe5be",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "ROCAMBOLE SABORES",
+      "brandName": "Não especificada",
+      "canonicalProductId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+      "canonicalProductName": "ROCAMBOLE SABORES",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 1.39,
+      "totalPrice": 1.39,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 1.39,
+      "normalizedPackagePrice": 1.39,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "71d60ebd-dc77-4e8f-a555-8eac575ca3de",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "PRESUNTO SEARA",
+      "brandName": "Seara",
+      "canonicalProductId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+      "canonicalProductName": "PRESUNTO SEARA",
+      "category": "Mercearia",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": true,
+      "quantity": 0.216,
+      "unitType": "KG",
+      "unitPrice": 34.99,
+      "totalPrice": 7.56,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.035,
+      "normalizedPackagePrice": 35,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "68629f4c-c282-4cd4-8e95-c372c00cb65c",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "GRAPE FRUIT DRAFT PEACH",
+      "brandName": "Não especificada",
+      "canonicalProductId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+      "canonicalProductName": "GRAPE FRUIT DRAFT PEACH",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 2,
+      "unitType": "UN",
+      "unitPrice": 13.99,
+      "totalPrice": 27.98,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 13.99,
+      "normalizedPackagePrice": 13.99,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "592a239e-21fd-4d19-b4e8-fdce237976cb",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "MOLHO DE TOMATE QUERO 2",
+      "brandName": "Quero",
+      "canonicalProductId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+      "canonicalProductName": "MOLHO DE TOMATE QUERO 2",
+      "category": "Hortifruti",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 1.58,
+      "totalPrice": 1.58,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 1.58,
+      "normalizedPackagePrice": 1.58,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "2661c3fa-75e9-4342-adb9-062615946ca6",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "MUSSARELA",
+      "brandName": "Não especificada",
+      "canonicalProductId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+      "canonicalProductName": "MUSSARELA",
+      "category": "Mercearia",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": true,
+      "quantity": 0.34,
+      "unitType": "KG",
+      "unitPrice": 54.99,
+      "totalPrice": 18.7,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.055,
+      "normalizedPackagePrice": 55,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "25985b52-d382-4449-a47a-e7d97dbbeac0",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "BISCOITO AMANTEIGADO AB",
+      "brandName": "Não especificada",
+      "canonicalProductId": "105c5539-9bad-42ea-829b-a5eb712f41a6",
+      "canonicalProductName": "BISCOITO AMANTEIGADO AB",
+      "category": "Besteiras/Impulso",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": false,
+      "quantity": 0.312,
+      "unitType": "KG",
+      "unitPrice": 64.99,
+      "totalPrice": 20.28,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.065,
+      "normalizedPackagePrice": 65,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "2259441e-28a5-4298-833d-0762dd948ede",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "DOCES DIVERSOS PADARIA",
+      "brandName": "Não especificada",
+      "canonicalProductId": "4c9b5cc8-ff38-47d4-80cd-3c572c8512b9",
+      "canonicalProductName": "DOCES DIVERSOS PADARIA",
+      "category": "Besteiras/Impulso",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": false,
+      "quantity": 0.156,
+      "unitType": "KG",
+      "unitPrice": 38.99,
+      "totalPrice": 6.08,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.038974,
+      "normalizedPackagePrice": 38.97,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "109720bb-71b4-4965-a470-3df4b9ec2955",
+      "observedAt": "2026-11-25T21:49:40.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "DIVERSOS",
+      "brandName": "Não especificada",
+      "canonicalProductId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+      "canonicalProductName": "DIVERSOS",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 4.49,
+      "totalPrice": 4.49,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 4.49,
+      "normalizedPackagePrice": 4.49,
+      "confidenceScorePct": 100,
+      "paymentMethod": "CREDIT_CARD",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "c6372fbc-8f4c-4619-bc2f-774983ca91c9",
+      "observedAt": "2026-09-12T20:38:36.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "CENOURA KG",
+      "brandName": "Não especificada",
+      "canonicalProductId": "65d0beca-a708-4f8d-881c-5654403a662b",
+      "canonicalProductName": "CENOURA KG",
+      "category": "Hortifruti",
+      "baseUnit": "g",
+      "standardPackageSize": 1000,
+      "isEssential": true,
+      "quantity": 0.14,
+      "unitType": "KG",
+      "unitPrice": 6.49,
+      "totalPrice": 0.91,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 0.0065,
+      "normalizedPackagePrice": 6.5,
+      "confidenceScorePct": 100,
+      "paymentMethod": "VR_VA",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "852a7a67-03d2-4454-aeec-ad80f058ad4e",
+      "observedAt": "2026-09-12T20:38:36.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "MIST BOLO RENATA BROWNI",
+      "brandName": "Renata",
+      "canonicalProductId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+      "canonicalProductName": "MIST BOLO RENATA BROWNI",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 1,
+      "unitType": "UN",
+      "unitPrice": 5.99,
+      "totalPrice": 5.99,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 5.99,
+      "normalizedPackagePrice": 5.99,
+      "confidenceScorePct": 100,
+      "paymentMethod": "VR_VA",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "52902270-6796-4d7a-a814-4da5d6f41c44",
+      "observedAt": "2026-09-12T20:38:36.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "MIST BOLO D BENTA FESTA",
+      "brandName": "Não especificada",
+      "canonicalProductId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+      "canonicalProductName": "MIST BOLO D BENTA FESTA",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 2,
+      "unitType": "UN",
+      "unitPrice": 6.99,
+      "totalPrice": 13.98,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 6.99,
+      "normalizedPackagePrice": 6.99,
+      "confidenceScorePct": 100,
+      "paymentMethod": "VR_VA",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    },
+    {
+      "id": "0d285df1-b6c6-4b62-887f-b187bcac9172",
+      "observedAt": "2026-09-12T20:38:36.000Z",
+      "sourceKind": "RECEIPT_ITEM",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeLocation": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "rawDescription": "DIVERSOS",
+      "brandName": "Não especificada",
+      "canonicalProductId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+      "canonicalProductName": "DIVERSOS",
+      "category": "Mercearia",
+      "baseUnit": "un",
+      "standardPackageSize": 1,
+      "isEssential": true,
+      "quantity": 2.99,
+      "unitType": "UN",
+      "unitPrice": 1,
+      "totalPrice": 2.99,
+      "promoPrice": null,
+      "normalizedPricePerBaseUnit": 1,
+      "normalizedPackagePrice": 1,
+      "confidenceScorePct": 100,
+      "paymentMethod": "VR_VA",
+      "missingInfoFlags": [],
+      "nfceAccessKey": null,
+      "nfceUrl": null
+    }
+  ],
   "storesBi": [
+    {
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "tradingName": "MERCADO SOUZA",
+      "rawName": "MERCADO SOUZA",
+      "cnpj": "17.316.876/0001-44",
+      "address": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "googleMapsUrl": null,
+      "latitude": -23.573414,
+      "longitude": -46.670881,
+      "totalSpentAllTime": 139.78,
+      "totalDiscountAllTime": 0,
+      "receiptsCount": 2,
+      "itemsPurchasedCount": 17,
+      "collectedPricesCount": 0,
+      "avgTicket": 69.89,
+      "currentMonthLabel": "Nov/26",
+      "currentMonthSpent": 115.91,
+      "currentMonthReceiptsCount": 1,
+      "previousMonthSpent": 0,
+      "momSpendDeltaPct": null,
+      "dailySpendRateHistorical": 2.06,
+      "dailySpendRateCurrentMonth": 6.1,
+      "activeSpanDays": 68,
+      "avgDaysBetweenVisits": 74,
+      "visitsPerWeek": 0.21,
+      "firstPurchaseAt": "2026-09-12T20:38:36.000Z",
+      "lastPurchaseAt": "2026-11-25T21:49:40.000Z",
+      "mostConsumedProduct": {
+        "canonicalProductId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+        "productName": "DIVERSOS",
+        "category": "Mercearia",
+        "baseUnit": "un",
+        "timesPurchased": 2,
+        "totalQuantityInUnit": 3.99,
+        "totalSpent": 7.48,
+        "avgUnitPrice": 3.74,
+        "avgNormalizedPackagePrice": 2.75,
+        "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+        "topBrand": "Variada"
+      },
+      "highestSpendProduct": {
+        "canonicalProductId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+        "productName": "GRAPE FRUIT DRAFT PEACH",
+        "category": "Mercearia",
+        "baseUnit": "un",
+        "timesPurchased": 1,
+        "totalQuantityInUnit": 2,
+        "totalSpent": 27.98,
+        "avgUnitPrice": 27.98,
+        "avgNormalizedPackagePrice": 13.99,
+        "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+        "topBrand": "Variada"
+      },
+      "topProducts": [
+        {
+          "canonicalProductId": "fd565e3e-9ca5-4d1f-864c-df3643c4a17f",
+          "productName": "DIVERSOS",
+          "category": "Mercearia",
+          "baseUnit": "un",
+          "timesPurchased": 2,
+          "totalQuantityInUnit": 3.99,
+          "totalSpent": 7.48,
+          "avgUnitPrice": 3.74,
+          "avgNormalizedPackagePrice": 2.75,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Variada"
+        },
+        {
+          "canonicalProductId": "ef2b967a-e8c1-4aca-a996-b84f08000bd4",
+          "productName": "GRAPE FRUIT DRAFT PEACH",
+          "category": "Mercearia",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 2,
+          "totalSpent": 27.98,
+          "avgUnitPrice": 27.98,
+          "avgNormalizedPackagePrice": 13.99,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Variada"
+        },
+        {
+          "canonicalProductId": "105c5539-9bad-42ea-829b-a5eb712f41a6",
+          "productName": "BISCOITO AMANTEIGADO AB",
+          "category": "Besteiras/Impulso",
+          "baseUnit": "g",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 0.312,
+          "totalSpent": 20.28,
+          "avgUnitPrice": 20.28,
+          "avgNormalizedPackagePrice": 65,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Variada"
+        },
+        {
+          "canonicalProductId": "9b75e15e-76df-476a-b23d-12e4e3ef7c5d",
+          "productName": "MUSSARELA",
+          "category": "Mercearia",
+          "baseUnit": "g",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 0.34,
+          "totalSpent": 18.7,
+          "avgUnitPrice": 18.7,
+          "avgNormalizedPackagePrice": 55,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Variada"
+        },
+        {
+          "canonicalProductId": "4944e6f4-06ea-4402-bb52-b7459f5ecabf",
+          "productName": "MIST BOLO D BENTA FESTA",
+          "category": "Mercearia",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 2,
+          "totalSpent": 13.98,
+          "avgUnitPrice": 13.98,
+          "avgNormalizedPackagePrice": 6.99,
+          "lastPurchasedAt": "2026-09-12T20:38:36.000Z",
+          "topBrand": "Variada"
+        },
+        {
+          "canonicalProductId": "3f4e4080-3049-4ba9-aaf1-e94ef30b3129",
+          "productName": "REFRIG FANTA MARACUJA 2",
+          "category": "Besteiras/Impulso",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 1,
+          "totalSpent": 9.39,
+          "avgUnitPrice": 9.39,
+          "avgNormalizedPackagePrice": 9.39,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Fanta"
+        },
+        {
+          "canonicalProductId": "39d0027f-1253-44bf-b5be-46e4538a7cab",
+          "productName": "PRESUNTO SEARA",
+          "category": "Mercearia",
+          "baseUnit": "g",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 0.216,
+          "totalSpent": 7.56,
+          "avgUnitPrice": 7.56,
+          "avgNormalizedPackagePrice": 35,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Seara"
+        },
+        {
+          "canonicalProductId": "dc1d3b0e-bc19-4426-8b1f-4b33aa5baa06",
+          "productName": "MANTEIGA AVIACAO 200GR",
+          "category": "Laticínios",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 1,
+          "totalSpent": 6.99,
+          "avgUnitPrice": 6.99,
+          "avgNormalizedPackagePrice": 6.99,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Aviação"
+        },
+        {
+          "canonicalProductId": "4c9b5cc8-ff38-47d4-80cd-3c572c8512b9",
+          "productName": "DOCES DIVERSOS PADARIA",
+          "category": "Besteiras/Impulso",
+          "baseUnit": "g",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 0.156,
+          "totalSpent": 6.08,
+          "avgUnitPrice": 6.08,
+          "avgNormalizedPackagePrice": 38.97,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Variada"
+        },
+        {
+          "canonicalProductId": "95c8cd24-bd71-49db-bd13-bd5adefe31d6",
+          "productName": "MIST BOLO RENATA BROWNI",
+          "category": "Mercearia",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 1,
+          "totalSpent": 5.99,
+          "avgUnitPrice": 5.99,
+          "avgNormalizedPackagePrice": 5.99,
+          "lastPurchasedAt": "2026-09-12T20:38:36.000Z",
+          "topBrand": "Renata"
+        },
+        {
+          "canonicalProductId": "91d17612-ac3d-4927-8f7b-bba096563487",
+          "productName": "SALSICHA PERDIGAO",
+          "category": "Mercearia",
+          "baseUnit": "g",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 0.362,
+          "totalSpent": 4.7,
+          "avgUnitPrice": 4.7,
+          "avgNormalizedPackagePrice": 12.98,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Perdigão"
+        },
+        {
+          "canonicalProductId": "6b5e5b3e-43b7-444e-8eab-797c52412e0e",
+          "productName": "MACARRAO ADRIA PENA 500",
+          "category": "Hortifruti",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 1,
+          "totalSpent": 4.39,
+          "avgUnitPrice": 4.39,
+          "avgNormalizedPackagePrice": 4.39,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Adria"
+        },
+        {
+          "canonicalProductId": "2077a1c1-633d-47e3-9c1c-992fe53b0b93",
+          "productName": "SALGADO ASSADO",
+          "category": "Mercearia",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 1,
+          "totalSpent": 1.98,
+          "avgUnitPrice": 1.98,
+          "avgNormalizedPackagePrice": 1.98,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Variada"
+        },
+        {
+          "canonicalProductId": "805c0b08-1eb3-44bc-b71e-dfbe101df439",
+          "productName": "MOLHO DE TOMATE QUERO 2",
+          "category": "Hortifruti",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 1,
+          "totalSpent": 1.58,
+          "avgUnitPrice": 1.58,
+          "avgNormalizedPackagePrice": 1.58,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Quero"
+        },
+        {
+          "canonicalProductId": "6bee29a1-5d9c-4ca6-b415-0eb401d6b7d9",
+          "productName": "ROCAMBOLE SABORES",
+          "category": "Mercearia",
+          "baseUnit": "un",
+          "timesPurchased": 1,
+          "totalQuantityInUnit": 1,
+          "totalSpent": 1.39,
+          "avgUnitPrice": 1.39,
+          "avgNormalizedPackagePrice": 1.39,
+          "lastPurchasedAt": "2026-11-25T21:49:40.000Z",
+          "topBrand": "Variada"
+        }
+      ],
+      "monthlySeries": [
+        {
+          "monthKey": "2026-06",
+          "monthLabel": "Jun/26",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgTicket": 0
+        },
+        {
+          "monthKey": "2026-07",
+          "monthLabel": "Jul/26",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgTicket": 0
+        },
+        {
+          "monthKey": "2026-08",
+          "monthLabel": "Ago/26",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgTicket": 0
+        },
+        {
+          "monthKey": "2026-09",
+          "monthLabel": "Set/26",
+          "totalSpent": 23.87,
+          "receiptsCount": 1,
+          "avgTicket": 23.87
+        },
+        {
+          "monthKey": "2026-10",
+          "monthLabel": "Out/26",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgTicket": 0
+        },
+        {
+          "monthKey": "2026-11",
+          "monthLabel": "Nov/26",
+          "totalSpent": 115.91,
+          "receiptsCount": 1,
+          "avgTicket": 115.91
+        }
+      ],
+      "weekdaySeries": [
+        {
+          "weekdayIndex": 0,
+          "weekdayLabel": "Dom",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgSpentPerVisit": 0
+        },
+        {
+          "weekdayIndex": 1,
+          "weekdayLabel": "Seg",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgSpentPerVisit": 0
+        },
+        {
+          "weekdayIndex": 2,
+          "weekdayLabel": "Ter",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgSpentPerVisit": 0
+        },
+        {
+          "weekdayIndex": 3,
+          "weekdayLabel": "Qua",
+          "totalSpent": 115.91,
+          "receiptsCount": 1,
+          "avgSpentPerVisit": 115.91
+        },
+        {
+          "weekdayIndex": 4,
+          "weekdayLabel": "Qui",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgSpentPerVisit": 0
+        },
+        {
+          "weekdayIndex": 5,
+          "weekdayLabel": "Sex",
+          "totalSpent": 0,
+          "receiptsCount": 0,
+          "avgSpentPerVisit": 0
+        },
+        {
+          "weekdayIndex": 6,
+          "weekdayLabel": "Sáb",
+          "totalSpent": 23.87,
+          "receiptsCount": 1,
+          "avgSpentPerVisit": 23.87
+        }
+      ],
+      "categoryBreakdown": [
+        {
+          "category": "Mercearia",
+          "totalSpent": 89.76,
+          "sharePct": 64.4,
+          "itemsCount": 10,
+          "competitivenessIndex": 100
+        },
+        {
+          "category": "Besteiras/Impulso",
+          "totalSpent": 35.75,
+          "sharePct": 25.6,
+          "itemsCount": 3,
+          "competitivenessIndex": 100
+        },
+        {
+          "category": "Laticínios",
+          "totalSpent": 6.99,
+          "sharePct": 5,
+          "itemsCount": 1,
+          "competitivenessIndex": 100
+        },
+        {
+          "category": "Hortifruti",
+          "totalSpent": 6.88,
+          "sharePct": 4.9,
+          "itemsCount": 3,
+          "competitivenessIndex": 100
+        }
+      ],
+      "paymentBreakdown": [
+        {
+          "method": "Cartão de Crédito",
+          "totalSpent": 115.91,
+          "receiptsCount": 1,
+          "sharePct": 82.9
+        },
+        {
+          "method": "Vale Refeição / Alimentação (VR/VA)",
+          "totalSpent": 23.87,
+          "receiptsCount": 1,
+          "sharePct": 17.1
+        }
+      ],
+      "recentReceipts": [
+        {
+          "receiptId": "34e85a59-76cc-4864-8259-e282bc1ea795",
+          "purchaseDate": "2026-11-25T21:49:40.000Z",
+          "totalAmount": 115.91,
+          "discountAmount": 0,
+          "paymentMethod": "CREDIT_CARD",
+          "reconciled": false,
+          "itemsCount": 13
+        },
+        {
+          "receiptId": "ba0c9407-22c1-40f1-98e7-9ece0304165e",
+          "purchaseDate": "2026-09-12T20:38:36.000Z",
+          "totalAmount": 23.87,
+          "discountAmount": 0,
+          "paymentMethod": "VR_VA",
+          "reconciled": true,
+          "itemsCount": 4
+        }
+      ],
+      "overallCompetitivenessIndex": 100
+    },
     {
       "storeId": "8e2306c4-55d9-4306-9217-8f19fe9d4b2a",
       "tradingName": "CLUBE SEMAR",
@@ -90467,136 +93869,6 @@
       "overallCompetitivenessIndex": null
     },
     {
-      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
-      "tradingName": "MERCADO SOUZA",
-      "rawName": "MERCADO SOUZA",
-      "cnpj": "17.316.876/0001-44",
-      "address": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
-      "googleMapsUrl": null,
-      "latitude": -23.573414,
-      "longitude": -46.670881,
-      "totalSpentAllTime": 0,
-      "totalDiscountAllTime": 0,
-      "receiptsCount": 0,
-      "itemsPurchasedCount": 0,
-      "collectedPricesCount": 0,
-      "avgTicket": 0,
-      "currentMonthLabel": "Nov/26",
-      "currentMonthSpent": 0,
-      "currentMonthReceiptsCount": 0,
-      "previousMonthSpent": 0,
-      "momSpendDeltaPct": null,
-      "dailySpendRateHistorical": 0,
-      "dailySpendRateCurrentMonth": 0,
-      "activeSpanDays": 0,
-      "avgDaysBetweenVisits": null,
-      "visitsPerWeek": 0,
-      "firstPurchaseAt": null,
-      "lastPurchaseAt": null,
-      "mostConsumedProduct": null,
-      "highestSpendProduct": null,
-      "topProducts": [],
-      "monthlySeries": [
-        {
-          "monthKey": "2026-06",
-          "monthLabel": "Jun/26",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgTicket": 0
-        },
-        {
-          "monthKey": "2026-07",
-          "monthLabel": "Jul/26",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgTicket": 0
-        },
-        {
-          "monthKey": "2026-08",
-          "monthLabel": "Ago/26",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgTicket": 0
-        },
-        {
-          "monthKey": "2026-09",
-          "monthLabel": "Set/26",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgTicket": 0
-        },
-        {
-          "monthKey": "2026-10",
-          "monthLabel": "Out/26",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgTicket": 0
-        },
-        {
-          "monthKey": "2026-11",
-          "monthLabel": "Nov/26",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgTicket": 0
-        }
-      ],
-      "weekdaySeries": [
-        {
-          "weekdayIndex": 0,
-          "weekdayLabel": "Dom",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgSpentPerVisit": 0
-        },
-        {
-          "weekdayIndex": 1,
-          "weekdayLabel": "Seg",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgSpentPerVisit": 0
-        },
-        {
-          "weekdayIndex": 2,
-          "weekdayLabel": "Ter",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgSpentPerVisit": 0
-        },
-        {
-          "weekdayIndex": 3,
-          "weekdayLabel": "Qua",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgSpentPerVisit": 0
-        },
-        {
-          "weekdayIndex": 4,
-          "weekdayLabel": "Qui",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgSpentPerVisit": 0
-        },
-        {
-          "weekdayIndex": 5,
-          "weekdayLabel": "Sex",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgSpentPerVisit": 0
-        },
-        {
-          "weekdayIndex": 6,
-          "weekdayLabel": "Sáb",
-          "totalSpent": 0,
-          "receiptsCount": 0,
-          "avgSpentPerVisit": 0
-        }
-      ],
-      "categoryBreakdown": [],
-      "paymentBreakdown": [],
-      "recentReceipts": [],
-      "overallCompetitivenessIndex": null
-    },
-    {
       "storeId": "072cfa29-2f3b-450f-9afc-78bc1bfd8153",
       "tradingName": "MERCED",
       "rawName": "MERCED",
@@ -91247,5 +94519,240 @@
       "overallCompetitivenessIndex": null
     }
   ],
-  "receiptsDetailed": []
+  "receiptsDetailed": [
+    {
+      "receiptId": "34e85a59-76cc-4864-8259-e282bc1ea795",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeAddress": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "purchaseDate": "2026-11-25T21:49:40.000Z",
+      "totalAmount": 115.91,
+      "discountAmount": 0,
+      "paymentMethod": "CREDIT_CARD",
+      "reconciled": false,
+      "hasOfficialAccessKey": false,
+      "itemsCount": 13,
+      "items": [
+        {
+          "id": "e9396f86-a670-4e55-91ec-d9fb0392f6d8",
+          "rawDescription": "MACARRAO ADRIA PENA 500",
+          "canonicalProductName": "MACARRAO ADRIA PENA 500",
+          "category": "Hortifruti",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 4.39,
+          "totalPrice": 4.39,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 4.39
+        },
+        {
+          "id": "b2f4b2f3-9aab-4c84-b9a4-aede01145732",
+          "rawDescription": "MANTEIGA AVIACAO 200GR",
+          "canonicalProductName": "MANTEIGA AVIACAO 200GR",
+          "category": "Laticínios",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 6.99,
+          "totalPrice": 6.99,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 6.99
+        },
+        {
+          "id": "92cac043-8de6-45fb-acb8-2c702b1a8d77",
+          "rawDescription": "REFRIG FANTA MARACUJA 2",
+          "canonicalProductName": "REFRIG FANTA MARACUJA 2",
+          "category": "Besteiras/Impulso",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 9.39,
+          "totalPrice": 9.39,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 9.39
+        },
+        {
+          "id": "8c5cc46a-625f-492f-8dda-3d05659e1277",
+          "rawDescription": "SALGADO ASSADO",
+          "canonicalProductName": "SALGADO ASSADO",
+          "category": "Mercearia",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 1.98,
+          "totalPrice": 1.98,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 1.98
+        },
+        {
+          "id": "7eb338de-e997-4d99-8b2a-db8b75f24475",
+          "rawDescription": "SALSICHA PERDIGAO",
+          "canonicalProductName": "SALSICHA PERDIGAO",
+          "category": "Mercearia",
+          "quantity": 0.362,
+          "unitType": "KG",
+          "unitPrice": 12.99,
+          "totalPrice": 4.7,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.012983
+        },
+        {
+          "id": "7c4281b8-d330-4273-9454-dc864b8fe5be",
+          "rawDescription": "ROCAMBOLE SABORES",
+          "canonicalProductName": "ROCAMBOLE SABORES",
+          "category": "Mercearia",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 1.39,
+          "totalPrice": 1.39,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 1.39
+        },
+        {
+          "id": "71d60ebd-dc77-4e8f-a555-8eac575ca3de",
+          "rawDescription": "PRESUNTO SEARA",
+          "canonicalProductName": "PRESUNTO SEARA",
+          "category": "Mercearia",
+          "quantity": 0.216,
+          "unitType": "KG",
+          "unitPrice": 34.99,
+          "totalPrice": 7.56,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.035
+        },
+        {
+          "id": "68629f4c-c282-4cd4-8e95-c372c00cb65c",
+          "rawDescription": "GRAPE FRUIT DRAFT PEACH",
+          "canonicalProductName": "GRAPE FRUIT DRAFT PEACH",
+          "category": "Mercearia",
+          "quantity": 2,
+          "unitType": "UN",
+          "unitPrice": 13.99,
+          "totalPrice": 27.98,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 13.99
+        },
+        {
+          "id": "592a239e-21fd-4d19-b4e8-fdce237976cb",
+          "rawDescription": "MOLHO DE TOMATE QUERO 2",
+          "canonicalProductName": "MOLHO DE TOMATE QUERO 2",
+          "category": "Hortifruti",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 1.58,
+          "totalPrice": 1.58,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 1.58
+        },
+        {
+          "id": "2661c3fa-75e9-4342-adb9-062615946ca6",
+          "rawDescription": "MUSSARELA",
+          "canonicalProductName": "MUSSARELA",
+          "category": "Mercearia",
+          "quantity": 0.34,
+          "unitType": "KG",
+          "unitPrice": 54.99,
+          "totalPrice": 18.7,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.055
+        },
+        {
+          "id": "25985b52-d382-4449-a47a-e7d97dbbeac0",
+          "rawDescription": "BISCOITO AMANTEIGADO AB",
+          "canonicalProductName": "BISCOITO AMANTEIGADO AB",
+          "category": "Besteiras/Impulso",
+          "quantity": 0.312,
+          "unitType": "KG",
+          "unitPrice": 64.99,
+          "totalPrice": 20.28,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.065
+        },
+        {
+          "id": "2259441e-28a5-4298-833d-0762dd948ede",
+          "rawDescription": "DOCES DIVERSOS PADARIA",
+          "canonicalProductName": "DOCES DIVERSOS PADARIA",
+          "category": "Besteiras/Impulso",
+          "quantity": 0.156,
+          "unitType": "KG",
+          "unitPrice": 38.99,
+          "totalPrice": 6.08,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.038974
+        },
+        {
+          "id": "109720bb-71b4-4965-a470-3df4b9ec2955",
+          "rawDescription": "DIVERSOS",
+          "canonicalProductName": "DIVERSOS",
+          "category": "Mercearia",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 4.49,
+          "totalPrice": 4.49,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 4.49
+        }
+      ]
+    },
+    {
+      "receiptId": "ba0c9407-22c1-40f1-98e7-9ece0304165e",
+      "storeId": "5a565221-4cbe-4621-bb2c-748b1eeb612f",
+      "storeName": "MERCADO SOUZA",
+      "storeAddress": "Rua Doutor Nelson da Costa Marrelli, 147 - Jardim Paraiso, Jacarei - SP",
+      "purchaseDate": "2026-09-12T20:38:36.000Z",
+      "totalAmount": 23.87,
+      "discountAmount": 0,
+      "paymentMethod": "VR_VA",
+      "reconciled": true,
+      "hasOfficialAccessKey": false,
+      "itemsCount": 4,
+      "items": [
+        {
+          "id": "c6372fbc-8f4c-4619-bc2f-774983ca91c9",
+          "rawDescription": "CENOURA KG",
+          "canonicalProductName": "CENOURA KG",
+          "category": "Hortifruti",
+          "quantity": 0.14,
+          "unitType": "KG",
+          "unitPrice": 6.49,
+          "totalPrice": 0.91,
+          "baseUnit": "g",
+          "normalizedPricePerBaseUnit": 0.0065
+        },
+        {
+          "id": "852a7a67-03d2-4454-aeec-ad80f058ad4e",
+          "rawDescription": "MIST BOLO RENATA BROWNI",
+          "canonicalProductName": "MIST BOLO RENATA BROWNI",
+          "category": "Mercearia",
+          "quantity": 1,
+          "unitType": "UN",
+          "unitPrice": 5.99,
+          "totalPrice": 5.99,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 5.99
+        },
+        {
+          "id": "52902270-6796-4d7a-a814-4da5d6f41c44",
+          "rawDescription": "MIST BOLO D BENTA FESTA",
+          "canonicalProductName": "MIST BOLO D BENTA FESTA",
+          "category": "Mercearia",
+          "quantity": 2,
+          "unitType": "UN",
+          "unitPrice": 6.99,
+          "totalPrice": 13.98,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 6.99
+        },
+        {
+          "id": "0d285df1-b6c6-4b62-887f-b187bcac9172",
+          "rawDescription": "DIVERSOS",
+          "canonicalProductName": "DIVERSOS",
+          "category": "Mercearia",
+          "quantity": 2.99,
+          "unitType": "UN",
+          "unitPrice": 1,
+          "totalPrice": 2.99,
+          "baseUnit": "un",
+          "normalizedPricePerBaseUnit": 1
+        }
+      ]
+    }
+  ]
 }
