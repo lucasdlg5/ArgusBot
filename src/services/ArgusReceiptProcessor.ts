@@ -1192,11 +1192,11 @@ export class ArgusReceiptProcessor {
     if (this.ai) {
       const candidateModels = Array.from(
         new Set([
+          'gemini-3.5-flash-lite',
+          'gemini-3.8-flash',
           env.GEMINI_MODEL,
           'gemini-3.6-flash',
-          'gemini-3.5-flash',
-          'gemini-3.5-flash-lite',
-          'gemini-3.8-flash'
+          'gemini-3.5-flash'
         ])
       );
       const activeModels = candidateModels.filter((m) => {

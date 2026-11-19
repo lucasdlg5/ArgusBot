@@ -17,7 +17,7 @@ services:
       - key: SUPABASE_STORAGE_BUCKET
         value: FotosArgus
       - key: GEMINI_MODEL
-        value: gemini-3.6-flash
+        value: gemini-3.5-flash-lite
       - key: PUBLIC_DASHBOARD_URL
         value: https://lucasdlg5.github.io/ArgusBot/
       - key: TELEGRAM_BOT_TOKEN
