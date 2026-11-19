@@ -1795,6 +1795,63 @@ REGRAS ESTRITAS:
    * Costura múltiplas fotos sequenciais de UMA MESMA nota longa (ex: 70-120 itens em 2-3 fotos)
    * usando o microsserviço OpenCV (SIFT/AKAZE + Linear Blending) e extrai os dados sem duplicar itens.
    */
+  /**
+   * Empilha 2..4 partes de uma nota longa verticalmente em uma única imagem JPEG leve
+   * (usando `sharp.composite`) para arquivamento visual completo no bucket FotosArgus,
+   * respeitando o teto de RAM do plano Free.
+   */
+  async stackImagesVertically(buffers: Buffer[]): Promise<Buffer> {
+    if (buffers.length === 0) {
+      throw new Error('Nenhuma imagem fornecida para empilhamento vertical.');
+    }
+    if (buffers.length === 1) {
+      return buffers[0];
+    }
+    try {
+      const targetWidth = 1000;
+      const maxTotalHeight = 8000;
+      const prepared: Array<{ input: Buffer; width: number; height: number }> = [];
+
+      for (const buf of buffers) {
+        const { data, info } = await sharp(buf)
+          .rotate()
+          .resize({ width: targetWidth, withoutEnlargement: true })
+          .jpeg({ quality: 82, mozjpeg: true })
+          .toBuffer({ resolveWithObject: true });
+        prepared.push({ input: data, width: info.width, height: info.height });
+      }
+
+      const canvasWidth = Math.max(...prepared.map((p) => p.width));
+      const totalHeight = prepared.reduce((acc, p) => acc + p.height, 0);
+      if (canvasWidth <= 0 || totalHeight <= 0 || totalHeight > maxTotalHeight) {
+        return buffers[0];
+      }
+
+      let currentTop = 0;
+      const overlays = prepared.map((p) => {
+        const left = Math.max(0, Math.floor((canvasWidth - p.width) / 2));
+        const overlay = { input: p.input, top: currentTop, left };
+        currentTop += p.height;
+        return overlay;
+      });
+
+      return await sharp({
+        create: {
+          width: canvasWidth,
+          height: totalHeight,
+          channels: 3,
+          background: { r: 15, g: 23, b: 42 }
+        }
+      })
+        .composite(overlays)
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toBuffer();
+    } catch (err) {
+      logger.warn({ err }, '[ArgusReceiptProcessor] Falha ao empilhar imagens verticalmente; usando Parte 1');
+      return buffers[0];
+    }
+  }
+
   async extractStitchedReceiptFromParts(
     parts: Array<{ buffer: Buffer; mimeType?: string }>
   ): Promise<{
@@ -1861,6 +1918,7 @@ REGRAS ESTRITAS:
         if (km) localSefazKey = km[1];
         const scraped = await this.scrapeSefazReceipt(qr).catch(() => null);
         if (scraped && scraped.items.length > 0) {
+          const stackedBuffer = await this.stackImagesVertically(parts.map((p) => p.buffer));
           logger.info(
             { elapsedMs: Date.now() - startedAt, itemsCount: scraped.items.length },
             '[FIM] [ArgusReceiptProcessor] Nota longa resolvida diretamente via QR SEFAZ de uma das partes'
@@ -1868,7 +1926,7 @@ REGRAS ESTRITAS:
           return {
             stitched: true,
             overlapsDetected: parts.length - 1,
-            unifiedBuffer: parts[0].buffer,
+            unifiedBuffer: stackedBuffer,
             document: scraped
           };
         }
@@ -1917,6 +1975,7 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
           }
         ],
         config: {
+          maxOutputTokens: 8192,
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -2016,10 +2075,12 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
       '[FIM] [ArgusReceiptProcessor] Nota longa unificada com sucesso via Fusão Multimodal Nativa (Gemini)'
     );
 
+    const stackedBuffer = await this.stackImagesVertically(optimizedParts.map((p) => p.buffer));
+
     return {
       stitched: true,
       overlapsDetected: Math.max(1, Number(parsed.overlapsDetected || 1)),
-      unifiedBuffer: optimizedParts[0].buffer,
+      unifiedBuffer: stackedBuffer,
       document: finalized
     };
   }
