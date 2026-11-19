@@ -227,9 +227,10 @@ export class ArgusReceiptProcessor {
   }
 
   /**
-   * Normaliza datas brasileiras (ex: "11/11/2026 15:39:42") ou ISO para TIMESTAMPTZ seguro.
+   * Normaliza datas ISO ("2026-09-12T17:38:36") ou brasileiras ("12/09/26 17:38:36") para TIMESTAMPTZ seguro.
+   * IMPORTANTE: testa ISO YYYY-MM-DD ANTES de DD/MM/YYYY para nunca capturar "26-09-12" dentro de "2026-09-12".
    * Quando houver chave SEFAZ oficial (44 dígitos), valida/corrige ano e mês usando AAMM (posições 2..5)
-   * e protege contra anos absurdos alucinados por OCR (ex.: 2003, 2018).
+   * e protege contra anos absurdos de OCR ou datas no futuro.
    */
   normalizeReceiptDate(rawDate?: string, officialAccessKey?: string): string {
     const now = new Date();
@@ -238,21 +239,44 @@ export class ArgusReceiptProcessor {
     let parsed: Date | null = null;
     if (rawDate) {
       const trimmed = rawDate.trim();
-      const brMatch = trimmed.match(
-        /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[\s,Tàs]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/i
+
+      // 1. Formato ISO YYYY-MM-DD (com ou sem hora/timezone) — DEVE vir antes do formato BR!
+      const isoMatch = trimmed.match(
+        /(?<!\d)(\d{4})-(\d{2})-(\d{2})(?:[\sT](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?/i
       );
-      if (brMatch) {
-        const day = brMatch[1].padStart(2, '0');
-        const month = brMatch[2].padStart(2, '0');
-        const year = brMatch[3].length === 2 ? `20${brMatch[3]}` : brMatch[3];
-        const hour = (brMatch[4] || '12').padStart(2, '0');
-        const min = (brMatch[5] || '00').padStart(2, '0');
-        const sec = (brMatch[6] || '00').padStart(2, '0');
-        const candidate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}-03:00`);
+      if (isoMatch) {
+        const year = isoMatch[1];
+        const month = isoMatch[2];
+        const day = isoMatch[3];
+        const hour = (isoMatch[4] || '12').padStart(2, '0');
+        const min = (isoMatch[5] || '00').padStart(2, '0');
+        const sec = (isoMatch[6] || '00').padStart(2, '0');
+        const tz = isoMatch[7] || '-03:00';
+        const candidate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}${tz}`);
         if (!Number.isNaN(candidate.getTime())) {
           parsed = candidate;
         }
       }
+
+      // 2. Formato brasileiro DD/MM/YYYY ou DD/MM/YY (com negative lookbehind para não casar dentro de YYYY)
+      if (!parsed) {
+        const brMatch = trimmed.match(
+          /(?<!\d)(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?!\d)(?:[\s,Tàs]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/i
+        );
+        if (brMatch) {
+          const day = brMatch[1].padStart(2, '0');
+          const month = brMatch[2].padStart(2, '0');
+          const year = brMatch[3].length === 2 ? `20${brMatch[3]}` : brMatch[3];
+          const hour = (brMatch[4] || '12').padStart(2, '0');
+          const min = (brMatch[5] || '00').padStart(2, '0');
+          const sec = (brMatch[6] || '00').padStart(2, '0');
+          const candidate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}-03:00`);
+          if (!Number.isNaN(candidate.getTime())) {
+            parsed = candidate;
+          }
+        }
+      }
+
       if (!parsed) {
         const fallback = new Date(trimmed);
         if (!Number.isNaN(fallback.getTime())) {
@@ -265,7 +289,7 @@ export class ArgusReceiptProcessor {
       parsed = new Date(now.getTime());
     }
 
-    // 1. Se houver chave SEFAZ oficial de 44 dígitos, usa AAMM (posições 2..5) como fonte da verdade para ano/mês
+    // 3. Se houver chave SEFAZ oficial de 44 dígitos, usa AAMM (posições 2..5) como fonte da verdade para ano/mês
     const cleanKey = (officialAccessKey || '').replace(/\D/g, '');
     if (cleanKey.length === 44) {
       const keyYear = 2000 + Number.parseInt(cleanKey.slice(2, 4), 10);
@@ -292,7 +316,7 @@ export class ArgusReceiptProcessor {
       }
     }
 
-    // 2. Proteção contra anos absurdos de OCR (ex.: 2003, 2018, 2099)
+    // 4. Proteção contra anos absurdos de OCR (ex.: 2003, 2018, 2099) ou datas no futuro (> hoje + 2 dias)
     const y = parsed.getUTCFullYear();
     if (y < 2024 || y > currentYear + 1) {
       const maxDay = new Date(Date.UTC(currentYear, parsed.getUTCMonth() + 1, 0)).getUTCDate();
@@ -320,6 +344,21 @@ export class ArgusReceiptProcessor {
         );
       }
       parsed = corrected;
+    } else if (parsed.getTime() > now.getTime() + 2 * 24 * 60 * 60 * 1000) {
+      // Data no futuro no mesmo ano (ex.: 25/11/2026 quando hoje é 19/11/2026) -> recua 1 ano
+      const prevYear = parsed.getUTCFullYear() - 1;
+      const maxDay = new Date(Date.UTC(prevYear, parsed.getUTCMonth() + 1, 0)).getUTCDate();
+      const safeDay = Math.min(parsed.getUTCDate(), maxDay);
+      parsed = new Date(
+        Date.UTC(
+          prevYear,
+          parsed.getUTCMonth(),
+          safeDay,
+          parsed.getUTCHours(),
+          parsed.getUTCMinutes(),
+          parsed.getUTCSeconds()
+        )
+      );
     }
 
     return parsed.toISOString();
@@ -1506,6 +1545,113 @@ REGRAS ESTRITAS:
     };
 
     const rawDocs = Array.isArray(parsed.documents) ? parsed.documents : [];
+
+    // Dupla checagem focalizada (2ª passada LLM) apenas quando houver anomalia na 1ª leitura
+    // (ex.: data ausente/futura/ano suspeito ou divergência matemática > R$ 1,00 em cupom fiscal único)
+    if (
+      rawDocs.length === 1 &&
+      rawDocs[0].detectedDocumentType === 'FISCAL_RECEIPT' &&
+      (parsed.imageQuality === 'GOOD' || parsed.imageQuality === 'ACCEPTABLE')
+    ) {
+      const candidateDoc = rawDocs[0];
+      const rawDateStr = (candidateDoc.purchaseDate || '').trim();
+      const parsedPreview = rawDateStr ? new Date(this.normalizeReceiptDate(rawDateStr)) : null;
+      const nowMs = Date.now();
+      const itemsSum = (candidateDoc.items || []).reduce(
+        (acc, it) => acc + Number(it.totalPrice || 0),
+        0
+      );
+      const mathGap =
+        candidateDoc.totalAmount > 0 ? Math.abs(itemsSum - Number(candidateDoc.totalAmount)) : 0;
+      const needsDoubleCheck =
+        !rawDateStr ||
+        !parsedPreview ||
+        parsedPreview.getTime() > nowMs + 2 * 24 * 60 * 60 * 1000 ||
+        parsedPreview.getUTCFullYear() < 2025 ||
+        mathGap > 1.0;
+
+      if (needsDoubleCheck) {
+        try {
+          logger.info(
+            {
+              rawDate: rawDateStr || null,
+              paymentMethod: candidateDoc.paymentMethod,
+              totalAmount: candidateDoc.totalAmount,
+              mathGap: Number(mathGap.toFixed(2))
+            },
+            '[ArgusReceiptProcessor] Acionando dupla checagem focalizada (2ª passada LLM) para data/pagamento/total'
+          );
+          const verifyRes = await this.generateWithModelFallback(
+            {
+              model: env.GEMINI_MODEL,
+              contents: [
+                {
+                  inlineData: {
+                    data: optimizedBuffer.toString('base64'),
+                    mimeType: optimizedMime
+                  }
+                },
+                {
+                  text: `Auditoria de dupla checagem deste cupom fiscal. Leia APENAS os campos exatos impressos no papel:
+1. rawPrintedDateTime: transcreva LITERALMENTE a data e hora impressas no papel no formato DD/MM/YYYY HH:mm:ss (ex: "12/09/2026 17:38:36"). Se o ano tiver 2 dígitos (ex: "12/09/26"), expanda para 4 dígitos ("12/09/2026").
+2. paymentMethod: mapeie a linha exata de FORMA DE PAGAMENTO / VALOR PAGO ('VR_VA' para Alimentação/Refeição/Alelo/Sodexo/Pluxee/Ticket/VR/VA; 'PIX'; 'DEBIT'; 'CREDIT_CARD'; 'CASH').
+3. totalAmount: valor total numérico impresso na linha TOTAL.`
+                }
+              ],
+              config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    rawPrintedDateTime: { type: Type.STRING },
+                    paymentMethod: {
+                      type: Type.STRING,
+                      enum: ['PIX', 'CREDIT_CARD', 'DEBIT', 'VR_VA', 'CASH']
+                    },
+                    totalAmount: { type: Type.NUMBER }
+                  },
+                  required: ['rawPrintedDateTime', 'paymentMethod', 'totalAmount']
+                }
+              }
+            },
+            18000
+          );
+          const verified = JSON.parse(verifyRes.text || '{}') as {
+            rawPrintedDateTime?: string;
+            paymentMethod?: PaymentMethod;
+            totalAmount?: number;
+          };
+          if (verified.rawPrintedDateTime && verified.rawPrintedDateTime.trim().length >= 8) {
+            candidateDoc.purchaseDate = verified.rawPrintedDateTime.trim();
+          }
+          if (verified.paymentMethod) {
+            candidateDoc.paymentMethod = verified.paymentMethod;
+          }
+          if (
+            typeof verified.totalAmount === 'number' &&
+            Number.isFinite(verified.totalAmount) &&
+            verified.totalAmount > 0 &&
+            mathGap > 1.0
+          ) {
+            candidateDoc.totalAmount = verified.totalAmount;
+          }
+          logger.info(
+            {
+              verifiedDate: verified.rawPrintedDateTime,
+              verifiedPayment: verified.paymentMethod,
+              verifiedTotal: verified.totalAmount
+            },
+            '[ArgusReceiptProcessor] Dupla checagem focalizada concluída'
+          );
+        } catch (verifyErr) {
+          logger.warn(
+            { err: verifyErr instanceof Error ? verifyErr.message : String(verifyErr) },
+            '[ArgusReceiptProcessor] Dupla checagem opcional falhou; mantendo 1ª leitura'
+          );
+        }
+      }
+    }
+
     const finalizedDocs = rawDocs.map((doc) => {
       const enriched: ExtractedReceiptData = {
         ...doc,
@@ -1525,7 +1671,9 @@ REGRAS ESTRITAS:
         elapsedMs: Date.now() - startedAt,
         imageQuality: parsed.imageQuality || 'ACCEPTABLE',
         documentsCount: finalizedDocs.length,
-        totalItemsExtracted
+        totalItemsExtracted,
+        dates: finalizedDocs.map((d) => d.purchaseDate),
+        payments: finalizedDocs.map((d) => d.paymentMethod)
       },
       '[FIM] [ArgusReceiptProcessor] [4/4] Extração Multimodal finalizada com Self-Healing matemático'
     );
