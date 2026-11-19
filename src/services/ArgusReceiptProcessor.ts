@@ -1640,12 +1640,13 @@ REGRAS ESTRITAS:
       const mathGap =
         candidateDoc.totalAmount > 0 ? Math.abs(itemsSum - Number(candidateDoc.totalAmount)) : 0;
       const needsDoubleCheck =
-        !effectiveRawDate ||
-        !parsedPreview ||
-        parsedPreview.getTime() > nowMs + 2 * 24 * 60 * 60 * 1000 ||
-        parsedPreview.getUTCFullYear() < 2025 ||
-        ocrDateMismatch ||
-        mathGap > 1.0;
+        Date.now() - startedAt < 75_000 &&
+        (!effectiveRawDate ||
+          !parsedPreview ||
+          parsedPreview.getTime() > nowMs + 2 * 24 * 60 * 60 * 1000 ||
+          parsedPreview.getUTCFullYear() < 2025 ||
+          ocrDateMismatch ||
+          mathGap > 1.0);
 
       if (needsDoubleCheck) {
         try {
@@ -1802,45 +1803,224 @@ REGRAS ESTRITAS:
     unifiedBuffer: Buffer;
     document: ExtractedReceiptData;
   } | null> {
-    if (!receiptVisionClient.isEnabled() || parts.length < 2) {
+    if (parts.length < 2) {
       return null;
     }
 
-    const visionRes = await receiptVisionClient.processImages(parts);
-    if (!visionRes?.enhancedImageBuffer) {
-      return null;
-    }
+    // 1. Tenta primeiro o microsserviço OpenCV (SIFT/AKAZE + Linear Blending) quando disponível
+    const visionRes = receiptVisionClient.isEnabled()
+      ? await receiptVisionClient.processImages(parts)
+      : null;
 
-    // Só assume automaticamente como "mesma nota costurada" quando detectou overlap visual real
-    if (visionRes.stitchSummary.overlaps_detected <= 0) {
-      return null;
-    }
+    if (visionRes?.enhancedImageBuffer && visionRes.stitchSummary.overlaps_detected > 0) {
+      if (visionRes.qrCodeUrl && this.isGenuineSefazQrUrl(visionRes.qrCodeUrl)) {
+        const scraped = await this.scrapeSefazReceipt(visionRes.qrCodeUrl).catch(() => null);
+        if (scraped) {
+          return {
+            stitched: true,
+            overlapsDetected: visionRes.stitchSummary.overlaps_detected,
+            unifiedBuffer: visionRes.enhancedImageBuffer,
+            document: scraped
+          };
+        }
+      }
 
-    if (visionRes.qrCodeUrl && this.isGenuineSefazQrUrl(visionRes.qrCodeUrl)) {
-      const scraped = await this.scrapeSefazReceipt(visionRes.qrCodeUrl).catch(() => null);
-      if (scraped) {
+      const multi = await this.extractMultipleReceiptsViaGeminiVision(
+        visionRes.enhancedImageBuffer,
+        'image/png'
+      );
+      if (multi.documents.length > 0) {
         return {
           stitched: true,
           overlapsDetected: visionRes.stitchSummary.overlaps_detected,
           unifiedBuffer: visionRes.enhancedImageBuffer,
-          document: scraped
+          document: multi.documents[0]
         };
       }
     }
 
-    const multi = await this.extractMultipleReceiptsViaGeminiVision(
-      visionRes.enhancedImageBuffer,
-      'image/png'
-    );
-    if (multi.documents.length === 0) {
+    // 2. Fallback Multimodal Nativo (sem depender do OpenCV acordado):
+    //    envia todas as partes (2..4 fotos) juntas na MESMA chamada ao Gemini Vision para detectar
+    //    continuação de nota longa, mesclar cabeçalho + rodapé e deduplicar itens sobrepostos.
+    if (!this.ai && !llmFallbackProvider.hasAnyFallbackConfigured()) {
       return null;
     }
 
+    const startedAt = Date.now();
+    logger.info(
+      { partsCount: parts.length },
+      '[INÍCIO] [ArgusReceiptProcessor] Fusão Multimodal Nativa de álbum (2..4 fotos) via Gemini Vision'
+    );
+
+    // Tenta decodificar QR Code SEFAZ localmente em qualquer uma das partes (geralmente na última foto)
+    let localSefazKey: string | undefined;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const qr = await this.decodeQrCodeFromImage(parts[i].buffer).catch(() => null);
+      if (qr && this.isGenuineSefazQrUrl(qr)) {
+        const km = qr.match(/\b(\d{44})\b/);
+        if (km) localSefazKey = km[1];
+        const scraped = await this.scrapeSefazReceipt(qr).catch(() => null);
+        if (scraped && scraped.items.length > 0) {
+          logger.info(
+            { elapsedMs: Date.now() - startedAt, itemsCount: scraped.items.length },
+            '[FIM] [ArgusReceiptProcessor] Nota longa resolvida diretamente via QR SEFAZ de uma das partes'
+          );
+          return {
+            stitched: true,
+            overlapsDetected: parts.length - 1,
+            unifiedBuffer: parts[0].buffer,
+            document: scraped
+          };
+        }
+      }
+    }
+
+    const optimizedParts: Array<{ buffer: Buffer; mimeType: string }> = [];
+    for (const part of parts) {
+      try {
+        const opt = await sharp(part.buffer)
+          .rotate()
+          .resize({ width: 1600, height: 2400, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 84, mozjpeg: true })
+          .toBuffer();
+        optimizedParts.push({ buffer: opt, mimeType: 'image/jpeg' });
+      } catch {
+        optimizedParts.push({ buffer: part.buffer, mimeType: part.mimeType || 'image/jpeg' });
+      }
+    }
+
+    const response = await this.generateWithModelFallback(
+      {
+        model: env.GEMINI_MODEL,
+        contents: [
+          ...optimizedParts.map((p) => ({
+            inlineData: {
+              data: p.buffer.toString('base64'),
+              mimeType: p.mimeType
+            }
+          })),
+          {
+            text: `Você recebeu ${optimizedParts.length} fotos enviadas juntas em um álbum do Telegram.
+TAREFA PRINCIPAL — VERIFICAR CONTINUAÇÃO DE NOTA LONGA:
+Analise cuidadosamente todas as ${optimizedParts.length} imagens em ordem:
+1. Determine se elas são PARTES/CONTINUAÇÃO DA MESMA NOTA FISCAL LONGA (ex.: Foto 1 mostra cabeçalho/loja e itens 01..66; Foto 2 mostra itens sobrepostos 48..66 + continuação 67..74 + TOTAL + forma de pagamento + data + chave SEFAZ).
+   - Se SIM: defina isSameReceiptContinuation = true, informe overlapsDetected (quantas emendas existem, ex.: ${optimizedParts.length - 1}), e UNIFIQUE tudo em UM ÚNICO objeto \`document\`:
+     * Use o nome da loja, CNPJ e endereço da Foto 1 (cabeçalho).
+     * Use o valor TOTAL, desconto, forma de pagamento, data/hora de emissão e chave de acesso SEFAZ (44 dígitos) da Foto final (rodapé).
+     * MESCLE todos os itens na ordem correta SEM DUPLICAR os itens da zona de sobreposição (ex.: se os itens 48..66 aparecem nas duas fotos, inclua cada item apenas UMA vez, totalizando os 74 itens reais!).
+   - Se NÃO (são notas fiscais diferentes / independentes, ou flyers): defina isSameReceiptContinuation = false e deixe \`document\` vazio/mínimo.
+
+REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
+- Em purchaseDate, extraia a DATA e HORA IMPRESSAS NO PAPEL no formato "DD/MM/YYYY HH:mm:ss" (ex: "01/09/2026 21:52:55").
+- Em paymentMethod, leia a linha exata de pagamento no rodapé ('VR_VA' para Alimentação/Refeição/Alelo/Sodexo/Pluxee/Ticket/VR/VA; 'PIX'; 'DEBIT'; 'CREDIT_CARD'; 'CASH'). Se houver pagamento misto (ex.: Alelo + Débito), escolha o de maior valor.
+- Em accessKey, extraia os 44 dígitos da Chave de Acesso SEFAZ se visível no rodapé.`
+          }
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              isSameReceiptContinuation: { type: Type.BOOLEAN },
+              overlapsDetected: { type: Type.NUMBER },
+              reasoning: { type: Type.STRING },
+              document: {
+                type: Type.OBJECT,
+                properties: {
+                  storeCnpj: { type: Type.STRING },
+                  storeRawName: { type: Type.STRING },
+                  storeTradingName: { type: Type.STRING },
+                  storeAddress: { type: Type.STRING },
+                  purchaseDate: { type: Type.STRING },
+                  totalAmount: { type: Type.NUMBER },
+                  discountAmount: { type: Type.NUMBER },
+                  paymentMethod: {
+                    type: Type.STRING,
+                    enum: ['PIX', 'CREDIT_CARD', 'DEBIT', 'VR_VA', 'CASH']
+                  },
+                  accessKey: { type: Type.STRING },
+                  receiptNumber: { type: Type.STRING },
+                  items: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        rawDescription: { type: Type.STRING },
+                        quantity: { type: Type.NUMBER },
+                        unitType: { type: Type.STRING, enum: ['KG', 'UN', 'LT'] },
+                        unitPrice: { type: Type.NUMBER },
+                        totalPrice: { type: Type.NUMBER }
+                      },
+                      required: ['rawDescription', 'quantity', 'unitType', 'unitPrice', 'totalPrice']
+                    }
+                  }
+                },
+                required: [
+                  'storeCnpj',
+                  'storeTradingName',
+                  'totalAmount',
+                  'paymentMethod',
+                  'accessKey',
+                  'items'
+                ]
+              }
+            },
+            required: ['isSameReceiptContinuation', 'overlapsDetected', 'document']
+          }
+        }
+      },
+      45000
+    );
+
+    const parsed = JSON.parse(response.text || '{}') as {
+      isSameReceiptContinuation?: boolean;
+      overlapsDetected?: number;
+      reasoning?: string;
+      document?: ExtractedReceiptData;
+    };
+
+    if (!parsed.isSameReceiptContinuation || !parsed.document || (parsed.document.items || []).length === 0) {
+      logger.info(
+        {
+          elapsedMs: Date.now() - startedAt,
+          isSameReceiptContinuation: Boolean(parsed.isSameReceiptContinuation),
+          reasoning: parsed.reasoning?.slice(0, 140)
+        },
+        '[FIM] [ArgusReceiptProcessor] Álbum não é continuação da mesma nota; seguindo leitura individual'
+      );
+      return null;
+    }
+
+    const enriched: ExtractedReceiptData = {
+      ...parsed.document,
+      detectedDocumentType: 'FISCAL_RECEIPT',
+      hasPrintedTotalLine: (parsed.document.totalAmount || 0) > 0,
+      accessKey:
+        parsed.document.accessKey && /^\d{44}$/.test(parsed.document.accessKey.replace(/\D/g, ''))
+          ? parsed.document.accessKey.replace(/\D/g, '')
+          : localSefazKey || parsed.document.accessKey || '',
+      extractionMethod: 'GEMINI_VISION_2_5_FLASH'
+    };
+    const finalized = this.applySelfHealingMathWarning(this.finalizeReceiptIdentifiers(enriched));
+
+    logger.info(
+      {
+        elapsedMs: Date.now() - startedAt,
+        store: finalized.storeTradingName,
+        totalAmount: finalized.totalAmount,
+        itemsCount: finalized.items.length,
+        purchaseDate: finalized.purchaseDate,
+        paymentMethod: finalized.paymentMethod,
+        overlapsDetected: Math.max(1, Number(parsed.overlapsDetected || 1))
+      },
+      '[FIM] [ArgusReceiptProcessor] Nota longa unificada com sucesso via Fusão Multimodal Nativa (Gemini)'
+    );
+
     return {
       stitched: true,
-      overlapsDetected: visionRes.stitchSummary.overlaps_detected,
-      unifiedBuffer: visionRes.enhancedImageBuffer,
-      document: multi.documents[0]
+      overlapsDetected: Math.max(1, Number(parsed.overlapsDetected || 1)),
+      unifiedBuffer: optimizedParts[0].buffer,
+      document: finalized
     };
   }
 

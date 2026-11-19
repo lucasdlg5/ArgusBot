@@ -1992,6 +1992,13 @@ export function createArgusBot(): Bot {
                   continue;
                 }
 
+                // Cancela o timeout global de 165s antes da persistência no banco para evitar
+                // enfileirar novamente uma nota que já foi extraída e está sendo gravada.
+                if (timeoutHandle) {
+                  clearTimeout(timeoutHandle);
+                  timeoutHandle = undefined;
+                }
+
                 if (!isMulti) {
                   await updateStatus('💾 [3/3] Salvando Nota Fiscal e conciliando...');
                 }
