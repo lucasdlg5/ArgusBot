@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
@@ -192,6 +192,86 @@ export default function ArgusReceiptsPage() {
     receiptNumber: string;
   } | null>(null);
   const [savingReceipt, setSavingReceipt] = useState(false);
+  const [storeDropdownOpen, setStoreDropdownOpen] = useState(false);
+  const [storeDropdownFilterActive, setStoreDropdownFilterActive] = useState(false);
+  const [storeDropdownActiveIndex, setStoreDropdownActiveIndex] = useState(0);
+  const storeComboboxRef = useRef<HTMLDivElement | null>(null);
+  const storeInputRef = useRef<HTMLInputElement | null>(null);
+
+  const normalizeStoreText = useCallback((value: string): string => {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }, []);
+
+  const availableStoreOptions = useMemo(() => {
+    const byKey = new Map<
+      string,
+      { name: string; normalized: string; address: string; normalizedAddress: string; receiptsCount: number }
+    >();
+    for (const st of stores) {
+      const name = (st.tradingName || '').trim();
+      if (!name) continue;
+      const key = normalizeStoreText(name);
+      if (!key || byKey.has(key)) continue;
+      const address = (st.address || '').trim();
+      byKey.set(key, {
+        name,
+        normalized: key,
+        address,
+        normalizedAddress: normalizeStoreText(address),
+        receiptsCount: st.receiptsCount || 0
+      });
+    }
+    for (const rec of receipts) {
+      const name = (rec.storeName || '').trim();
+      if (!name) continue;
+      const key = normalizeStoreText(name);
+      if (!key || byKey.has(key)) continue;
+      const address = (rec.storeAddress || '').trim();
+      byKey.set(key, {
+        name,
+        normalized: key,
+        address,
+        normalizedAddress: normalizeStoreText(address),
+        receiptsCount: 1
+      });
+    }
+    return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }, [stores, receipts, normalizeStoreText]);
+
+  const storeInputTrimmed = (editingReceipt?.storeName || '').trim();
+  const storeInputNormalized = normalizeStoreText(storeInputTrimmed);
+
+  const filteredStoreOptions = useMemo(() => {
+    if (!storeDropdownFilterActive || !storeInputNormalized) {
+      return availableStoreOptions;
+    }
+    return availableStoreOptions.filter(
+      (opt) =>
+        opt.normalized.includes(storeInputNormalized) ||
+        opt.normalizedAddress.includes(storeInputNormalized)
+    );
+  }, [availableStoreOptions, storeDropdownFilterActive, storeInputNormalized]);
+
+  const canCreateNewStore = useMemo(() => {
+    if (!storeInputTrimmed) return false;
+    return !availableStoreOptions.some((opt) => opt.normalized === storeInputNormalized);
+  }, [availableStoreOptions, storeInputTrimmed, storeInputNormalized]);
+
+  useEffect(() => {
+    if (!storeDropdownOpen) return;
+    function handleOutsideClick(event: MouseEvent) {
+      if (storeComboboxRef.current && !storeComboboxRef.current.contains(event.target as Node)) {
+        setStoreDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [storeDropdownOpen]);
+
   const [itemModal, setItemModal] = useState<{
     mode: 'ADD' | 'EDIT';
     receiptId: string;
@@ -214,6 +294,9 @@ export default function ArgusReceiptsPage() {
 
   function openEditReceiptModal(rec: ReceiptDetailEntry) {
     const itemsSum = rec.items.reduce((acc, it) => acc + it.totalPrice, 0);
+    setStoreDropdownOpen(false);
+    setStoreDropdownFilterActive(false);
+    setStoreDropdownActiveIndex(0);
     setEditingReceipt({
       receiptId: rec.receiptId,
       storeName: rec.storeName,
@@ -1214,17 +1297,210 @@ export default function ArgusReceiptsPage() {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="mb-1 block font-medium text-slate-300">Mercado / Loja</label>
-                <input
-                  type="text"
-                  required
-                  value={editingReceipt.storeName}
-                  onChange={(e) =>
-                    setEditingReceipt((prev) => (prev ? { ...prev, storeName: e.target.value } : null))
-                  }
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
-                />
+              <div ref={storeComboboxRef} className="relative">
+                <label className="mb-1 flex items-center justify-between font-medium text-slate-300">
+                  <span>Mercado / Loja</span>
+                  {canCreateNewStore ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                      <Plus className="h-2.5 w-2.5" />
+                      Novo mercado
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-normal text-slate-500">
+                      {availableStoreOptions.length} disponíveis
+                    </span>
+                  )}
+                </label>
+
+                <div className="relative flex items-center">
+                  <Store className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-emerald-400" />
+                  <input
+                    ref={storeInputRef}
+                    type="text"
+                    required
+                    role="combobox"
+                    aria-expanded={storeDropdownOpen}
+                    aria-autocomplete="list"
+                    aria-controls="edit-receipt-store-listbox"
+                    placeholder="Selecione um mercado ou digite um nome novo..."
+                    value={editingReceipt.storeName}
+                    onFocus={() => {
+                      setStoreDropdownOpen(true);
+                      setStoreDropdownFilterActive(false);
+                      setStoreDropdownActiveIndex(0);
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditingReceipt((prev) => (prev ? { ...prev, storeName: val } : null));
+                      setStoreDropdownOpen(true);
+                      setStoreDropdownFilterActive(true);
+                      setStoreDropdownActiveIndex(0);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setStoreDropdownOpen(true);
+                        if (filteredStoreOptions.length > 0) {
+                          setStoreDropdownActiveIndex((prev) => (prev + 1) % filteredStoreOptions.length);
+                        }
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setStoreDropdownOpen(true);
+                        if (filteredStoreOptions.length > 0) {
+                          setStoreDropdownActiveIndex(
+                            (prev) => (prev - 1 + filteredStoreOptions.length) % filteredStoreOptions.length
+                          );
+                        }
+                      } else if (e.key === 'Enter' && storeDropdownOpen) {
+                        const chosen = filteredStoreOptions[storeDropdownActiveIndex];
+                        if (chosen) {
+                          e.preventDefault();
+                          setEditingReceipt((prev) => (prev ? { ...prev, storeName: chosen.name } : null));
+                          setStoreDropdownOpen(false);
+                          setStoreDropdownFilterActive(false);
+                        } else if (canCreateNewStore) {
+                          e.preventDefault();
+                          setStoreDropdownOpen(false);
+                          setStoreDropdownFilterActive(false);
+                        }
+                      } else if (e.key === 'Escape' && storeDropdownOpen) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setStoreDropdownOpen(false);
+                      }
+                    }}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 pl-9 pr-14 py-2 text-slate-100 placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
+                  />
+                  <div className="absolute right-1.5 flex items-center gap-0.5">
+                    {editingReceipt.storeName && (
+                      <button
+                        type="button"
+                        title="Limpar nome do mercado"
+                        onClick={() => {
+                          setEditingReceipt((prev) => (prev ? { ...prev, storeName: '' } : null));
+                          setStoreDropdownOpen(true);
+                          setStoreDropdownFilterActive(false);
+                          setStoreDropdownActiveIndex(0);
+                          storeInputRef.current?.focus();
+                        }}
+                        className="rounded-md p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      title={storeDropdownOpen ? 'Fechar lista de mercados' : 'Ver mercados disponíveis'}
+                      onClick={() => {
+                        setStoreDropdownOpen((prev) => {
+                          const next = !prev;
+                          if (next) {
+                            setStoreDropdownFilterActive(false);
+                            setStoreDropdownActiveIndex(0);
+                          }
+                          return next;
+                        });
+                      }}
+                      className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+                    >
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 transition-transform duration-150 ${
+                          storeDropdownOpen ? 'rotate-180 text-emerald-400' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {storeDropdownOpen && (
+                  <div
+                    id="edit-receipt-store-listbox"
+                    role="listbox"
+                    className="absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-slate-700 bg-slate-950 shadow-2xl"
+                  >
+                    {canCreateNewStore && (
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setEditingReceipt((prev) =>
+                            prev ? { ...prev, storeName: storeInputTrimmed } : null
+                          );
+                          setStoreDropdownOpen(false);
+                          setStoreDropdownFilterActive(false);
+                        }}
+                        className="flex w-full items-center justify-between gap-2 border-b border-slate-800 bg-emerald-500/10 px-3 py-2.5 text-left hover:bg-emerald-500/20 transition-colors"
+                      >
+                        <span className="inline-flex items-center gap-2 min-w-0">
+                          <Plus className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span className="truncate text-xs font-semibold text-emerald-200">
+                            Usar novo mercado: &ldquo;{storeInputTrimmed}&rdquo;
+                          </span>
+                        </span>
+                        <span className="shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+                          Criar
+                        </span>
+                      </button>
+                    )}
+
+                    <div className="max-h-56 overflow-y-auto py-1">
+                      {filteredStoreOptions.length === 0 ? (
+                        <div className="px-3 py-3 text-center text-[11px] text-slate-400">
+                          Nenhum mercado cadastrado encontrado. Pressione Salvar para cadastrar este novo nome.
+                        </div>
+                      ) : (
+                        filteredStoreOptions.map((opt, idx) => {
+                          const isSelected = opt.normalized === storeInputNormalized;
+                          const isActive = idx === storeDropdownActiveIndex;
+                          return (
+                            <button
+                              key={opt.normalized}
+                              type="button"
+                              role="option"
+                              aria-selected={isSelected}
+                              onMouseEnter={() => setStoreDropdownActiveIndex(idx)}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setEditingReceipt((prev) =>
+                                  prev ? { ...prev, storeName: opt.name } : null
+                                );
+                                setStoreDropdownOpen(false);
+                                setStoreDropdownFilterActive(false);
+                              }}
+                              className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition-colors ${
+                                isSelected
+                                  ? 'bg-emerald-500/15 text-emerald-200'
+                                  : isActive
+                                    ? 'bg-slate-800/90 text-white'
+                                    : 'text-slate-200 hover:bg-slate-800/70'
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-semibold">{opt.name}</p>
+                                {(opt.address || opt.receiptsCount > 0) && (
+                                  <p className="truncate text-[10px] text-slate-400">
+                                    {opt.receiptsCount > 0
+                                      ? `${opt.receiptsCount} ${opt.receiptsCount === 1 ? 'nota' : 'notas'}`
+                                      : ''}
+                                    {opt.receiptsCount > 0 && opt.address ? ' • ' : ''}
+                                    {opt.address}
+                                  </p>
+                                )}
+                              </div>
+                              {isSelected && <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <p className={`mt-1 text-[10px] ${canCreateNewStore ? 'text-emerald-400/90' : 'text-slate-500'}`}>
+                  {canCreateNewStore
+                    ? 'Ao salvar, este novo mercado será criado automaticamente e vinculado à nota.'
+                    : 'Escolha um mercado existente na lista ou digite um nome novo.'}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
