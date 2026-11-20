@@ -3,7 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { fetchPublicDashboardFallback } from '@/lib/public-bi-client';
+import {
+  fetchPublicDashboardFallback,
+  subscribeToLiveSnapshotUpdates
+} from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
 
@@ -190,6 +193,15 @@ export default function ArgusVisionDashboard() {
 
   useEffect(() => {
     loadDashboard();
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    const unsubscribe = subscribeToLiveSnapshotUpdates<DashboardPayload>(
+      basePath,
+      ({ data: freshData, sourceLabel }) => {
+        setData(freshData);
+        setDataSourceLabel(sourceLabel);
+      }
+    );
+    return () => unsubscribe();
   }, []);
 
   async function handleRunReconciliation() {

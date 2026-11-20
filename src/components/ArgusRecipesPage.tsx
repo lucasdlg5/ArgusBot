@@ -4,7 +4,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { fetchPublicDashboardFallback, resolvePublicApiUrl } from '@/lib/public-bi-client';
+import {
+  fetchPublicDashboardFallback,
+  resolvePublicApiUrl,
+  subscribeToLiveSnapshotUpdates
+} from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
@@ -277,6 +281,19 @@ export default function ArgusRecipesPage() {
 
   useEffect(() => {
     loadRecipes(initialIdFromUrl);
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    const unsubscribe = subscribeToLiveSnapshotUpdates<{
+      recipesEvaluations?: RecipeCostEvaluation[];
+      homeLocation?: { lat: number; lng: number; address: string };
+    }>(basePath, ({ data: payload }) => {
+      if (Array.isArray(payload.recipesEvaluations)) {
+        setRecipes(payload.recipesEvaluations);
+      }
+      if (payload.homeLocation) {
+        setHomeLocation(payload.homeLocation);
+      }
+    });
+    return () => unsubscribe();
   }, [loadRecipes, initialIdFromUrl]);
 
   const availableTags = useMemo(() => {

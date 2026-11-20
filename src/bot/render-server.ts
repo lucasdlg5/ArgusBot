@@ -136,13 +136,56 @@ async function main() {
     onTimeout: 'return'
   });
 
-  let snapshotCache: { data: unknown; expiresAt: number } | null = null;
+  let snapshotCache: { data: unknown; dataVersion: string; expiresAt: number } | null = null;
+  let versionCheckCache: { version: string; expiresAt: number } | null = null;
+  let snapshotMutationSeq = 0;
+
+  const invalidateServerSnapshotCache = () => {
+    snapshotCache = null;
+    versionCheckCache = null;
+    snapshotMutationSeq += 1;
+  };
+
+  const computeLiveDataVersion = async (): Promise<string> => {
+    const now = Date.now();
+    if (versionCheckCache && versionCheckCache.expiresAt > now) {
+      return versionCheckCache.version;
+    }
+    try {
+      const rows = await queryArgus<{
+        r_cnt: number;
+        r_sum: string;
+        r_max_dt: string;
+        ri_cnt: number;
+        cp_cnt: number;
+        rec_cnt: number;
+        st_cnt: number;
+      }>(
+        `SELECT
+           (SELECT COUNT(*)::int FROM argus.receipts) AS r_cnt,
+           (SELECT COALESCE(SUM(total_amount), 0)::text FROM argus.receipts) AS r_sum,
+           (SELECT COALESCE(MAX(purchase_date)::text, '') FROM argus.receipts) AS r_max_dt,
+           (SELECT COUNT(*)::int FROM argus.receipt_items) AS ri_cnt,
+           (SELECT COUNT(*)::int FROM argus.collected_prices) AS cp_cnt,
+           (SELECT COUNT(*)::int FROM argus.recipes) AS rec_cnt,
+           (SELECT COUNT(*)::int FROM argus.stores) AS st_cnt`
+      );
+      const row = rows[0];
+      const version = row
+        ? `v:${row.r_cnt}:${row.r_sum}:${row.r_max_dt}:${row.ri_cnt}:${row.cp_cnt}:${row.rec_cnt}:${row.st_cnt}:m${snapshotMutationSeq}`
+        : `v:empty:m${snapshotMutationSeq}`;
+      versionCheckCache = { version, expiresAt: now + 5000 };
+      return version;
+    } catch {
+      return `v:fallback:m${snapshotMutationSeq}`;
+    }
+  };
 
   const server = http.createServer(async (req, res) => {
     const urlPath = (req.url || '/').split('?')[0];
 
     if (req.method !== 'GET' && urlPath.startsWith('/api/')) {
-      snapshotCache = null;
+      invalidateServerSnapshotCache();
     }
 
     if (req.method === 'OPTIONS' && urlPath.startsWith('/api/')) {
@@ -284,17 +327,47 @@ async function main() {
       return;
     }
 
+    if (req.method === 'GET' && urlPath === '/api/snapshot-version') {
+      applyCorsHeaders(res, req);
+      try {
+        const dataVersion = await computeLiveDataVersion();
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store'
+        });
+        res.end(
+          JSON.stringify({
+            status: 'ok',
+            dataVersion,
+            checkedAt: new Date().toISOString()
+          })
+        );
+      } catch (err) {
+        logger.error({ err }, '[ArgusRender] Erro em GET /api/snapshot-version');
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'error', message: (err as Error).message }));
+      }
+      return;
+    }
+
     if (req.method === 'GET' && urlPath === '/api/public-snapshot') {
       applyCorsHeaders(res, req);
       try {
         const now = Date.now();
-        if (snapshotCache && snapshotCache.expiresAt > now) {
+        const liveVersion = await computeLiveDataVersion();
+        if (snapshotCache && snapshotCache.dataVersion === liveVersion) {
+          snapshotCache.expiresAt = now + 60_000;
           sendJsonCompressed(req, res, 200, snapshotCache.data);
           return;
         }
         const payload = await dashboardBuilder.buildSanitizedPublicPayload();
-        snapshotCache = { data: payload, expiresAt: now + 15000 };
-        sendJsonCompressed(req, res, 200, payload);
+        const enrichedPayload = { ...payload, dataVersion: liveVersion };
+        snapshotCache = {
+          data: enrichedPayload,
+          dataVersion: liveVersion,
+          expiresAt: now + 60_000
+        };
+        sendJsonCompressed(req, res, 200, enrichedPayload);
       } catch (err) {
         logger.error({ err }, '[ArgusRender] Erro ao gerar /api/public-snapshot');
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });

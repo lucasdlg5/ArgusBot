@@ -25,7 +25,8 @@ import {
 import {
   fetchPublicDashboardFallback,
   invalidatePublicSnapshotCache,
-  resolvePublicApiUrl
+  resolvePublicApiUrl,
+  subscribeToLiveSnapshotUpdates
 } from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
@@ -449,6 +450,16 @@ export default function ArgusReceiptsPage() {
 
   useEffect(() => {
     loadReceipts();
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    const unsubscribe = subscribeToLiveSnapshotUpdates<ReceiptsApiResponse>(
+      basePath,
+      ({ data: payload }) => {
+        const list = payload.receiptsDetailed || [];
+        setReceipts(list);
+        setStores(payload.storesBi || []);
+      }
+    );
+    return () => unsubscribe();
   }, [loadReceipts]);
 
   const availableMonths = useMemo(() => {

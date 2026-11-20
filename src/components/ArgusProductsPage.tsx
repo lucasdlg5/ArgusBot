@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   fetchPublicDashboardFallback,
-  resolvePublicApiUrl
+  resolvePublicApiUrl,
+  subscribeToLiveSnapshotUpdates
 } from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { APP_VERSION_LABEL } from '@/config/version';
@@ -182,6 +183,15 @@ export default function ArgusProductsPage() {
 
   useEffect(() => {
     loadProducts();
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    const unsubscribe = subscribeToLiveSnapshotUpdates<ProductsApiResponse>(
+      basePath,
+      ({ data: payload }) => {
+        setProducts(payload.scannedProducts || []);
+        setStores(payload.storesBi || []);
+      }
+    );
+    return () => unsubscribe();
   }, [loadProducts]);
 
   useEffect(() => {

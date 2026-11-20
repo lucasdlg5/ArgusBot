@@ -1,6 +1,7 @@
 export interface PublicBiFetchResult<T> {
   data: T;
   sourceLabel: string;
+  dataVersion?: string;
 }
 
 const DEFAULT_BOT_API_URL = 'https://moneta-argus-bot.onrender.com';
@@ -10,7 +11,7 @@ export function getPublicBotApiBaseUrl(): string {
 }
 
 /**
- * Resolve a URL de API para leitura ou mutação (PATCH):
+ * Resolve a URL de API para leitura ou mutação (PATCH/POST/DELETE):
  * - No GitHub Pages (estático), aponta para o Render Live API.
  * - Em execução local/Node, usa a rota relativa do Next.js (`/api/...`).
  */
@@ -21,19 +22,39 @@ export function resolvePublicApiUrl(apiPath: string): string {
   return isGitHubPages ? `${getPublicBotApiBaseUrl()}${cleanPath}` : cleanPath;
 }
 
-const SNAPSHOT_CACHE_TTL_MS = 60000;
-const SESSION_CACHE_KEY = 'argus_public_snapshot_v1';
-let clientSnapshotCache: { result: PublicBiFetchResult<unknown>; expiresAt: number } | null = null;
+const LOCAL_CACHE_KEY = 'argus_public_snapshot_v2';
+const LEGACY_SESSION_CACHE_KEY = 'argus_public_snapshot_v1';
+
+interface PersistedSnapshotEnvelope<T> {
+  result: PublicBiFetchResult<T>;
+  dataVersion: string;
+  cachedAt: number;
+}
+
+let clientSnapshotCache: PersistedSnapshotEnvelope<unknown> | null = null;
 let inFlightSnapshotPromise: Promise<PublicBiFetchResult<unknown>> | null = null;
 
-function readSessionCache<T>(): PublicBiFetchResult<T> | null {
+function extractDataVersion(data: unknown): string {
+  if (data && typeof data === 'object') {
+    const rec = data as { dataVersion?: unknown; generatedAt?: unknown };
+    if (typeof rec.dataVersion === 'string' && rec.dataVersion.trim()) {
+      return rec.dataVersion.trim();
+    }
+    if (typeof rec.generatedAt === 'string' && rec.generatedAt.trim()) {
+      return `gen:${rec.generatedAt.trim()}`;
+    }
+  }
+  return '';
+}
+
+function readPersistentCache<T>(): PersistedSnapshotEnvelope<T> | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.sessionStorage.getItem(SESSION_CACHE_KEY);
+    const raw = window.localStorage.getItem(LOCAL_CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { result: PublicBiFetchResult<T>; expiresAt: number };
-    if (parsed && parsed.expiresAt > Date.now() && parsed.result?.data) {
-      return parsed.result;
+    const parsed = JSON.parse(raw) as PersistedSnapshotEnvelope<T>;
+    if (parsed && parsed.result?.data) {
+      return parsed;
     }
   } catch {
     // Ignora erro de JSON/storage
@@ -41,20 +62,42 @@ function readSessionCache<T>(): PublicBiFetchResult<T> | null {
   return null;
 }
 
-function writeSessionCache(result: PublicBiFetchResult<unknown>, expiresAt: number): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ result, expiresAt }));
-  } catch {
-    // Ignora se exceder cota do sessionStorage
+function writePersistentCache<T>(result: PublicBiFetchResult<T>): PersistedSnapshotEnvelope<T> {
+  const dataVersion = result.dataVersion || extractDataVersion(result.data);
+  const envelope: PersistedSnapshotEnvelope<T> = {
+    result: { ...result, dataVersion },
+    dataVersion,
+    cachedAt: Date.now()
+  };
+  clientSnapshotCache = envelope as PersistedSnapshotEnvelope<unknown>;
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(envelope));
+    } catch {
+      // Ignora se exceder cota do localStorage
+    }
   }
+  return envelope;
+}
+
+export function getCachedSnapshotVersion(): string {
+  if (clientSnapshotCache?.dataVersion) {
+    return clientSnapshotCache.dataVersion;
+  }
+  const disk = readPersistentCache<unknown>();
+  if (disk) {
+    clientSnapshotCache = disk;
+    return disk.dataVersion || '';
+  }
+  return '';
 }
 
 export function invalidatePublicSnapshotCache(): void {
   clientSnapshotCache = null;
   if (typeof window !== 'undefined') {
     try {
-      window.sessionStorage.removeItem(SESSION_CACHE_KEY);
+      window.localStorage.removeItem(LOCAL_CACHE_KEY);
+      window.sessionStorage.removeItem(LEGACY_SESSION_CACHE_KEY);
     } catch {
       // Ignora
     }
@@ -62,24 +105,50 @@ export function invalidatePublicSnapshotCache(): void {
 }
 
 /**
- * Busca o snapshot público do Argus Vision BI em ordem de frescor:
- * 1) Cache em memória / sessionStorage (60s) para F5 e navegação instantânea (0ms)
+ * Consulta ultra-leve (~110 bytes) para checar se entrou dado novo no banco
+ * sem reconstruir nem trafegar o snapshot completo.
+ */
+export async function fetchRemoteSnapshotVersion(timeoutMs = 6000): Promise<string | null> {
+  const botApiBase = getPublicBotApiBaseUrl();
+  if (!botApiBase) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${botApiBase}/api/snapshot-version?t=${Date.now()}`, {
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { status?: string; dataVersion?: string };
+    return typeof json.dataVersion === 'string' && json.dataVersion.trim()
+      ? json.dataVersion.trim()
+      : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Busca o snapshot público do Argus Vision BI com estratégia Cache-First + Auto-Revalidação:
+ * 1) Cache persistente em memória / localStorage (sobrevive ao F5 sem consultar o banco!)
  * 2) Render Live API (/api/public-snapshot direto do PostgreSQL com Gzip)
- * 3) Supabase Live (apenas fallback em tempo real)
+ * 3) Supabase Live (fallback em tempo real)
  */
 export async function fetchPublicDashboardFallback<T>(
   basePath: string,
   options?: { forceRefresh?: boolean }
 ): Promise<PublicBiFetchResult<T>> {
-  const now = Date.now();
   if (!options?.forceRefresh) {
-    if (clientSnapshotCache && clientSnapshotCache.expiresAt > now) {
+    if (clientSnapshotCache?.result?.data) {
       return clientSnapshotCache.result as PublicBiFetchResult<T>;
     }
-    const sessionHit = readSessionCache<T>();
-    if (sessionHit) {
-      clientSnapshotCache = { result: sessionHit, expiresAt: now + SNAPSHOT_CACHE_TTL_MS };
-      return sessionHit;
+    const persisted = readPersistentCache<T>();
+    if (persisted?.result?.data) {
+      clientSnapshotCache = persisted as PersistedSnapshotEnvelope<unknown>;
+      return persisted.result;
     }
   }
 
@@ -90,7 +159,6 @@ export async function fetchPublicDashboardFallback<T>(
   const runFetch = async (): Promise<PublicBiFetchResult<T>> => {
     const botApiBase = getPublicBotApiBaseUrl();
     if (botApiBase) {
-      // Aguarda até ~95s o wake-up (cold start) do servidor no Render para NUNCA exibir valores antigos do snapshot estático
       const maxAttempts = 6;
       const attemptTimeoutMs = 15000;
       let lastError: unknown = null;
@@ -106,10 +174,13 @@ export async function fetchPublicDashboardFallback<T>(
           clearTimeout(timer);
           if (resBot.ok) {
             const data = (await resBot.json()) as T;
-            const resObj = { data, sourceLabel: '🟢 PostgreSQL (Tempo Real)' };
-            const expiresAt = Date.now() + SNAPSHOT_CACHE_TTL_MS;
-            clientSnapshotCache = { result: resObj, expiresAt };
-            writeSessionCache(resObj, expiresAt);
+            const dataVersion = extractDataVersion(data);
+            const resObj: PublicBiFetchResult<T> = {
+              data,
+              sourceLabel: '🟢 PostgreSQL (Tempo Real)',
+              dataVersion
+            };
+            writePersistentCache(resObj);
             return resObj;
           }
           lastError = new Error(`HTTP ${resBot.status} do servidor`);
@@ -123,7 +194,6 @@ export async function fetchPublicDashboardFallback<T>(
         }
       }
 
-      // Tenta apenas a versão Live do Supabase antes de reportar erro (nunca cai silenciosamente no Actions CI antigo)
       const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
       const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'FotosArgus';
       if (supabaseUrl) {
@@ -134,10 +204,12 @@ export async function fetchPublicDashboardFallback<T>(
           const resLive = await fetch(liveUrl, { cache: 'no-store' });
           if (resLive.ok) {
             const data = (await resLive.json()) as T;
-            const resObj = { data, sourceLabel: '☁️ Nuvem (Tempo Real)' };
-            const expiresAt = Date.now() + SNAPSHOT_CACHE_TTL_MS;
-            clientSnapshotCache = { result: resObj, expiresAt };
-            writeSessionCache(resObj, expiresAt);
+            const resObj: PublicBiFetchResult<T> = {
+              data,
+              sourceLabel: '☁️ Nuvem (Tempo Real)',
+              dataVersion: extractDataVersion(data)
+            };
+            writePersistentCache(resObj);
             return resObj;
           }
         } catch {
@@ -154,17 +226,98 @@ export async function fetchPublicDashboardFallback<T>(
       cache: 'no-store'
     });
     const data = (await snapRes.json()) as T;
-    const resObj = { data, sourceLabel: '📦 Snapshot Local' };
-    const expiresAt = Date.now() + SNAPSHOT_CACHE_TTL_MS;
-    clientSnapshotCache = { result: resObj, expiresAt };
-    writeSessionCache(resObj, expiresAt);
+    const resObj: PublicBiFetchResult<T> = {
+      data,
+      sourceLabel: '📦 Snapshot Local',
+      dataVersion: extractDataVersion(data)
+    };
+    writePersistentCache(resObj);
     return resObj;
   };
 
-  inFlightSnapshotPromise = runFetch();
-  try {
-    return (await inFlightSnapshotPromise) as PublicBiFetchResult<T>;
-  } finally {
+  inFlightSnapshotPromise = runFetch().finally(() => {
     inFlightSnapshotPromise = null;
-  }
+  });
+
+  return (await inFlightSnapshotPromise) as PublicBiFetchResult<T>;
+}
+
+/**
+ * Inscreve a página para receber atualizações automáticas assim que entrar um dado novo no banco:
+ * - Verifica /api/snapshot-version (~110 bytes) em background sem travar a UI.
+ * - Só baixa /api/public-snapshot novamente quando `dataVersion` realmente mudar.
+ * - Também sincroniza instantaneamente entre abas abertas via evento `storage`.
+ */
+export function subscribeToLiveSnapshotUpdates<T>(
+  basePath: string,
+  onUpdate: (fresh: PublicBiFetchResult<T>) => void,
+  options?: { intervalMs?: number; initialCheckDelayMs?: number }
+): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const intervalMs = options?.intervalMs ?? 15000;
+  const initialCheckDelayMs = options?.initialCheckDelayMs ?? 2500;
+  let active = true;
+  let checking = false;
+
+  const checkForUpdates = async () => {
+    if (!active || checking) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    checking = true;
+    try {
+      const remoteVersion = await fetchRemoteSnapshotVersion(6000);
+      if (!active || !remoteVersion) return;
+      const localVersion = getCachedSnapshotVersion();
+      if (remoteVersion !== localVersion) {
+        const fresh = await fetchPublicDashboardFallback<T>(basePath, { forceRefresh: true });
+        if (active) {
+          onUpdate(fresh);
+        }
+      }
+    } catch {
+      // Silencioso em background — mantém cache exibido na tela
+    } finally {
+      checking = false;
+    }
+  };
+
+  const initialTimer = window.setTimeout(() => {
+    void checkForUpdates();
+  }, initialCheckDelayMs);
+
+  const pollTimer = window.setInterval(() => {
+    void checkForUpdates();
+  }, intervalMs);
+
+  const onVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      void checkForUpdates();
+    }
+  };
+
+  const onStorageSync = (ev: StorageEvent) => {
+    if (ev.key !== LOCAL_CACHE_KEY || !ev.newValue) return;
+    try {
+      const parsed = JSON.parse(ev.newValue) as PersistedSnapshotEnvelope<T>;
+      if (parsed?.result?.data) {
+        clientSnapshotCache = parsed as PersistedSnapshotEnvelope<unknown>;
+        if (active) {
+          onUpdate(parsed.result);
+        }
+      }
+    } catch {
+      // Ignora JSON inválido
+    }
+  };
+
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('storage', onStorageSync);
+
+  return () => {
+    active = false;
+    window.clearTimeout(initialTimer);
+    window.clearInterval(pollTimer);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    window.removeEventListener('storage', onStorageSync);
+  };
 }
