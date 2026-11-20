@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type { PoolClient, QueryResultRow } from 'pg';
 import sharp from 'sharp';
 import jsQR from 'jsqr';
+import { readBarcodes } from 'zxing-wasm/reader';
 import {
   BinaryBitmap,
   HybridBinarizer,
@@ -966,6 +967,33 @@ export class ArgusReceiptProcessor {
    */
   async decodeQrCodeFromImage(imageBuffer: Buffer): Promise<string | null> {
     try {
+      // Passada 0 (motor industrial C++ WASM): zxing-wasm na imagem original sem reduzir
+      try {
+        const zxingWasmOpts = {
+          formats: ['QRCode' as const],
+          tryHarder: true,
+          tryRotate: true,
+          tryInvert: true,
+          tryDownscale: true,
+          tryDenoise: true,
+          binarizer: 'LocalAverage' as const
+        };
+        const wasmFull = await readBarcodes(
+          new Blob([new Uint8Array(imageBuffer)]),
+          zxingWasmOpts
+        );
+        const firstHit = wasmFull.find((r) => r.text && r.text.trim().length > 0);
+        if (firstHit?.text) {
+          logger.info(
+            { qrUrl: firstHit.text.slice(0, 60) },
+            '[ArgusReceiptProcessor] QR Code detectado localmente via zxing-wasm (full)'
+          );
+          return firstHit.text.trim();
+        }
+      } catch (err) {
+        logger.debug({ err }, '[ArgusReceiptProcessor] Passada 0 (zxing-wasm full) sem leitura');
+      }
+
       const base = sharp(imageBuffer)
         .rotate()
         .resize({ width: 1400, withoutEnlargement: true });
@@ -1008,6 +1036,35 @@ export class ArgusReceiptProcessor {
           .resize({ width: 1100, withoutEnlargement: true })
           .png()
           .toBuffer();
+
+        // Passada 1b: zxing-wasm no recorte inferior com normalise + sharpen (melhor contra bleed-through/sombra)
+        try {
+          const enhancedCropPng = await sharp(cropBuffer)
+            .grayscale()
+            .normalise()
+            .sharpen()
+            .png()
+            .toBuffer();
+          const wasmCrop = await readBarcodes(new Blob([new Uint8Array(enhancedCropPng)], { type: 'image/png' }), {
+            formats: ['QRCode'],
+            tryHarder: true,
+            tryRotate: true,
+            tryInvert: true,
+            tryDownscale: true,
+            tryDenoise: true,
+            binarizer: 'LocalAverage'
+          });
+          const cropHit = wasmCrop.find((r) => r.text && r.text.trim().length > 0);
+          if (cropHit?.text) {
+            logger.info(
+              { qrUrl: cropHit.text.slice(0, 60) },
+              '[ArgusReceiptProcessor] QR Code detectado localmente via zxing-wasm (recorte inferior)'
+            );
+            return cropHit.text.trim();
+          }
+        } catch (err) {
+          logger.debug({ err }, '[ArgusReceiptProcessor] Passada 1b (zxing-wasm crop) sem leitura');
+        }
 
         // Passada 2: recorte inferior com normalise (RGBA 4 canais)
         try {
@@ -2658,6 +2715,10 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
       totalAmount?: number;
       discountAmount?: number;
       reconciled?: boolean;
+      accessKey?: string | null;
+      protocolNumber?: string | null;
+      nfceUrl?: string | null;
+      receiptNumber?: string | null;
     }
   ): Promise<{
     updated: boolean;
@@ -2669,6 +2730,11 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
     totalAmount?: number;
     discountAmount?: number;
     reconciled?: boolean;
+    hasOfficialAccessKey?: boolean;
+    accessKey?: string | null;
+    protocolNumber?: string | null;
+    nfceUrl?: string | null;
+    receiptNumber?: string | null;
   }> {
     return withArgusTransaction(async (client) => {
       const existing = await client.query<{
@@ -2679,8 +2745,14 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
         total_amount: string;
         discount_amount: string;
         reconciled: boolean;
+        access_key: string;
+        has_official_access_key: boolean;
+        protocol_number: string | null;
+        nfce_url: string | null;
+        receipt_number: string | null;
       }>(
-        `SELECT id, store_id, purchase_date::text, payment_method, total_amount::text, discount_amount::text, reconciled
+        `SELECT id, store_id, purchase_date::text, payment_method, total_amount::text, discount_amount::text, reconciled,
+                access_key, has_official_access_key, protocol_number, nfce_url, receipt_number
          FROM argus.receipts
          WHERE id = $1`,
         [receiptId]
@@ -2729,6 +2801,34 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
       const nextReconciled =
         input.reconciled !== undefined ? Boolean(input.reconciled) : Boolean(cur.reconciled);
 
+      let nextAccessKey = cur.access_key;
+      let nextHasOfficialKey = Boolean(cur.has_official_access_key);
+      if (input.accessKey !== undefined) {
+        const cleanInputKey = (input.accessKey || '').replace(/\D/g, '');
+        if (/^\d{44}$/.test(cleanInputKey) && !cleanInputKey.startsWith('8888')) {
+          nextAccessKey = cleanInputKey;
+          nextHasOfficialKey = true;
+        }
+      }
+
+      const nextProtocolNumber =
+        input.protocolNumber !== undefined
+          ? (input.protocolNumber || '').trim() || null
+          : cur.protocol_number;
+
+      const nextReceiptNumber =
+        input.receiptNumber !== undefined
+          ? (input.receiptNumber || '').trim() || null
+          : cur.receipt_number;
+
+      let nextNfceUrl =
+        input.nfceUrl !== undefined ? (input.nfceUrl || '').trim() || null : cur.nfce_url;
+      if (!nextNfceUrl && nextHasOfficialKey && /^\d{44}$/.test(nextAccessKey)) {
+        nextNfceUrl = nextAccessKey.startsWith('35')
+          ? `https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaPublica.aspx?chave=${nextAccessKey}`
+          : `https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&nfe=${nextAccessKey}`;
+      }
+
       await client.query(
         `UPDATE argus.receipts
          SET store_id = $2,
@@ -2736,7 +2836,12 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
              payment_method = $4,
              total_amount = $5,
              discount_amount = $6,
-             reconciled = $7
+             reconciled = $7,
+             access_key = $8,
+             has_official_access_key = $9,
+             protocol_number = $10,
+             nfce_url = $11,
+             receipt_number = $12
          WHERE id = $1`,
         [
           receiptId,
@@ -2745,7 +2850,12 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
           nextPaymentMethod,
           nextTotalAmount,
           nextDiscountAmount,
-          nextReconciled
+          nextReconciled,
+          nextAccessKey,
+          nextHasOfficialKey,
+          nextProtocolNumber,
+          nextNfceUrl,
+          nextReceiptNumber
         ]
       );
 
@@ -2767,7 +2877,12 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
         paymentMethod: nextPaymentMethod,
         totalAmount: nextTotalAmount,
         discountAmount: nextDiscountAmount,
-        reconciled: nextReconciled
+        reconciled: nextReconciled,
+        hasOfficialAccessKey: nextHasOfficialKey,
+        accessKey: nextHasOfficialKey ? nextAccessKey : null,
+        protocolNumber: nextProtocolNumber,
+        nfceUrl: nextNfceUrl,
+        receiptNumber: nextReceiptNumber
       };
     });
   }

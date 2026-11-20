@@ -689,6 +689,7 @@ export interface ReceiptDetailEntry {
   accessKey?: string | null;
   protocolNumber?: string | null;
   nfceUrl?: string | null;
+  receiptNumber?: string | null;
   itemsCount: number;
   items: ReceiptDetailItem[];
 }

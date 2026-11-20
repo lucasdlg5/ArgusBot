@@ -140,6 +140,7 @@ interface RawReceiptRow {
   access_key?: string | null;
   protocol_number?: string | null;
   nfce_url?: string | null;
+  receipt_number?: string | null;
 }
 
 interface RawReceiptItemRow {
@@ -238,7 +239,8 @@ export class ArgusCatalogBiService {
              r.has_official_access_key,
              r.access_key,
              r.protocol_number,
-             r.nfce_url
+             r.nfce_url,
+             r.receipt_number
            FROM argus.receipts r
            JOIN argus.stores s ON s.id = r.store_id
            ORDER BY r.purchase_date DESC
@@ -800,6 +802,7 @@ export class ArgusCatalogBiService {
         accessKey: hasOfficialKey ? cleanKey : null,
         protocolNumber: r.protocol_number || null,
         nfceUrl: resolvedNfceUrl,
+        receiptNumber: r.receipt_number || null,
         itemsCount: items.length,
         items
       };

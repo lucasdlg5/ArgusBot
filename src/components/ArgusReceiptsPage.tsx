@@ -145,6 +145,10 @@ export default function ArgusReceiptsPage() {
     discountAmount: string;
     reconciled: boolean;
     itemsSum: number;
+    accessKey: string;
+    protocolNumber: string;
+    nfceUrl: string;
+    receiptNumber: string;
   } | null>(null);
   const [savingReceipt, setSavingReceipt] = useState(false);
   const [itemModal, setItemModal] = useState<{
@@ -177,7 +181,11 @@ export default function ArgusReceiptsPage() {
       totalAmount: rec.totalAmount.toFixed(2),
       discountAmount: rec.discountAmount.toFixed(2),
       reconciled: rec.reconciled,
-      itemsSum: Math.round(itemsSum * 100) / 100
+      itemsSum: Math.round(itemsSum * 100) / 100,
+      accessKey: rec.accessKey || '',
+      protocolNumber: rec.protocolNumber || '',
+      nfceUrl: rec.nfceUrl || '',
+      receiptNumber: rec.receiptNumber || ''
     });
   }
 
@@ -196,7 +204,11 @@ export default function ArgusReceiptsPage() {
         paymentMethod: editingReceipt.paymentMethod,
         totalAmount: Number.isFinite(totalAmount) ? totalAmount : 0,
         discountAmount: Number.isFinite(discountAmount) ? discountAmount : 0,
-        reconciled: editingReceipt.reconciled
+        reconciled: editingReceipt.reconciled,
+        accessKey: editingReceipt.accessKey.trim() || null,
+        protocolNumber: editingReceipt.protocolNumber.trim() || null,
+        nfceUrl: editingReceipt.nfceUrl.trim() || null,
+        receiptNumber: editingReceipt.receiptNumber.trim() || null
       };
       const url = resolvePublicApiUrl(`/api/receipts/${editingReceipt.receiptId}`);
       const res = await fetch(url, {
@@ -215,6 +227,11 @@ export default function ArgusReceiptsPage() {
         totalAmount?: number;
         discountAmount?: number;
         reconciled?: boolean;
+        hasOfficialAccessKey?: boolean;
+        accessKey?: string | null;
+        protocolNumber?: string | null;
+        nfceUrl?: string | null;
+        receiptNumber?: string | null;
       };
       if (!res.ok) {
         throw new Error(json.message || 'Falha ao atualizar os dados da nota.');
@@ -232,7 +249,17 @@ export default function ArgusReceiptsPage() {
                 paymentMethod: json.paymentMethod ?? payload.paymentMethod,
                 totalAmount: json.totalAmount ?? payload.totalAmount,
                 discountAmount: json.discountAmount ?? payload.discountAmount,
-                reconciled: json.reconciled ?? payload.reconciled
+                reconciled: json.reconciled ?? payload.reconciled,
+                hasOfficialAccessKey:
+                  json.hasOfficialAccessKey !== undefined
+                    ? json.hasOfficialAccessKey
+                    : r.hasOfficialAccessKey,
+                accessKey: json.accessKey !== undefined ? json.accessKey : r.accessKey,
+                protocolNumber:
+                  json.protocolNumber !== undefined ? json.protocolNumber : payload.protocolNumber,
+                nfceUrl: json.nfceUrl !== undefined ? json.nfceUrl : payload.nfceUrl,
+                receiptNumber:
+                  json.receiptNumber !== undefined ? json.receiptNumber : payload.receiptNumber
               }
             : r
         )
@@ -1067,7 +1094,7 @@ export default function ArgusReceiptsPage() {
           <form
             onSubmit={handleSaveReceiptDetails}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl space-y-4"
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl space-y-4"
           >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
@@ -1178,6 +1205,84 @@ export default function ArgusReceiptsPage() {
                       )
                     }
                     className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800 space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Dados Fiscais (NFC-e / Opcionais)
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block font-medium text-slate-300">
+                      Protocolo de Autorização
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex.: 135265151343878"
+                      value={editingReceipt.protocolNumber}
+                      onChange={(e) =>
+                        setEditingReceipt((prev) =>
+                          prev ? { ...prev, protocolNumber: e.target.value } : null
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block font-medium text-slate-300">
+                      Número da Nota / COO / Pedido
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex.: 101111"
+                      value={editingReceipt.receiptNumber}
+                      onChange={(e) =>
+                        setEditingReceipt((prev) =>
+                          prev ? { ...prev, receiptNumber: e.target.value } : null
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">
+                    Chave de Acesso NFC-e (44 dígitos)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Cole os 44 dígitos (com ou sem espaços)"
+                    value={editingReceipt.accessKey}
+                    onChange={(e) =>
+                      setEditingReceipt((prev) =>
+                        prev ? { ...prev, accessKey: e.target.value } : null
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Ao informar 44 dígitos válidos, a nota recebe o selo NFC-e e gera a URL SEFAZ automaticamente.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-medium text-slate-300">
+                    URL de Consulta NFC-e (SEFAZ)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://www.nfce.fazenda.sp.gov.br/..."
+                    value={editingReceipt.nfceUrl}
+                    onChange={(e) =>
+                      setEditingReceipt((prev) =>
+                        prev ? { ...prev, nfceUrl: e.target.value } : null
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
