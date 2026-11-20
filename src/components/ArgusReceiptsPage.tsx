@@ -20,6 +20,7 @@ import {
   Plus,
   Receipt,
   Search,
+  Sparkles,
   Store,
   Tag,
   Trash2,
@@ -122,11 +123,36 @@ function formatMonthLabel(monthKey: string): string {
 export default function ArgusReceiptsPage() {
   const searchParams = useSearchParams();
   const initialStore = searchParams.get('store') || 'ALL';
+  const highlightParam = searchParams.get('highlight') || '';
 
   const [receipts, setReceipts] = useState<ReceiptDetailEntry[]>([]);
   const [stores, setStores] = useState<StoreBiDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [highlightedIds, setHighlightedIds] = useState<Record<string, boolean>>({});
+
+  const triggerHighlightReceipts = useCallback((ids: string[], autoOpenAndScroll = false) => {
+    if (ids.length === 0) return;
+    setHighlightedIds((prev) => {
+      const next = { ...prev };
+      for (const id of ids) next[id] = true;
+      return next;
+    });
+    if (autoOpenAndScroll && ids[0]) {
+      setExpandedId(ids[0]);
+      window.setTimeout(() => {
+        const el = document.getElementById(`receipt-${ids[0]}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 220);
+    }
+    window.setTimeout(() => {
+      setHighlightedIds((prev) => {
+        const next = { ...prev };
+        for (const id of ids) delete next[id];
+        return next;
+      });
+    }, 12000);
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [storeFilter, setStoreFilter] = useState(initialStore);
@@ -498,12 +524,28 @@ export default function ArgusReceiptsPage() {
       basePath,
       ({ data: payload }) => {
         const list = payload.receiptsDetailed || [];
-        setReceipts(list);
+        setReceipts((prev) => {
+          const prevIds = new Set(prev.map((r) => r.receiptId));
+          const newlyAdded = list
+            .filter((r) => !prevIds.has(r.receiptId))
+            .map((r) => r.receiptId);
+          if (newlyAdded.length > 0) {
+            triggerHighlightReceipts(newlyAdded, false);
+          }
+          return list;
+        });
         setStores(payload.storesBi || []);
       }
     );
     return () => unsubscribe();
-  }, [loadReceipts]);
+  }, [loadReceipts, triggerHighlightReceipts]);
+
+  useEffect(() => {
+    if (!highlightParam || receipts.length === 0) return;
+    if (receipts.some((r) => r.receiptId === highlightParam)) {
+      triggerHighlightReceipts([highlightParam], true);
+    }
+  }, [highlightParam, receipts, triggerHighlightReceipts]);
 
   const availableMonths = useMemo(() => {
     const set = new Set<string>();
@@ -807,22 +849,32 @@ export default function ArgusReceiptsPage() {
             {filteredReceipts.map((rec) => {
               const isOpen = expandedId === rec.receiptId;
               const isPossibleFlyer = rec.totalAmount <= 0;
+              const isHighlighted = Boolean(highlightedIds[rec.receiptId]);
               return (
                 <div
                   key={rec.receiptId}
-                  className={`rounded-xl border overflow-hidden ${
-                    isPossibleFlyer
-                      ? 'border-amber-500/40 bg-amber-950/15'
-                      : 'border-slate-800/90 bg-slate-900/60'
+                  id={`receipt-${rec.receiptId}`}
+                  className={`rounded-xl border overflow-hidden transition-all duration-700 ${
+                    isHighlighted
+                      ? 'border-emerald-300/80 bg-emerald-900/35 ring-2 ring-emerald-400/45 shadow-lg shadow-emerald-500/15'
+                      : isPossibleFlyer
+                        ? 'border-amber-500/40 bg-amber-950/15'
+                        : 'border-slate-800/90 bg-slate-900/60'
                   }`}
                 >
                   <button
                     type="button"
                     onClick={() => setExpandedId(isOpen ? null : rec.receiptId)}
-                    className="w-full px-4 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-left hover:bg-slate-900 transition-colors"
+                    className="w-full px-4 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-left hover:bg-slate-900/80 transition-colors"
                   >
                     <div className="space-y-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
+                        {isHighlighted && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 border border-emerald-300/60 px-2 py-0.5 text-[10px] font-bold text-emerald-200 animate-pulse">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            Novo
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
                           <Store className="h-4 w-4 text-emerald-400 shrink-0" />
                           {rec.storeName}

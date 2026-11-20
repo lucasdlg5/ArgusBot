@@ -122,11 +122,36 @@ export default function ArgusProductsPage() {
   const searchParams = useSearchParams();
   const initialStoreParam = searchParams.get('store') || 'ALL';
   const initialQueryParam = searchParams.get('q') || '';
+  const highlightParam = searchParams.get('highlight') || '';
 
   const [products, setProducts] = useState<ScannedProductEntry[]>([]);
   const [stores, setStores] = useState<StoreBiDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [highlightedIds, setHighlightedIds] = useState<Record<string, boolean>>({});
+
+  const triggerHighlightProducts = useCallback((ids: string[], autoOpenAndScroll = false) => {
+    if (ids.length === 0) return;
+    setHighlightedIds((prev) => {
+      const next = { ...prev };
+      for (const id of ids) next[id] = true;
+      return next;
+    });
+    if (autoOpenAndScroll && ids[0]) {
+      setExpandedRowId(ids[0]);
+      window.setTimeout(() => {
+        const el = document.getElementById(`product-${ids[0]}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 220);
+    }
+    window.setTimeout(() => {
+      setHighlightedIds((prev) => {
+        const next = { ...prev };
+        for (const id of ids) delete next[id];
+        return next;
+      });
+    }, 12000);
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState(initialQueryParam);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('ALL');
@@ -187,12 +212,27 @@ export default function ArgusProductsPage() {
     const unsubscribe = subscribeToLiveSnapshotUpdates<ProductsApiResponse>(
       basePath,
       ({ data: payload }) => {
-        setProducts(payload.scannedProducts || []);
+        const list = payload.scannedProducts || [];
+        setProducts((prev) => {
+          const prevIds = new Set(prev.map((p) => p.id));
+          const newlyAdded = list.filter((p) => !prevIds.has(p.id)).map((p) => p.id);
+          if (newlyAdded.length > 0) {
+            triggerHighlightProducts(newlyAdded, false);
+          }
+          return list;
+        });
         setStores(payload.storesBi || []);
       }
     );
     return () => unsubscribe();
-  }, [loadProducts]);
+  }, [loadProducts, triggerHighlightProducts]);
+
+  useEffect(() => {
+    if (!highlightParam || products.length === 0) return;
+    if (products.some((p) => p.id === highlightParam)) {
+      triggerHighlightProducts([highlightParam], true);
+    }
+  }, [highlightParam, products, triggerHighlightProducts]);
 
   useEffect(() => {
     if (initialStoreParam && initialStoreParam !== 'ALL') {
@@ -708,7 +748,15 @@ export default function ArgusProductsPage() {
   };
 
   return (
-                  <div key={item.id} className="transition-colors hover:bg-slate-900/80">
+                  <div
+                    key={item.id}
+                    id={`product-${item.id}`}
+                    className={`transition-all duration-700 ${
+                      highlightedIds[item.id]
+                        ? 'bg-emerald-900/35 ring-1 ring-inset ring-emerald-400/60'
+                        : 'hover:bg-slate-900/80'
+                    }`}
+                  >
                     <button
                       type="button"
                       aria-expanded={isExpanded}

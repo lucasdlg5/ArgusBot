@@ -4,6 +4,116 @@ export interface PublicBiFetchResult<T> {
   dataVersion?: string;
 }
 
+export interface LiveNewItemNotification {
+  uid: string;
+  kind: 'RECEIPT' | 'PRODUCT' | 'RECIPE';
+  itemId: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  createdAt: number;
+}
+
+export const LIVE_NEW_ITEMS_EVENT = 'argus:new-items';
+
+const emittedNotificationIds = new Set<string>();
+
+function detectNewSnapshotItems(prevData: unknown, nextData: unknown): LiveNewItemNotification[] {
+  if (!prevData || !nextData || typeof prevData !== 'object' || typeof nextData !== 'object') {
+    return [];
+  }
+  const prev = prevData as {
+    receiptsDetailed?: Array<{
+      receiptId: string;
+      storeName: string;
+      totalAmount: number;
+      itemsCount: number;
+    }>;
+    scannedProducts?: Array<{
+      id: string;
+      productName: string;
+      storeName: string;
+      sourceType?: string;
+    }>;
+    recipesEvaluations?: Array<{
+      recipeId: string;
+      recipeName: string;
+    }>;
+  };
+  const next = nextData as typeof prev;
+
+  const notifications: LiveNewItemNotification[] = [];
+  const now = Date.now();
+
+  const prevReceiptIds = new Set((prev.receiptsDetailed || []).map((r) => r.receiptId));
+  const newReceipts = (next.receiptsDetailed || []).filter(
+    (r) => r.receiptId && !prevReceiptIds.has(r.receiptId)
+  );
+  for (const rec of newReceipts.slice(0, 3)) {
+    const key = `RECEIPT:${rec.receiptId}`;
+    if (emittedNotificationIds.has(key)) continue;
+    emittedNotificationIds.add(key);
+    const totalFmt = Number(rec.totalAmount || 0)
+      .toFixed(2)
+      .replace('.', ',');
+    notifications.push({
+      uid: `${key}:${now}`,
+      kind: 'RECEIPT',
+      itemId: rec.receiptId,
+      title: 'Nova nota registrada',
+      subtitle: `${rec.storeName} · R$ ${totalFmt} (${rec.itemsCount} ${rec.itemsCount === 1 ? 'item' : 'itens'})`,
+      href: `/notas?highlight=${encodeURIComponent(rec.receiptId)}`,
+      createdAt: now
+    });
+  }
+
+  // Só notifica produtos individuais se não entraram como parte de uma nova nota (ex.: flyer/gôndola avulso)
+  if (newReceipts.length === 0) {
+    const prevProdIds = new Set((prev.scannedProducts || []).map((p) => p.id));
+    const newProds = (next.scannedProducts || []).filter((p) => p.id && !prevProdIds.has(p.id));
+    for (const prod of newProds.slice(0, 2)) {
+      const key = `PRODUCT:${prod.id}`;
+      if (emittedNotificationIds.has(key)) continue;
+      emittedNotificationIds.add(key);
+      notifications.push({
+        uid: `${key}:${now}`,
+        kind: 'PRODUCT',
+        itemId: prod.id,
+        title: 'Novo preço registrado',
+        subtitle: `${prod.productName} · ${prod.storeName}`,
+        href: `/produtos?highlight=${encodeURIComponent(prod.id)}`,
+        createdAt: now
+      });
+    }
+  }
+
+  const prevRecipeIds = new Set((prev.recipesEvaluations || []).map((r) => r.recipeId));
+  const newRecipes = (next.recipesEvaluations || []).filter(
+    (r) => r.recipeId && !prevRecipeIds.has(r.recipeId)
+  );
+  for (const recp of newRecipes.slice(0, 2)) {
+    const key = `RECIPE:${recp.recipeId}`;
+    if (emittedNotificationIds.has(key)) continue;
+    emittedNotificationIds.add(key);
+    notifications.push({
+      uid: `${key}:${now}`,
+      kind: 'RECIPE',
+      itemId: recp.recipeId,
+      title: 'Nova receita adicionada',
+      subtitle: recp.recipeName,
+      href: `/receitas?id=${encodeURIComponent(recp.recipeId)}`,
+      createdAt: now
+    });
+  }
+
+  return notifications;
+}
+
+function dispatchNewItemsNotifications(items: LiveNewItemNotification[]): void {
+  if (typeof window === 'undefined' || items.length === 0) return;
+  window.dispatchEvent(new CustomEvent(LIVE_NEW_ITEMS_EVENT, { detail: { items } }));
+}
+
 const DEFAULT_BOT_API_URL = 'https://moneta-argus-bot.onrender.com';
 
 export function getPublicBotApiBaseUrl(): string {
@@ -269,7 +379,13 @@ export function subscribeToLiveSnapshotUpdates<T>(
       if (!active || !remoteVersion) return;
       const localVersion = getCachedSnapshotVersion();
       if (remoteVersion !== localVersion) {
+        const prevData =
+          clientSnapshotCache?.result?.data ?? readPersistentCache<unknown>()?.result?.data ?? null;
         const fresh = await fetchPublicDashboardFallback<T>(basePath, { forceRefresh: true });
+        if (prevData) {
+          const newItems = detectNewSnapshotItems(prevData, fresh.data);
+          dispatchNewItemsNotifications(newItems);
+        }
         if (active) {
           onUpdate(fresh);
         }
