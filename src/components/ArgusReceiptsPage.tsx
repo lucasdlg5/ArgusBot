@@ -37,6 +37,7 @@ import {
   ArgusStoreCombobox,
   type StoreComboboxOption
 } from '@/components/ArgusStoreCombobox';
+import { useLiveHighlight } from '@/lib/use-live-highlight';
 import { APP_VERSION_LABEL } from '@/config/version';
 import type {
   PaymentMethod,
@@ -133,30 +134,23 @@ export default function ArgusReceiptsPage() {
   const [stores, setStores] = useState<StoreBiDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [highlightedIds, setHighlightedIds] = useState<Record<string, boolean>>({});
+  const { highlightedIds, triggerHighlight, claimUrlHighlight } = useLiveHighlight(12000);
 
-  const triggerHighlightReceipts = useCallback((ids: string[], autoOpenAndScroll = false) => {
-    if (ids.length === 0) return;
-    setHighlightedIds((prev) => {
-      const next = { ...prev };
-      for (const id of ids) next[id] = true;
-      return next;
-    });
-    if (autoOpenAndScroll && ids[0]) {
-      setExpandedIds((prev) => ({ ...prev, [ids[0]]: true }));
-      window.setTimeout(() => {
-        const el = document.getElementById(`receipt-${ids[0]}`);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 220);
-    }
-    window.setTimeout(() => {
-      setHighlightedIds((prev) => {
-        const next = { ...prev };
-        for (const id of ids) delete next[id];
-        return next;
-      });
-    }, 12000);
-  }, []);
+  const triggerHighlightReceipts = useCallback(
+    (ids: string[], autoOpenAndScroll = false) => {
+      triggerHighlight(
+        ids,
+        autoOpenAndScroll
+          ? {
+              scrollElementPrefix: 'receipt-',
+              onFocusFirst: (firstId) =>
+                setExpandedIds((prev) => ({ ...prev, [firstId]: true }))
+            }
+          : undefined
+      );
+    },
+    [triggerHighlight]
+  );
 
   const [searchQuery, setSearchQuery] = useState('');
   const [storeFilter, setStoreFilter] = useState(initialStore);
@@ -647,6 +641,7 @@ export default function ArgusReceiptsPage() {
   useEffect(() => {
     if (!highlightParam || receipts.length === 0) return;
     if (!receipts.some((r) => r.receiptId === highlightParam)) return;
+    if (!claimUrlHighlight(highlightParam)) return;
     const idxInFiltered = filteredReceipts.findIndex((r) => r.receiptId === highlightParam);
     if (idxInFiltered === -1) {
       setSearchQuery('');
@@ -655,13 +650,11 @@ export default function ArgusReceiptsPage() {
       setReconciledFilter('ALL');
       setPaymentFilter('ALL');
       setHideZeroReceipts(false);
-      return;
-    }
-    if (idxInFiltered >= visibleCount) {
+    } else if (idxInFiltered >= visibleCount) {
       setVisibleCount(idxInFiltered + RECEIPTS_PAGE_SIZE);
     }
     triggerHighlightReceipts([highlightParam], true);
-  }, [highlightParam, receipts, filteredReceipts, visibleCount, triggerHighlightReceipts]);
+  }, [highlightParam, receipts, filteredReceipts, visibleCount, claimUrlHighlight, triggerHighlightReceipts]);
 
   const summary = useMemo(() => {
     const totalSpent = filteredReceipts.reduce((acc, r) => acc + r.totalAmount, 0);

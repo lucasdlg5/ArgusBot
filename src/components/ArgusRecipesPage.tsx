@@ -10,6 +10,7 @@ import {
   subscribeToLiveSnapshotUpdates
 } from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
+import { useLiveHighlight } from '@/lib/use-live-highlight';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
@@ -174,47 +175,25 @@ export default function ArgusRecipesPage() {
   const initialIdFromUrl = searchParams.get('id') || highlightParam || null;
 
   const [recipes, setRecipes] = useState<RecipeCostEvaluation[]>([]);
-  const [highlightedIds, setHighlightedIds] = useState<Record<string, boolean>>({});
-  const highlightTimersRef = useRef<Map<string, number>>(new Map());
+  const { highlightedIds, triggerHighlight, claimUrlHighlight } = useLiveHighlight(12000);
 
-  const triggerHighlightRecipes = useCallback((ids: string[], autoOpenAndScroll = false) => {
-    if (ids.length === 0) return;
-    setHighlightedIds((prev) => {
-      const next = { ...prev };
-      for (const id of ids) next[id] = true;
-      return next;
-    });
-    if (autoOpenAndScroll && ids[0]) {
-      setSelectedRecipeId(ids[0]);
-      setExpandedRecipeId(ids[0]);
-      window.setTimeout(() => {
-        const el = document.getElementById(`recipe-${ids[0]}`);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 220);
-    }
-    for (const id of ids) {
-      const existingTimer = highlightTimersRef.current.get(id);
-      if (existingTimer) window.clearTimeout(existingTimer);
-      const timerId = window.setTimeout(() => {
-        highlightTimersRef.current.delete(id);
-        setHighlightedIds((prev) => {
-          if (!prev[id]) return prev;
-          const next = { ...prev };
-          delete next[id];
-          return next;
-        });
-      }, 12000);
-      highlightTimersRef.current.set(id, timerId);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timers = highlightTimersRef.current;
-    return () => {
-      timers.forEach((timerId) => window.clearTimeout(timerId));
-      timers.clear();
-    };
-  }, []);
+  const triggerHighlightRecipes = useCallback(
+    (ids: string[], autoOpenAndScroll = false) => {
+      triggerHighlight(
+        ids,
+        autoOpenAndScroll
+          ? {
+              scrollElementPrefix: 'recipe-',
+              onFocusFirst: (firstId) => {
+                setSelectedRecipeId(firstId);
+                setExpandedRecipeId(firstId);
+              }
+            }
+          : undefined
+      );
+    },
+    [triggerHighlight]
+  );
   const [homeLocation, setHomeLocation] = useState({
     lat: -23.55052,
     lng: -46.633308,
@@ -351,6 +330,7 @@ export default function ArgusRecipesPage() {
   useEffect(() => {
     if (!highlightParam || recipes.length === 0) return;
     if (!recipes.some((r) => r.recipeId === highlightParam)) return;
+    if (!claimUrlHighlight(highlightParam)) return;
     if (searchQuery || selectedTag !== 'TODAS') {
       const isVisible = recipes.some(
         (r) =>
@@ -364,7 +344,7 @@ export default function ArgusRecipesPage() {
       }
     }
     triggerHighlightRecipes([highlightParam], true);
-  }, [highlightParam, recipes, searchQuery, selectedTag, triggerHighlightRecipes]);
+  }, [highlightParam, recipes, searchQuery, selectedTag, claimUrlHighlight, triggerHighlightRecipes]);
 
   const availableTags = useMemo(() => {
     const tagSet = new Set<string>();

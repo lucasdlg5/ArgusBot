@@ -10,6 +10,7 @@ import {
 } from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
 import { ArgusStoreCombobox } from '@/components/ArgusStoreCombobox';
+import { useLiveHighlight } from '@/lib/use-live-highlight';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -129,30 +130,22 @@ export default function ArgusProductsPage() {
   const [stores, setStores] = useState<StoreBiDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [highlightedIds, setHighlightedIds] = useState<Record<string, boolean>>({});
+  const { highlightedIds, triggerHighlight, claimUrlHighlight } = useLiveHighlight(12000);
 
-  const triggerHighlightProducts = useCallback((ids: string[], autoOpenAndScroll = false) => {
-    if (ids.length === 0) return;
-    setHighlightedIds((prev) => {
-      const next = { ...prev };
-      for (const id of ids) next[id] = true;
-      return next;
-    });
-    if (autoOpenAndScroll && ids[0]) {
-      setExpandedRowId(ids[0]);
-      window.setTimeout(() => {
-        const el = document.getElementById(`product-${ids[0]}`);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 220);
-    }
-    window.setTimeout(() => {
-      setHighlightedIds((prev) => {
-        const next = { ...prev };
-        for (const id of ids) delete next[id];
-        return next;
-      });
-    }, 12000);
-  }, []);
+  const triggerHighlightProducts = useCallback(
+    (ids: string[], autoOpenAndScroll = false) => {
+      triggerHighlight(
+        ids,
+        autoOpenAndScroll
+          ? {
+              scrollElementPrefix: 'product-',
+              onFocusFirst: (firstId) => setExpandedRowId(firstId)
+            }
+          : undefined
+      );
+    },
+    [triggerHighlight]
+  );
 
   const [searchQuery, setSearchQuery] = useState(initialQueryParam);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('ALL');
@@ -230,10 +223,14 @@ export default function ArgusProductsPage() {
 
   useEffect(() => {
     if (!highlightParam || products.length === 0) return;
-    if (products.some((p) => p.id === highlightParam)) {
-      triggerHighlightProducts([highlightParam], true);
-    }
-  }, [highlightParam, products, triggerHighlightProducts]);
+    if (!products.some((p) => p.id === highlightParam)) return;
+    if (!claimUrlHighlight(highlightParam)) return;
+    setSearchQuery('');
+    setSourceFilter('ALL');
+    setStoreFilter('ALL');
+    setCategoryFilter('ALL');
+    triggerHighlightProducts([highlightParam], true);
+  }, [highlightParam, products, claimUrlHighlight, triggerHighlightProducts]);
 
   useEffect(() => {
     if (initialStoreParam && initialStoreParam !== 'ALL') {
