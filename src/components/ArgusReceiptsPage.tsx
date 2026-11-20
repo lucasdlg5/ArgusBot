@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Clock,
   CreditCard,
+  ExternalLink,
   Package,
   Pencil,
   Plus,
@@ -824,6 +825,14 @@ export default function ArgusReceiptsPage() {
                         </span>
                         <span>·</span>
                         <span className="truncate">{rec.storeAddress}</span>
+                        {rec.protocolNumber && (
+                          <>
+                            <span>·</span>
+                            <span className="font-mono text-[10px] text-emerald-300/90 tabular-nums">
+                              Protocolo: {rec.protocolNumber}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -859,6 +868,34 @@ export default function ArgusReceiptsPage() {
                         className="overflow-hidden border-t border-slate-800/80 bg-slate-950/70"
                       >
                         <div className="p-4 space-y-3">
+                          {rec.nfceUrl && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-950/20 px-3 py-2">
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                                  Consulta Pública NFC-e (SEFAZ)
+                                </p>
+                                <a
+                                  href={rec.nfceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="block truncate font-mono text-[11px] text-emerald-200 hover:text-emerald-100 underline decoration-emerald-500/40"
+                                >
+                                  {rec.nfceUrl}
+                                </a>
+                              </div>
+                              <a
+                                href={rec.nfceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25 px-3 py-1.5 text-[11px] font-semibold text-emerald-200 transition-colors"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Abrir NFC-e
+                              </a>
+                            </div>
+                          )}
                           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
                             <span className="text-[11px] text-slate-400">
                               {rec.totalAmount <= 0

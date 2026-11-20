@@ -96,6 +96,8 @@ export interface ExtractedReceiptData {
   accessKey: string;
   hasOfficialAccessKey?: boolean;
   receiptNumber?: string | null;
+  protocolNumber?: string | null;
+  nfceUrl?: string | null;
   imageSha256?: string | null;
   normalizedImageSha256?: string | null;
   contentFingerprint?: string | null;
@@ -465,6 +467,16 @@ export class ArgusReceiptProcessor {
       isGenuine44Key ? cleanKeyDigits : undefined
     );
 
+    const rawProtocol = (raw.protocolNumber || '').replace(/\D/g, '');
+    const protocolNumber = rawProtocol.length >= 8 ? rawProtocol.slice(0, 32) : null;
+    const resolvedNfceUrl =
+      (raw.nfceUrl && /^https?:\/\//i.test(raw.nfceUrl.trim()) ? raw.nfceUrl.trim() : null) ||
+      (isGenuine44Key
+        ? cleanKeyDigits.startsWith('35')
+          ? `https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaPublica.aspx?chave=${cleanKeyDigits}`
+          : `https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&nfe=${cleanKeyDigits}`
+        : null);
+
     // Extrai/normaliza identificador secundário (COO / Extrato / Nº do Cupom / Pedido)
     const rawReceiptNum = (raw.receiptNumber || '')
       .trim()
@@ -512,6 +524,8 @@ export class ArgusReceiptProcessor {
       accessKey: finalAccessKey,
       hasOfficialAccessKey: isGenuine44Key,
       receiptNumber,
+      protocolNumber,
+      nfceUrl: resolvedNfceUrl,
       imageSha256: hashes?.imageSha256 ?? raw.imageSha256 ?? null,
       normalizedImageSha256: hashes?.normalizedImageSha256 ?? raw.normalizedImageSha256 ?? null,
       contentFingerprint
@@ -1018,24 +1032,30 @@ export class ArgusReceiptProcessor {
           logger.debug({ err }, '[ArgusReceiptProcessor] Passada 2 (crop) de QR local sem leitura');
         }
 
-        // Passada 3: binarização com threshold + sharpen convertida de volta para sRGB+RGBA (4 canais)
+        // Passada 3: binarização com threshold + sharpen convertida para 4 canais RGBA reais em JS
+        // (sharp .grayscale().toColourspace('srgb').ensureAlpha() gera 2 canais Gray+Alpha e falhava no jsQR)
         try {
-          const { data: threshData, info: threshInfo } = await sharp(cropBuffer)
+          const { data: threshGray, info: threshInfo } = await sharp(cropBuffer)
             .grayscale()
             .normalise()
             .sharpen()
             .threshold(135)
-            .toColourspace('srgb')
-            .ensureAlpha()
             .raw()
             .toBuffer({ resolveWithObject: true });
 
-          if (threshInfo.channels === 4) {
-            const qrThresh = jsQR(
-              new Uint8ClampedArray(threshData),
-              threshInfo.width,
-              threshInfo.height
-            );
+          if (threshInfo.channels === 1 && threshGray.length === threshInfo.width * threshInfo.height) {
+            const rgba = new Uint8ClampedArray(threshGray.length * 4);
+            for (let i = 0; i < threshGray.length; i++) {
+              const v = threshGray[i];
+              const o = i * 4;
+              rgba[o] = v;
+              rgba[o + 1] = v;
+              rgba[o + 2] = v;
+              rgba[o + 3] = 255;
+            }
+            const qrThresh = jsQR(rgba, threshInfo.width, threshInfo.height, {
+              inversionAttempts: 'attemptBoth'
+            });
             if (qrThresh?.data) {
               logger.info(
                 { qrUrl: qrThresh.data.slice(0, 60) },
@@ -1466,6 +1486,7 @@ export class ArgusReceiptProcessor {
         },
         accessKey: { type: Type.STRING },
         receiptNumber: { type: Type.STRING },
+        protocolNumber: { type: Type.STRING },
         items: {
           type: Type.ARRAY,
           items: {
@@ -1556,13 +1577,15 @@ REGRAS ESTRITAS:
 3. Se o CNPJ não estiver visível, retorne "" em storeCnpj.
 4. Se imageQuality = 'UNREADABLE', retorne documents: [] e documentsCount: 0.
 5. Em purchaseDate, extraia OBRIGATORIAMENTE a DATA e HORA IMPRESSA NO PAPEL do cupom/NF (ex: "14/09/2026 18:22:10"). NUNCA use a data de hoje se houver uma data impressa no papel; se a hora não estiver visível, use "12:00:00". Confira os 4 dígitos do ano com extremo cuidado (cupons atuais são de 2025/2026 — não confunda "2026" borrado com "2003", "2018" ou "2024"; se a chave de 44 dígitos estiver visível, os dígitos 3º-6º são AAMM da emissão). Só retorne "" se não houver nenhuma data impressa na foto.
-6. Em paymentMethod, leia a linha exata de FORMA DE PAGAMENTO / VALOR PAGO no rodapé do cupom e mapeie rigorosamente:
-   - 'VR_VA': Vale Alimentação, Vale Refeição, VA, VR, Alelo, Sodexo, Pluxee, Ticket, Ben Visa Vale, Caju, Flash, Swile, Cartão Alimentação/Refeição.
+6. Em paymentMethod, leia a linha exata de FORMA DE PAGAMENTO / VALOR PAGO no rodapé do cupom (e também o comprovante TEF/voucher logo abaixo se houver) e mapeie rigorosamente:
+   - 'VR_VA': Vale Alimentação, Vale Refeição, VA, VR, Alelo, Alelo Benefícios, Venda a Voucher, Sodexo, Pluxee, Ticket, Ben Visa Vale, Caju, Flash, Swile, Cartão Alimentação/Refeição.
    - 'PIX': Pix, QR Code Pix, Pagamento Instantâneo.
    - 'DEBIT': Cartão de Débito, Débito, Visa Electron, Maestro, Elo Débito.
    - 'CREDIT_CARD': Cartão de Crédito, Crédito.
    - 'CASH': Dinheiro, Espécie, Troco em dinheiro.
-   Nunca chute 'CREDIT_CARD' se o cupom indicar Alimentação/VR/VA, Débito, Pix ou Dinheiro.`
+   Nunca chute 'CREDIT_CARD' se o cupom indicar Alimentação/VR/VA/Voucher, Débito, Pix ou Dinheiro.
+7. Em accessKey, leia os 11 blocos de 4 dígitos da Chave de Acesso SEFAZ impressa no cupom (ex.: "3526 0750 4728 ...") e retorne os 44 dígitos contínuos SEM espaços. Se não houver chave de 44 dígitos, retorne "".
+8. Em protocolNumber, extraia os dígitos do Protocolo de Autorização impresso ao lado do QR Code (ex.: "Protocolo: 135265151343878" -> "135265151343878"). Se não houver, retorne "".`
               }
             ],
             config: {
@@ -2343,13 +2366,14 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
       });
       const storeId = canonicalStore.storeId;
 
-      // 2. Insere o cabeçalho do cupom (incluindo colunas multicamada de deduplicação + bucket FotosArgus)
+      // 2. Insere o cabeçalho do cupom (incluindo colunas multicamada de deduplicação + protocolo + URL NFC-e + bucket FotosArgus)
       const receiptRes = await client.query<{ id: string }>(
         `INSERT INTO argus.receipts (
            store_id, purchase_date, total_amount, discount_amount, payment_method, access_key, reconciled,
            storage_bucket, storage_path, original_size_bytes, compressed_size_bytes,
-           has_official_access_key, receipt_number, image_sha256, normalized_image_sha256, content_fingerprint
-         ) VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+           has_official_access_key, receipt_number, image_sha256, normalized_image_sha256, content_fingerprint,
+           protocol_number, nfce_url
+         ) VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          RETURNING id`,
         [
           storeId,
@@ -2366,7 +2390,9 @@ REGRAS ESTRITAS PARA O DOCUMENTO UNIFICADO:
           data.receiptNumber || null,
           data.imageSha256 || null,
           data.normalizedImageSha256 || null,
-          data.contentFingerprint || null
+          data.contentFingerprint || null,
+          data.protocolNumber || null,
+          data.nfceUrl || null
         ]
       );
       const receiptId = receiptRes.rows[0].id;

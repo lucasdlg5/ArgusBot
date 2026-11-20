@@ -686,6 +686,9 @@ export interface ReceiptDetailEntry {
   paymentMethod: PaymentMethod;
   reconciled: boolean;
   hasOfficialAccessKey?: boolean;
+  accessKey?: string | null;
+  protocolNumber?: string | null;
+  nfceUrl?: string | null;
   itemsCount: number;
   items: ReceiptDetailItem[];
 }

@@ -1,8 +1,10 @@
 export const CANONICAL_STORE_NE = 'NE SUPERMERCADO';
 export const CANONICAL_STORE_SOUZA = 'MERCADO SOUZA';
+export const CANONICAL_STORE_SHIBATA = 'SHIBATA SUPERMERCADOS';
 
 export type StoreMatchRule =
   | 'MERCADO_SOUZA'
+  | 'SHIBATA'
   | 'SIGLA_NE'
   | 'CLUBE_FIDELIDADE_NE'
   | 'RAZAO_SOCIAL_NOVA_EPOCA'
@@ -58,7 +60,7 @@ export function isMercadoSouzaVariant(rawName: string | null | undefined): boole
 
 export function detectNeSupermercadoRule(
   rawName: string | null | undefined
-): Exclude<StoreMatchRule, 'MERCADO_SOUZA' | 'REGISTRO_NAO_SOUZA_ATUAL' | 'PLACEHOLDER' | 'GENERIC'> | null {
+): Exclude<StoreMatchRule, 'MERCADO_SOUZA' | 'SHIBATA' | 'REGISTRO_NAO_SOUZA_ATUAL' | 'PLACEHOLDER' | 'GENERIC'> | null {
   const key = normalizeStoreTextKey(rawName);
   if (!key) return null;
 
@@ -112,6 +114,16 @@ export function classifyAndNormalizeStoreName(
       normalizedKey,
       canonicalName: CANONICAL_STORE_SOUZA,
       matchedRule: 'MERCADO_SOUZA',
+      isGenericPlaceholder: false
+    };
+  }
+
+  if (/\bSHIBATA\b/.test(normalizedKey)) {
+    return {
+      rawName: cleanRaw,
+      normalizedKey,
+      canonicalName: CANONICAL_STORE_SHIBATA,
+      matchedRule: 'SHIBATA',
       isGenericPlaceholder: false
     };
   }

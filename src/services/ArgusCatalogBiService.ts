@@ -137,6 +137,9 @@ interface RawReceiptRow {
   payment_method: PaymentMethod;
   reconciled: boolean;
   has_official_access_key?: boolean;
+  access_key?: string | null;
+  protocol_number?: string | null;
+  nfce_url?: string | null;
 }
 
 interface RawReceiptItemRow {
@@ -232,7 +235,10 @@ export class ArgusCatalogBiService {
              r.discount_amount::float8 AS discount_amount,
              r.payment_method,
              r.reconciled,
-             r.has_official_access_key
+             r.has_official_access_key,
+             r.access_key,
+             r.protocol_number,
+             r.nfce_url
            FROM argus.receipts r
            JOIN argus.stores s ON s.id = r.store_id
            ORDER BY r.purchase_date DESC
@@ -768,6 +774,18 @@ export class ArgusCatalogBiService {
     const receiptsDetailed: ReceiptDetailEntry[] = receiptsRaw.map((r) => {
       const matchedStore = storeById.get(r.store_id);
       const items = itemsByReceiptId.get(r.id) ?? [];
+      const cleanKey = (r.access_key || '').replace(/\D/g, '');
+      const hasOfficialKey =
+        Boolean(r.has_official_access_key) &&
+        /^\d{44}$/.test(cleanKey) &&
+        !cleanKey.startsWith('8888');
+      const resolvedNfceUrl =
+        (r.nfce_url && r.nfce_url.trim()) ||
+        (hasOfficialKey
+          ? cleanKey.startsWith('35')
+            ? `https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaPublica.aspx?chave=${cleanKey}`
+            : `https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&nfe=${cleanKey}`
+          : null);
       return {
         receiptId: r.id,
         storeId: r.store_id,
@@ -778,7 +796,10 @@ export class ArgusCatalogBiService {
         discountAmount: Number(r.discount_amount) || 0,
         paymentMethod: r.payment_method,
         reconciled: Boolean(r.reconciled),
-        hasOfficialAccessKey: Boolean(r.has_official_access_key),
+        hasOfficialAccessKey: hasOfficialKey,
+        accessKey: hasOfficialKey ? cleanKey : null,
+        protocolNumber: r.protocol_number || null,
+        nfceUrl: resolvedNfceUrl,
         itemsCount: items.length,
         items
       };
