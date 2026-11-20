@@ -164,7 +164,9 @@ export default function ArgusReceiptsPage() {
   const [reconciledFilter, setReconciledFilter] = useState<'ALL' | 'RECONCILED' | 'UNRECONCILED'>('ALL');
   const [paymentFilter, setPaymentFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<SortOption>('RECENT');
+  const RECEIPTS_PAGE_SIZE = 30;
   const [hideZeroReceipts, setHideZeroReceipts] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(RECEIPTS_PAGE_SIZE);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -585,11 +587,8 @@ export default function ArgusReceiptsPage() {
   }, [loadReceipts, triggerHighlightReceipts]);
 
   useEffect(() => {
-    if (!highlightParam || receipts.length === 0) return;
-    if (receipts.some((r) => r.receiptId === highlightParam)) {
-      triggerHighlightReceipts([highlightParam], true);
-    }
-  }, [highlightParam, receipts, triggerHighlightReceipts]);
+    setVisibleCount(RECEIPTS_PAGE_SIZE);
+  }, [searchQuery, storeFilter, monthFilter, reconciledFilter, paymentFilter, sortBy, hideZeroReceipts]);
 
   const availableMonths = useMemo(() => {
     const set = new Set<string>();
@@ -639,6 +638,30 @@ export default function ArgusReceiptsPage() {
     sortBy,
     hideZeroReceipts
   ]);
+
+  const visibleReceipts = useMemo(
+    () => filteredReceipts.slice(0, visibleCount),
+    [filteredReceipts, visibleCount]
+  );
+
+  useEffect(() => {
+    if (!highlightParam || receipts.length === 0) return;
+    if (!receipts.some((r) => r.receiptId === highlightParam)) return;
+    const idxInFiltered = filteredReceipts.findIndex((r) => r.receiptId === highlightParam);
+    if (idxInFiltered === -1) {
+      setSearchQuery('');
+      setStoreFilter('ALL');
+      setMonthFilter('ALL');
+      setReconciledFilter('ALL');
+      setPaymentFilter('ALL');
+      setHideZeroReceipts(false);
+      return;
+    }
+    if (idxInFiltered >= visibleCount) {
+      setVisibleCount(idxInFiltered + RECEIPTS_PAGE_SIZE);
+    }
+    triggerHighlightReceipts([highlightParam], true);
+  }, [highlightParam, receipts, filteredReceipts, visibleCount, triggerHighlightReceipts]);
 
   const summary = useMemo(() => {
     const totalSpent = filteredReceipts.reduce((acc, r) => acc + r.totalAmount, 0);
@@ -869,8 +892,8 @@ export default function ArgusReceiptsPage() {
               <span>Ocultar R$ 0,00</span>
             </label>
 
-            {filteredReceipts.length > 0 && (() => {
-              const anyExpanded = filteredReceipts.some((r) => Boolean(expandedIds[r.receiptId]));
+            {visibleReceipts.length > 0 && (() => {
+              const anyExpanded = visibleReceipts.some((r) => Boolean(expandedIds[r.receiptId]));
               return (
                 <button
                   type="button"
@@ -879,7 +902,7 @@ export default function ArgusReceiptsPage() {
                       setExpandedIds({});
                     } else {
                       const next: Record<string, boolean> = {};
-                      for (const r of filteredReceipts) next[r.receiptId] = true;
+                      for (const r of visibleReceipts) next[r.receiptId] = true;
                       setExpandedIds(next);
                     }
                   }}
@@ -920,7 +943,7 @@ export default function ArgusReceiptsPage() {
           </div>
         ) : (
           <section className="space-y-3">
-            {filteredReceipts.map((rec) => {
+            {visibleReceipts.map((rec) => {
               const isOpen = Boolean(expandedIds[rec.receiptId]);
               const isPossibleFlyer = rec.totalAmount <= 0;
               const isHighlighted = Boolean(highlightedIds[rec.receiptId]);
@@ -1260,6 +1283,21 @@ export default function ArgusReceiptsPage() {
                 </div>
               );
             })}
+
+            {filteredReceipts.length > visibleCount && (
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + RECEIPTS_PAGE_SIZE)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 hover:border-emerald-500/50 hover:text-emerald-200 px-5 py-2.5 text-xs font-semibold text-slate-200 transition-colors"
+                >
+                  <ChevronDown className="h-4 w-4 text-emerald-400" />
+                  <span>
+                    Mostrar mais notas (exibindo {visibleReceipts.length} de {filteredReceipts.length})
+                  </span>
+                </button>
+              </div>
+            )}
           </section>
         )}
       </div>

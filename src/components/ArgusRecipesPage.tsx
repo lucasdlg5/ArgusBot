@@ -170,9 +170,51 @@ const SAMPLE_RECIPE_TEMPLATES = [
 
 export default function ArgusRecipesPage() {
   const searchParams = useSearchParams();
-  const initialIdFromUrl = searchParams.get('id');
+  const highlightParam = searchParams.get('highlight') || '';
+  const initialIdFromUrl = searchParams.get('id') || highlightParam || null;
 
   const [recipes, setRecipes] = useState<RecipeCostEvaluation[]>([]);
+  const [highlightedIds, setHighlightedIds] = useState<Record<string, boolean>>({});
+  const highlightTimersRef = useRef<Map<string, number>>(new Map());
+
+  const triggerHighlightRecipes = useCallback((ids: string[], autoOpenAndScroll = false) => {
+    if (ids.length === 0) return;
+    setHighlightedIds((prev) => {
+      const next = { ...prev };
+      for (const id of ids) next[id] = true;
+      return next;
+    });
+    if (autoOpenAndScroll && ids[0]) {
+      setSelectedRecipeId(ids[0]);
+      setExpandedRecipeId(ids[0]);
+      window.setTimeout(() => {
+        const el = document.getElementById(`recipe-${ids[0]}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 220);
+    }
+    for (const id of ids) {
+      const existingTimer = highlightTimersRef.current.get(id);
+      if (existingTimer) window.clearTimeout(existingTimer);
+      const timerId = window.setTimeout(() => {
+        highlightTimersRef.current.delete(id);
+        setHighlightedIds((prev) => {
+          if (!prev[id]) return prev;
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }, 12000);
+      highlightTimersRef.current.set(id, timerId);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timers = highlightTimersRef.current;
+    return () => {
+      timers.forEach((timerId) => window.clearTimeout(timerId));
+      timers.clear();
+    };
+  }, []);
   const [homeLocation, setHomeLocation] = useState({
     lat: -23.55052,
     lng: -46.633308,
@@ -287,14 +329,42 @@ export default function ArgusRecipesPage() {
       homeLocation?: { lat: number; lng: number; address: string };
     }>(basePath, ({ data: payload }) => {
       if (Array.isArray(payload.recipesEvaluations)) {
-        setRecipes(payload.recipesEvaluations);
+        const incoming = payload.recipesEvaluations;
+        setRecipes((prev) => {
+          const prevIds = new Set(prev.map((r) => r.recipeId));
+          const newlyAdded = incoming
+            .filter((r) => !prevIds.has(r.recipeId))
+            .map((r) => r.recipeId);
+          if (newlyAdded.length > 0) {
+            triggerHighlightRecipes(newlyAdded, false);
+          }
+          return incoming;
+        });
       }
       if (payload.homeLocation) {
         setHomeLocation(payload.homeLocation);
       }
     });
     return () => unsubscribe();
-  }, [loadRecipes, initialIdFromUrl]);
+  }, [loadRecipes, initialIdFromUrl, triggerHighlightRecipes]);
+
+  useEffect(() => {
+    if (!highlightParam || recipes.length === 0) return;
+    if (!recipes.some((r) => r.recipeId === highlightParam)) return;
+    if (searchQuery || selectedTag !== 'TODAS') {
+      const isVisible = recipes.some(
+        (r) =>
+          r.recipeId === highlightParam &&
+          (selectedTag === 'TODAS' || (r.cuisineTags || []).includes(selectedTag)) &&
+          matchesRecipeSearch(r, searchQuery)
+      );
+      if (!isVisible) {
+        setSearchQuery('');
+        setSelectedTag('TODAS');
+      }
+    }
+    triggerHighlightRecipes([highlightParam], true);
+  }, [highlightParam, recipes, searchQuery, selectedTag, triggerHighlightRecipes]);
 
   const availableTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -1049,12 +1119,14 @@ export default function ArgusRecipesPage() {
                     filteredRecipes.map((rec, index) => {
                       const isSelected = activeRecipe?.recipeId === rec.recipeId;
                       const isExpanded = expandedRecipeId === rec.recipeId;
+                      const isHighlighted = Boolean(highlightedIds[rec.recipeId]);
                       const diffMeta = getDifficultyBadgeMeta(rec.difficulty);
                       const coldScore = rec.routeAnalysis?.coldChainScore ?? 94;
 
                       return (
                         <motion.div
                           key={rec.recipeId}
+                          id={`recipe-${rec.recipeId}`}
                           layout
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -1064,10 +1136,12 @@ export default function ArgusRecipesPage() {
                             layout: { type: 'spring', stiffness: 360, damping: 30 }
                           }}
                           whileHover={{ y: -2 }}
-                          className={`rounded-xl border transition-colors ${
-                            isSelected || isExpanded
-                              ? 'border-emerald-500/60 bg-emerald-950/25 shadow-lg shadow-emerald-950/25'
-                              : 'border-slate-800/80 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-900/70'
+                          className={`rounded-xl border transition-all duration-700 ${
+                            isHighlighted
+                              ? 'border-emerald-300/80 bg-emerald-900/35 ring-2 ring-emerald-400/45 shadow-lg shadow-emerald-500/15'
+                              : isSelected || isExpanded
+                                ? 'border-emerald-500/60 bg-emerald-950/25 shadow-lg shadow-emerald-950/25'
+                                : 'border-slate-800/80 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-900/70'
                           }`}
                         >
                           <button
@@ -1083,7 +1157,13 @@ export default function ArgusRecipesPage() {
                             className="w-full text-left p-3.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-xl"
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
+                              <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5">
+                                {isHighlighted && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 border border-emerald-300/60 px-2 py-0.5 text-[10px] font-bold text-emerald-200 animate-pulse">
+                                    <Sparkles className="h-2.5 w-2.5" />
+                                    Novo
+                                  </span>
+                                )}
                                 <p className="text-sm font-semibold text-white leading-snug">
                                   {rec.recipeName}
                                 </p>
