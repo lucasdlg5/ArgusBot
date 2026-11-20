@@ -101,9 +101,20 @@ function detectNewSnapshotItems(prevData: unknown, nextData: unknown): LiveNewIt
       itemId: recp.recipeId,
       title: 'Nova receita adicionada',
       subtitle: recp.recipeName,
-      href: `/receitas?id=${encodeURIComponent(recp.recipeId)}`,
+      href: `/receitas?highlight=${encodeURIComponent(recp.recipeId)}`,
       createdAt: now
     });
+  }
+
+  // Evita crescimento ilimitado em abas abertas por dias
+  if (emittedNotificationIds.size > 200) {
+    const excess = emittedNotificationIds.size - 200;
+    let removed = 0;
+    for (const k of emittedNotificationIds) {
+      emittedNotificationIds.delete(k);
+      removed += 1;
+      if (removed >= excess) break;
+    }
   }
 
   return notifications;
@@ -345,11 +356,14 @@ export async function fetchPublicDashboardFallback<T>(
     return resObj;
   };
 
-  inFlightSnapshotPromise = runFetch().finally(() => {
-    inFlightSnapshotPromise = null;
+  const promise = runFetch().finally(() => {
+    if (inFlightSnapshotPromise === promise) {
+      inFlightSnapshotPromise = null;
+    }
   });
+  inFlightSnapshotPromise = promise;
 
-  return (await inFlightSnapshotPromise) as PublicBiFetchResult<T>;
+  return (await promise) as PublicBiFetchResult<T>;
 }
 
 /**
@@ -416,7 +430,12 @@ export function subscribeToLiveSnapshotUpdates<T>(
     try {
       const parsed = JSON.parse(ev.newValue) as PersistedSnapshotEnvelope<T>;
       if (parsed?.result?.data) {
+        const prevData = clientSnapshotCache?.result?.data ?? null;
         clientSnapshotCache = parsed as PersistedSnapshotEnvelope<unknown>;
+        if (prevData) {
+          const newItems = detectNewSnapshotItems(prevData, parsed.result.data);
+          dispatchNewItemsNotifications(newItems);
+        }
         if (active) {
           onUpdate(parsed.result);
         }

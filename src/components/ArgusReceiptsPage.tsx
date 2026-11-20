@@ -258,6 +258,22 @@ export default function ArgusReceiptsPage() {
   } | null>(null);
   const [deletingItem, setDeletingItem] = useState(false);
 
+  useEffect(() => {
+    if (!editingReceipt && !itemModal && !confirmDeleteItem) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (confirmDeleteItem && !deletingItem) {
+        setConfirmDeleteItem(null);
+      } else if (itemModal && !savingItem) {
+        setItemModal(null);
+      } else if (editingReceipt && !savingReceipt) {
+        setEditingReceipt(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [editingReceipt, itemModal, confirmDeleteItem, savingReceipt, savingItem, deletingItem]);
+
   function openEditReceiptModal(rec: ReceiptDetailEntry) {
     const itemsSum = rec.items.reduce((acc, it) => acc + it.totalPrice, 0);
     setEditingReceipt({

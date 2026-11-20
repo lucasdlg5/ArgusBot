@@ -151,7 +151,9 @@ export default function ArgusProductsPage() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('ALL');
   const [storeFilter, setStoreFilter] = useState<string>(initialStoreParam);
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const PRODUCTS_PAGE_SIZE = 40;
   const [sortBy, setSortBy] = useState<SortOption>('RECENT');
+  const [visibleCount, setVisibleCount] = useState(PRODUCTS_PAGE_SIZE);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   const [editingProduct, setEditingProduct] = useState<{
@@ -222,15 +224,19 @@ export default function ArgusProductsPage() {
   }, [loadProducts, triggerHighlightProducts]);
 
   useEffect(() => {
-    if (!highlightParam || products.length === 0) return;
-    if (!products.some((p) => p.id === highlightParam)) return;
-    if (!claimUrlHighlight(highlightParam)) return;
-    setSearchQuery('');
-    setSourceFilter('ALL');
-    setStoreFilter('ALL');
-    setCategoryFilter('ALL');
-    triggerHighlightProducts([highlightParam], true);
-  }, [highlightParam, products, claimUrlHighlight, triggerHighlightProducts]);
+    if (!editingProduct || savingProduct) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) {
+        setEditingProduct(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [editingProduct, savingProduct]);
+
+  useEffect(() => {
+    setVisibleCount(PRODUCTS_PAGE_SIZE);
+  }, [sourceFilter, storeFilter, categoryFilter, searchQuery, sortBy]);
 
   useEffect(() => {
     if (initialStoreParam && initialStoreParam !== 'ALL') {
@@ -298,6 +304,27 @@ export default function ArgusProductsPage() {
     }
     return sorted;
   }, [products, sourceFilter, storeFilter, categoryFilter, searchQuery, sortBy]);
+
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleCount),
+    [filteredProducts, visibleCount]
+  );
+
+  useEffect(() => {
+    if (!highlightParam || products.length === 0) return;
+    if (!products.some((p) => p.id === highlightParam)) return;
+    if (!claimUrlHighlight(highlightParam)) return;
+    const idxInFiltered = filteredProducts.findIndex((p) => p.id === highlightParam);
+    if (idxInFiltered === -1) {
+      setSearchQuery('');
+      setSourceFilter('ALL');
+      setStoreFilter('ALL');
+      setCategoryFilter('ALL');
+    } else if (idxInFiltered >= visibleCount) {
+      setVisibleCount(idxInFiltered + PRODUCTS_PAGE_SIZE);
+    }
+    triggerHighlightProducts([highlightParam], true);
+  }, [highlightParam, products, filteredProducts, visibleCount, claimUrlHighlight, triggerHighlightProducts]);
 
   const summaryStats = useMemo(() => {
     const uniqueProds = new Set(
@@ -680,7 +707,7 @@ export default function ArgusProductsPage() {
             </div>
 
             <div className="divide-y divide-slate-800/70">
-              {filteredProducts.map((item) => {
+              {visibleProducts.map((item) => {
                 const isExpanded = expandedRowId === item.id;
                 const sourceMeta = getSourceMeta(item.sourceKind);
                 const SourceIcon = sourceMeta.Icon;
@@ -945,15 +972,33 @@ export default function ArgusProductsPage() {
                 );
               })}
             </div>
+            {filteredProducts.length > visibleCount && (
+              <div className="border-t border-slate-800/80 bg-slate-950/50 p-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + PRODUCTS_PAGE_SIZE)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/90 hover:border-emerald-500/50 hover:text-emerald-200 px-5 py-2 text-xs font-semibold text-slate-200 transition-colors"
+                >
+                  <ChevronDown className="h-4 w-4 text-emerald-400" />
+                  <span>
+                    Mostrar mais produtos (exibindo {visibleProducts.length} de {filteredProducts.length})
+                  </span>
+                </button>
+              </div>
+            )}
           </section>
         )}
       </div>
 
       {/* MODAL DE EDIÇÃO DE PRODUTO */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
+          onClick={() => !savingProduct && setEditingProduct(null)}
+        >
           <form
             onSubmit={handleSaveProduct}
+            onClick={(e) => e.stopPropagation()}
             className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between gap-3">

@@ -48,8 +48,21 @@ export function ArgusLiveToastNotifier() {
         const existingUids = new Set(prev.map((t) => t.uid));
         const fresh = incoming.filter((item) => !existingUids.has(item.uid));
         if (fresh.length === 0) return prev;
-        fresh.forEach((item) => scheduleDismiss(item.uid));
-        return [...fresh, ...prev].slice(0, 3);
+        const combined = [...fresh, ...prev];
+        const kept = combined.slice(0, 3);
+        const evicted = combined.slice(3);
+        for (const item of evicted) {
+          const t = timersRef.current.get(item.uid);
+          if (t) {
+            window.clearTimeout(t);
+            timersRef.current.delete(item.uid);
+          }
+          hoveredRef.current.delete(item.uid);
+        }
+        fresh
+          .filter((item) => kept.some((k) => k.uid === item.uid))
+          .forEach((item) => scheduleDismiss(item.uid));
+        return kept;
       });
     };
 
