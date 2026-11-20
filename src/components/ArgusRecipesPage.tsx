@@ -509,23 +509,23 @@ export default function ArgusRecipesPage() {
   }
 
   async function handleCopyShoppingList(rec: RecipeCostEvaluation) {
+    const scaledServings = Math.max(1, Math.round(rec.servings * portionMultiplier));
     const lines = [
-      `🛒 Lista de Compras Argus — ${rec.recipeName} (${Math.round(
-        rec.servings * portionMultiplier
-      )} porções)`,
-      `💰 Menor Custo Possível: R$ ${(rec.lowestPossibleCashCost * portionMultiplier).toFixed(2)}`,
-      `🏪 Melhor Mercado Único: ${rec.bestSingleStoreName} (R$ ${(
-        rec.bestSingleStoreCashCost * portionMultiplier
+      `🛒 Lista de Compras Argus — ${rec.recipeName} (${scaledServings} porções)`,
+      `🍽️ Custo por Porção: R$ ${rec.proportionalCostPerPortion.toFixed(2)} (Na receita: R$ ${(
+        rec.lowestPossibleProportionalCost * portionMultiplier
       ).toFixed(2)})`,
+      `💰 Embalagens fechadas (caixa): R$ ${(rec.lowestPossibleCashCost * portionMultiplier).toFixed(2)}`,
+      `🏪 Melhor Mercado Único: ${rec.bestSingleStoreName}`,
       '',
       '🧊 Ordem Anti-Perecíveis (1º Despensa → 4º Carnes/Congelados):'
     ];
     for (const ing of rec.ingredientsBreakdown) {
       const qtyStr = formatQty(ing.requiredBaseQty * portionMultiplier, ing.baseUnit);
       lines.push(
-        `• [${ing.perishabilityRank}º] ${ing.productName} (${qtyStr}) — ${ing.bestStoreName} · R$ ${(
-          ing.cashOutlayCost * portionMultiplier
-        ).toFixed(2)}`
+        `• [${ing.perishabilityRank}º] ${ing.productName} (${qtyStr}) — ${ing.bestStoreName} · no prato R$ ${(
+          ing.proportionalCost * portionMultiplier
+        ).toFixed(2)} (emb.: R$ ${(ing.cashOutlayCost * portionMultiplier).toFixed(2)})`
       );
     }
     try {
@@ -1149,8 +1149,12 @@ export default function ArgusRecipesPage() {
                                 </p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs font-bold text-emerald-400 tabular-nums">
-                                  R$ {rec.lowestPossibleCashCost.toFixed(2)}
+                                <span
+                                  className="text-xs font-bold text-emerald-400 tabular-nums"
+                                  title="Custo proporcional por porção"
+                                >
+                                  R$ {rec.proportionalCostPerPortion.toFixed(2)}
+                                  <span className="text-[10px] font-medium text-emerald-300/80">/porção</span>
                                 </span>
                                 <motion.span
                                   animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -1183,8 +1187,8 @@ export default function ArgusRecipesPage() {
 
                             <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
                               <span className="truncate">{rec.bestSingleStoreName}</span>
-                              <span className="text-emerald-400/90 tabular-nums shrink-0">
-                                R$ {rec.proportionalCostPerPortion.toFixed(2)}/porção
+                              <span className="text-slate-400 tabular-nums shrink-0">
+                                Receita: R$ {rec.lowestPossibleProportionalCost.toFixed(2)}
                               </span>
                             </div>
                           </button>
@@ -1542,20 +1546,27 @@ export default function ArgusRecipesPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div className="rounded-lg border border-emerald-500/35 bg-emerald-950/15 p-4">
                                 <p className="text-xs font-medium text-emerald-300">
-                                  Preço Total da Receita (Melhor Combinação)
+                                  Custo por Porção (Uso Real na Receita)
                                 </p>
                                 <p className="text-2xl font-bold text-emerald-400 mt-1 tabular-nums">
-                                  R${' '}
-                                  {(activeRecipe.lowestPossibleCashCost * portionMultiplier).toFixed(
-                                    2
-                                  )}
+                                  R$ {activeRecipe.proportionalCostPerPortion.toFixed(2)}
+                                  <span className="text-xs font-medium text-emerald-300/80 ml-1">
+                                    /porção
+                                  </span>
                                 </p>
                                 <p className="text-[11px] text-slate-300 mt-1 tabular-nums">
-                                  Na receita (proporcional): R${' '}
-                                  {(
-                                    activeRecipe.lowestPossibleProportionalCost * portionMultiplier
-                                  ).toFixed(2)}{' '}
-                                  (R$ {activeRecipe.proportionalCostPerPortion.toFixed(2)}/porção) ·{' '}
+                                  Receita inteira ({Math.max(1, Math.round(activeRecipe.servings * portionMultiplier))}{' '}
+                                  porções):{' '}
+                                  <strong className="text-white">
+                                    R${' '}
+                                    {(
+                                      activeRecipe.lowestPossibleProportionalCost * portionMultiplier
+                                    ).toFixed(2)}
+                                  </strong>
+                                </p>
+                                <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
+                                  Embalagens fechadas (se comprar tudo do zero): R${' '}
+                                  {(activeRecipe.lowestPossibleCashCost * portionMultiplier).toFixed(2)} ·{' '}
                                   {activeRecipe.lowestPossibleStoresCount} mercado(s)
                                 </p>
                               </div>
@@ -1568,15 +1579,30 @@ export default function ArgusRecipesPage() {
                                   <Store className="h-4 w-4 text-amber-400 shrink-0" />
                                   <span className="truncate">{activeRecipe.bestSingleStoreName}</span>
                                 </p>
-                                <p className="text-sm font-semibold text-amber-300 mt-0.5 tabular-nums">
-                                  R${' '}
-                                  {(activeRecipe.bestSingleStoreCashCost * portionMultiplier).toFixed(
-                                    2
-                                  )}{' '}
-                                  <span className="text-[11px] font-normal text-slate-400">
-                                    ({activeRecipe.bestSingleStoreCoveragePct}% dos itens encontrados)
-                                  </span>
-                                </p>
+                                {(() => {
+                                  const bestQuote = activeRecipe.storeQuotes[0];
+                                  const bestPropScaled =
+                                    (bestQuote?.totalProportionalCost ??
+                                      activeRecipe.lowestPossibleProportionalCost) * portionMultiplier;
+                                  const bestPropPerPortion =
+                                    bestPropScaled /
+                                    Math.max(1, Math.round(activeRecipe.servings * portionMultiplier));
+                                  return (
+                                    <>
+                                      <p className="text-sm font-semibold text-amber-300 mt-0.5 tabular-nums">
+                                        R$ {bestPropPerPortion.toFixed(2)}/porção{' '}
+                                        <span className="text-[11px] font-normal text-slate-400">
+                                          (receita: R$ {bestPropScaled.toFixed(2)})
+                                        </span>
+                                      </p>
+                                      <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
+                                        Embalagens fechadas: R${' '}
+                                        {(activeRecipe.bestSingleStoreCashCost * portionMultiplier).toFixed(2)} ·{' '}
+                                        {activeRecipe.bestSingleStoreCoveragePct}% dos itens encontrados
+                                      </p>
+                                    </>
+                                  );
+                                })()}
                               </div>
 
                               <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
@@ -1590,30 +1616,34 @@ export default function ArgusRecipesPage() {
                               </div>
                             </div>
 
-                            {/* INGREDIENTES & PREÇO TOTAL DA RECEITA (ANTES DO MODO DE PREPARO) */}
+                            {/* INGREDIENTES & CUSTO NA RECEITA (ANTES DO MODO DE PREPARO) */}
                             <div className="rounded-xl border border-slate-800 bg-slate-950/70 overflow-hidden">
                               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 px-4 py-3.5 bg-slate-900/50">
                                 <div>
                                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                                     <ShoppingCart className="h-4 w-4 text-emerald-400" />
-                                    Ingredientes &amp; Preço Total
+                                    Ingredientes &amp; Custo na Receita
                                   </h3>
                                   <p className="text-xs text-slate-400 mt-0.5">
                                     {activeRecipe.ingredientsBreakdown.length} ingredientes para{' '}
                                     {Math.max(1, Math.round(activeRecipe.servings * portionMultiplier))}{' '}
-                                    porções · marque o que já tem em casa
+                                    porções · valores proporcionais à quantidade usada no prato
                                   </p>
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3">
                                   <div className="text-right">
                                     <span className="text-[10px] uppercase tracking-wider text-slate-400 block">
-                                      Total da Receita
+                                      Custo por Porção
                                     </span>
                                     <span className="text-lg font-bold text-emerald-400 tabular-nums">
-                                      R${' '}
+                                      R$ {activeRecipe.proportionalCostPerPortion.toFixed(2)}
+                                    </span>
+                                    <span className="block text-[10px] text-slate-400 tabular-nums">
+                                      Receita: R${' '}
                                       {(
-                                        activeRecipe.lowestPossibleCashCost * portionMultiplier
+                                        activeRecipe.lowestPossibleProportionalCost *
+                                        portionMultiplier
                                       ).toFixed(2)}
                                     </span>
                                   </div>
@@ -1682,12 +1712,12 @@ export default function ArgusRecipesPage() {
                                       </div>
 
                                       <div className="text-right shrink-0 tabular-nums">
-                                        <p className="text-sm font-bold text-white">
-                                          R$ {(ing.cashOutlayCost * portionMultiplier).toFixed(2)}
+                                        <p className="text-sm font-bold text-emerald-300">
+                                          R$ {(ing.proportionalCost * portionMultiplier).toFixed(2)}
                                         </p>
                                         <p className="text-[11px] text-slate-400">
-                                          no prato: R${' '}
-                                          {(ing.proportionalCost * portionMultiplier).toFixed(2)}
+                                          embalagem: R${' '}
+                                          {(ing.cashOutlayCost * portionMultiplier).toFixed(2)}
                                         </p>
                                       </div>
                                     </button>
@@ -1698,26 +1728,29 @@ export default function ArgusRecipesPage() {
                               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/80 bg-slate-900/40 px-4 py-3 text-xs">
                                 <div className="flex flex-wrap items-center gap-4 text-slate-300 tabular-nums">
                                   <span>
-                                    Compra total:{' '}
+                                    Por porção:{' '}
                                     <strong className="text-emerald-400">
-                                      R${' '}
-                                      {(
-                                        activeRecipe.lowestPossibleCashCost * portionMultiplier
-                                      ).toFixed(2)}
+                                      R$ {activeRecipe.proportionalCostPerPortion.toFixed(2)}
                                     </strong>
                                   </span>
                                   <span>
-                                    Custo proporcional:{' '}
+                                    Na receita:{' '}
                                     <strong className="text-white">
                                       R${' '}
                                       {(
                                         activeRecipe.lowestPossibleProportionalCost *
                                         portionMultiplier
                                       ).toFixed(2)}
-                                    </strong>{' '}
-                                    <span className="text-slate-400">
-                                      (R$ {activeRecipe.proportionalCostPerPortion.toFixed(2)}/porção)
-                                    </span>
+                                    </strong>
+                                  </span>
+                                  <span className="text-slate-400">
+                                    Embalagens fechadas (caixa):{' '}
+                                    <strong className="text-slate-300">
+                                      R${' '}
+                                      {(
+                                        activeRecipe.lowestPossibleCashCost * portionMultiplier
+                                      ).toFixed(2)}
+                                    </strong>
                                   </span>
                                 </div>
                                 <button
@@ -2251,9 +2284,14 @@ export default function ArgusRecipesPage() {
                                   {activeRecipe.storeQuotes.map((sq, idx) => {
                                     const cashScaled = sq.totalCashCost * portionMultiplier;
                                     const propScaled = sq.totalProportionalCost * portionMultiplier;
+                                    const scaledServings = Math.max(
+                                      1,
+                                      Math.round(activeRecipe.servings * portionMultiplier)
+                                    );
+                                    const propPerPortion = propScaled / scaledServings;
                                     const diff =
-                                      cashScaled -
-                                      activeRecipe.lowestPossibleCashCost * portionMultiplier;
+                                      propScaled -
+                                      activeRecipe.lowestPossibleProportionalCost * portionMultiplier;
                                     const isBestSingle = idx === 0;
                                     return (
                                       <tr
@@ -2277,10 +2315,15 @@ export default function ArgusRecipesPage() {
                                           {sq.matchedIngredientsCount}/{sq.totalIngredientsCount} itens (
                                           {sq.coveragePct}%)
                                         </td>
-                                        <td className="py-2.5 px-3 text-right tabular-nums text-slate-200">
-                                          R$ {propScaled.toFixed(2)}
+                                        <td className="py-2.5 px-3 text-right tabular-nums">
+                                          <span className="font-bold text-emerald-300 block">
+                                            R$ {propPerPortion.toFixed(2)}/porção
+                                          </span>
+                                          <span className="text-[10px] text-slate-400">
+                                            receita: R$ {propScaled.toFixed(2)}
+                                          </span>
                                         </td>
-                                        <td className="py-2.5 px-3 text-right tabular-nums font-bold text-white">
+                                        <td className="py-2.5 px-3 text-right tabular-nums text-slate-300">
                                           R$ {cashScaled.toFixed(2)}
                                         </td>
                                         <td className="py-2.5 px-3 text-right tabular-nums text-amber-300">

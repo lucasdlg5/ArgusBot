@@ -349,7 +349,7 @@ export default function RecipeStoreComparisonCard({
   portionMultiplier = 1,
   onRecipeUpdated
 }: RecipeStoreComparisonCardProps) {
-  const [costBasis, setCostBasis] = useState<CostBasis>('CASH');
+  const [costBasis, setCostBasis] = useState<CostBasis>('PROPORTIONAL');
   const [historyLens, setHistoryLens] = useState<HistoryLens>('WEIGHTED');
   const [scopeMode, setScopeMode] = useState<ScopeMode>('FULL');
   const [trendWindow, setTrendWindow] = useState<TrendWindow>('6M');
