@@ -529,9 +529,6 @@ export default function ArgusReceiptsPage() {
           const json = (await res.json()) as ReceiptsApiResponse;
           setReceipts(json.receiptsDetailed || []);
           setStores(json.storesBi || []);
-          if ((json.receiptsDetailed || []).length > 0) {
-            setExpandedId((prev) => prev || json.receiptsDetailed![0].receiptId);
-          }
           return;
         }
       }
@@ -541,9 +538,6 @@ export default function ArgusReceiptsPage() {
       const list = payload.receiptsDetailed || [];
       setReceipts(list);
       setStores(payload.storesBi || []);
-      if (list.length > 0) {
-        setExpandedId((prev) => prev || list[0].receiptId);
-      }
     } catch (err) {
       setErrorMsg((err as Error).message || 'Falha ao carregar notas fiscais.');
     } finally {
