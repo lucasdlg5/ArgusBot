@@ -9,6 +9,7 @@ import {
   subscribeToLiveSnapshotUpdates
 } from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
+import { ArgusStoreCombobox } from '@/components/ArgusStoreCombobox';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { motion } from 'motion/react';
 import {
@@ -553,23 +554,23 @@ export default function ArgusStoresPage() {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <label htmlFor="store-switcher" className="text-xs text-slate-400">
-                  Trocar mercado:
-                </label>
-                <select
-                  id="store-switcher"
+                <span className="text-xs text-slate-400">Trocar mercado:</span>
+                <ArgusStoreCombobox
+                  compact
+                  ariaLabel="Trocar mercado"
                   value={selectedStore.storeId}
-                  onChange={(e) =>
-                    router.push(`/mercados?id=${encodeURIComponent(e.target.value)}`)
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                >
-                  {stores.map((st) => (
-                    <option key={st.storeId} value={st.storeId} className="bg-slate-950">
-                      {st.tradingName} ({formatCurrency(st.totalSpentAllTime)})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => {
+                    if (val) router.push(`/mercados?id=${encodeURIComponent(val)}`);
+                  }}
+                  options={stores.map((st) => ({
+                    id: st.storeId,
+                    name: st.tradingName,
+                    subtitle: `${formatCurrency(st.totalSpentAllTime)} • ${st.receiptsCount} ${st.receiptsCount === 1 ? 'nota' : 'notas'}`
+                  }))}
+                  hidePlaceholders={false}
+                  placeholder="Buscar mercado..."
+                  className="w-60"
+                />
               </div>
             </section>
 

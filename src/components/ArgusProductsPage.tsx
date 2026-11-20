@@ -9,6 +9,7 @@ import {
   subscribeToLiveSnapshotUpdates
 } from '@/lib/public-bi-client';
 import { ArgusWakeupLoading } from '@/components/ArgusWakeupLoading';
+import { ArgusStoreCombobox } from '@/components/ArgusStoreCombobox';
 import { APP_VERSION_LABEL } from '@/config/version';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -571,24 +572,21 @@ export default function ArgusProductsPage() {
                 ))}
               </div>
 
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-300">
-                <Store className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                <select
-                  aria-label="Filtrar por mercado"
-                  value={storeFilter}
-                  onChange={(e) => setStoreFilter(e.target.value)}
-                  className="bg-transparent text-xs text-slate-200 focus:outline-none"
-                >
-                  <option value="ALL" className="bg-slate-950">
-                    Todos os mercados
-                  </option>
-                  {availableStores.map((st) => (
-                    <option key={st.id} value={st.id} className="bg-slate-950">
-                      {st.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <ArgusStoreCombobox
+                compact
+                ariaLabel="Filtrar por mercado"
+                value={storeFilter}
+                onChange={(val) => setStoreFilter(val)}
+                options={availableStores.map((st) => ({
+                  id: st.id,
+                  name: st.name
+                }))}
+                allOptionLabel="Todos os mercados"
+                allOptionValue="ALL"
+                hidePlaceholders={false}
+                placeholder="Buscar mercado..."
+                className="w-48"
+              />
 
               <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-300">
                 <Filter className="h-3.5 w-3.5 text-slate-500 shrink-0" />
