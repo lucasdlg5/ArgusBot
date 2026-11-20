@@ -143,7 +143,7 @@ export default function ArgusReceiptsPage() {
       return next;
     });
     if (autoOpenAndScroll && ids[0]) {
-      setExpandedId(ids[0]);
+      setExpandedIds((prev) => ({ ...prev, [ids[0]]: true }));
       window.setTimeout(() => {
         const el = document.getElementById(`receipt-${ids[0]}`);
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -165,7 +165,23 @@ export default function ArgusReceiptsPage() {
   const [paymentFilter, setPaymentFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<SortOption>('RECENT');
   const [hideZeroReceipts, setHideZeroReceipts] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setExpandedIds((prev) => {
+      const validIds = new Set(receipts.map((r) => r.receiptId));
+      let changed = false;
+      const next: Record<string, boolean> = {};
+      for (const id of Object.keys(prev)) {
+        if (prev[id] && validIds.has(id)) {
+          next[id] = true;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [receipts]);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [copiedKeyReceiptId, setCopiedKeyReceiptId] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
@@ -795,19 +811,25 @@ export default function ArgusReceiptsPage() {
               <option value="UNRECONCILED">Sem conciliação</option>
             </select>
 
-            <select
-              aria-label="Filtrar por mercado"
+            <ArgusStoreCombobox
+              compact
+              ariaLabel="Filtrar por mercado"
               value={storeFilter}
-              onChange={(e) => setStoreFilter(e.target.value)}
-              className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="ALL">Todos os mercados</option>
-              {stores.map((st) => (
-                <option key={st.storeId} value={st.storeId}>
-                  {st.tradingName}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setStoreFilter(val)}
+              options={stores.map((st) => ({
+                id: st.storeId,
+                name: st.tradingName,
+                subtitle:
+                  st.receiptsCount > 0
+                    ? `${st.receiptsCount} ${st.receiptsCount === 1 ? 'nota' : 'notas'}`
+                    : undefined
+              }))}
+              allOptionLabel="Todos os mercados"
+              allOptionValue="ALL"
+              hidePlaceholders={false}
+              placeholder="Buscar mercado..."
+              className="w-48"
+            />
 
             <select
               aria-label="Filtrar por pagamento"
@@ -846,6 +868,30 @@ export default function ArgusReceiptsPage() {
               />
               <span>Ocultar R$ 0,00</span>
             </label>
+
+            {filteredReceipts.length > 0 && (() => {
+              const anyExpanded = filteredReceipts.some((r) => Boolean(expandedIds[r.receiptId]));
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (anyExpanded) {
+                      setExpandedIds({});
+                    } else {
+                      const next: Record<string, boolean> = {};
+                      for (const r of filteredReceipts) next[r.receiptId] = true;
+                      setExpandedIds(next);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 hover:border-emerald-500/50 hover:text-emerald-300 px-3 py-2 text-xs text-slate-300 transition-colors"
+                >
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${anyExpanded ? 'rotate-180 text-emerald-400' : 'text-slate-500'}`}
+                  />
+                  <span>{anyExpanded ? 'Recolher todas' : 'Expandir todas'}</span>
+                </button>
+              );
+            })()}
           </div>
         </section>
 
@@ -875,7 +921,7 @@ export default function ArgusReceiptsPage() {
         ) : (
           <section className="space-y-3">
             {filteredReceipts.map((rec) => {
-              const isOpen = expandedId === rec.receiptId;
+              const isOpen = Boolean(expandedIds[rec.receiptId]);
               const isPossibleFlyer = rec.totalAmount <= 0;
               const isHighlighted = Boolean(highlightedIds[rec.receiptId]);
               return (
@@ -892,7 +938,12 @@ export default function ArgusReceiptsPage() {
                 >
                   <button
                     type="button"
-                    onClick={() => setExpandedId(isOpen ? null : rec.receiptId)}
+                    onClick={() =>
+                      setExpandedIds((prev) => ({
+                        ...prev,
+                        [rec.receiptId]: !prev[rec.receiptId]
+                      }))
+                    }
                     className="w-full px-4 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-left hover:bg-slate-900/80 transition-colors"
                   >
                     <div className="space-y-1 min-w-0">

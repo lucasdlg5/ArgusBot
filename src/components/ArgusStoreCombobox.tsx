@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Check, ChevronDown, Plus, Store, X } from 'lucide-react';
 
 export interface StoreComboboxOption {
@@ -73,10 +73,8 @@ export function ArgusStoreCombobox({
   const [localQuery, setLocalQuery] = useState('');
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const listboxId = useMemo(
-    () => `argus-store-listbox-${Math.random().toString(36).slice(2, 8)}`,
-    []
-  );
+  const reactId = useId();
+  const listboxId = `argus-store-listbox-${reactId}`;
 
   const normalizedOptions = useMemo(() => {
     const seen = new Set<string>();
