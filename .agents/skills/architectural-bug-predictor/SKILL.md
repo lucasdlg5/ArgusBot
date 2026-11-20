@@ -30,19 +30,19 @@ Antes de finalizar qualquer entrega técnica, avalie ativamente os seguintes cen
 - **Recursos & Servidor:** Vazamentos de memória (*memory leaks*), *connection pools* esgotados (banco/HTTP), falta de paginação em consultas que crescem ao longo do tempo, bloqueio da *event loop* ou threads principais.
 - **Resiliência & Falhas Silenciosas:** Exceções engolidas sem log adequado (`.catch(() => {})` sem observabilidade), falta de validação de contratos/schemas na entrada e saída de serviços, ausência de *graceful shutdown* ou *health checks* reais.
 
-## 3. Caça a Otimizações Conhecidas
+## 3. Caça a Otimizações Conhecidas (Executar ANTES do Commit)
 
-Identifique gargalos clássicos e sugira/aplique padrões consolidados para a stack (`Node.js/TypeScript`, `Next.js`, `PostgreSQL/Supabase`, `Python/FastAPI/OpenCV`, `Render`):
-- Queries N+1 e falta de índices em colunas filtradas/ordenadas
-- Ausência de cache para dados quentes ou recálculo excessivo de snapshots
-- Payloads excessivos sem compressão ou limites
-- Chamadas síncronas pesadas que deveriam ser assíncronas via fila
+Antes de finalizar o commit/deploy, faça a varredura completa do fluxo afetado e **aplique imediatamente no mesmo lote** todas as otimizações seguras e de escopo contido (sem deixar micro-melhorias para um segundo deploy):
+- Queries N+1, falta de índices ou ausência de paginação em listas que crescem
+- Ausência de cache, sincronização entre abas ou recálculo excessivo de snapshots
+- Vazamentos de memória/timers, *hydration mismatches* (SSR), estados órfãos e atalhos de teclado/acessibilidade
+- Duplicação de lógica entre telas que pode ser consolidada em hooks/componentes compartilhados
+- Payloads excessivos sem compressão ou limites e chamadas síncronas pesadas que devem ir para fila
 
 ## 4. Formato Obrigatório de Resposta
 
-Ao final das entregas técnicas (correções de bugs, propostas de arquitetura ou auditorias), inclua a seção curta e objetiva:
+Ao final das entregas técnicas, inclua um resumo objetivo sob:
 
 ### 🔍 Análise Preditiva & Otimizações Sistêmicas
-1. **Riscos Futuros Detectados:** O que pode quebrar com aumento de carga, latência de rede ou falha de serviço vizinho (com severidade: **Alta** / **Média** / **Baixa**).
-2. **Otimizações Recomendadas:** Melhorias práticas de performance, segurança ou resiliência aplicáveis agora.
-3. **Próximo Passo Prático:** Uma ação imediata que podemos executar para mitigar o risco principal.
+1. **Riscos Prevenidos e Otimizações Aplicadas neste Commit:** Lista curta dos riscos/gargalos já mitigados na própria entrega (evitando novo deploy).
+2. **Riscos Remanescentes / Decisões Pendentes (somente se houver):** Liste apenas pontos que genuinamente exijam decisão arquitetural, mudança de infraestrutura ou aprovação de escopo — **nunca** invente micro-otimizações triviais que poderiam ter sido aplicadas no mesmo commit.

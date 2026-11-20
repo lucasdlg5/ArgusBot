@@ -13,3 +13,6 @@
   - Em seguida, execute sempre `git pull --rebase origin main` seguido de `git push origin main` para sincronizar eventuais commits do servidor/CI e publicar as mudanças no GitHub, informando a versão publicada ao usuário.
 - **Segurança antes do commit:**
   - Antes de fazer o commit, verifique com `git status` para garantir que arquivos temporários, segredos ou `.env` não sejam incluídos.
+- **Auditoria pré-commit e entrega consolidada (evitar micro-deploys):**
+  - Antes de versionar, commitar e dar `push`, faça uma análise aprofundada do fluxo completo impactado (casos de borda, memória/timers, hidratação SSR, paginação, sincronização, consistência visual e reutilização de código) e **aplique todas as melhorias e otimizações seguras no mesmo commit**.
+  - Evite commitar uma primeira versão parcial e propor pequenas otimizações em seguida que obriguem novos ciclos de deploy; só deixe itens fora do commit quando envolverem mudança de escopo, risco arquitetural relevante ou dependência externa que exija confirmação do usuário.
