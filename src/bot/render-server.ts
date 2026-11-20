@@ -206,7 +206,7 @@ async function main() {
           return;
         }
         snapshotCache = null;
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'ok', ...result }));
       } catch (err) {
@@ -229,7 +229,7 @@ async function main() {
           return;
         }
         snapshotCache = null;
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'ok', ...result }));
       } catch (err) {
@@ -257,7 +257,7 @@ async function main() {
           return;
         }
         snapshotCache = null;
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         res.writeHead(201, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'ok', ...result }));
       } catch (err) {
@@ -289,7 +289,7 @@ async function main() {
           return;
         }
         snapshotCache = null;
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'ok', ...result }));
       } catch (err) {
@@ -316,7 +316,7 @@ async function main() {
           return;
         }
         snapshotCache = null;
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'ok', ...result }));
       } catch (err) {
@@ -463,7 +463,7 @@ async function main() {
         }
 
         const saved = await recipeService.saveRecipeToDatabase(extracted);
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         res.writeHead(201, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'ok', saved }));
       } catch (err) {
@@ -497,7 +497,7 @@ async function main() {
         const { updatedRecipe } = await recipeService.updateRecipeIngredient(
           body as UpdateRecipeIngredientInput
         );
-        dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'ok', recipe: updatedRecipe }));
       } catch (err) {
@@ -518,7 +518,7 @@ async function main() {
           return;
         }
         await queryArgus(`DELETE FROM argus.recipes WHERE id = $1`, [id]);
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ status: 'ok', deletedId: id }));
       } catch (err) {

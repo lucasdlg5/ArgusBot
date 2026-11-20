@@ -134,7 +134,7 @@ export function createArgusBot(): Bot {
         .sendMessage(
           chatId,
           `❌ FALHA NO PROCESSAMENTO\n• ⚠️ Mensagem de erro: ${errMsg.slice(0, 280)}`,
-          msgId ? { reply_parameters: { message_id: msgId } } : undefined
+          msgId ? { reply_parameters: { message_id: msgId, allow_sending_without_reply: true } } : undefined
         )
         .catch(() => {});
     }
@@ -710,7 +710,7 @@ export function createArgusBot(): Bot {
       reactivatedCount: 0
     }));
     const { summary } = await reconciler.reconcileAndSyncSheets();
-    await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+    dashboardBuilder.scheduleDashboardSnapshotPublish();
     const queueSummary = await priceScanner.getQueueAndCollectedSummary().catch(() => null);
 
     const lines = [
@@ -1147,7 +1147,7 @@ export function createArgusBot(): Bot {
     const startMs = Date.now();
     const originalMessageId = ctx.message?.message_id;
     const replyOpts = originalMessageId
-      ? { reply_parameters: { message_id: originalMessageId } }
+      ? { reply_parameters: { message_id: originalMessageId, allow_sending_without_reply: true } }
       : undefined;
 
     const statusMsg = await ctx.reply(
@@ -1196,7 +1196,8 @@ export function createArgusBot(): Bot {
 
         const file = await ctx.getFile();
         const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-        const res = await fetch(fileUrl);
+        const res = await fetch(fileUrl, { signal: AbortSignal.timeout(25000) });
+        if (!res.ok) throw new Error(`Falha ao baixar mídia do Telegram (HTTP ${res.status})`);
         const buffer = Buffer.from(await res.arrayBuffer());
         const mimeType =
           (ctx.message?.video && 'mime_type' in ctx.message.video
@@ -1436,7 +1437,7 @@ export function createArgusBot(): Bot {
           }
 
           await reconciler.reconcileAndSyncSheets().catch(() => {});
-          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+          dashboardBuilder.scheduleDashboardSnapshotPublish();
 
           const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
           await firstCtx.api
@@ -1530,7 +1531,7 @@ export function createArgusBot(): Bot {
     const startMs = Date.now();
     const originalMessageId = ctx.message?.message_id;
     const replyOpts = originalMessageId
-      ? { reply_parameters: { message_id: originalMessageId } }
+      ? { reply_parameters: { message_id: originalMessageId, allow_sending_without_reply: true } }
       : undefined;
 
     const caption = (ctx.message?.caption || '').trim();
@@ -1624,7 +1625,8 @@ export function createArgusBot(): Bot {
             (async () => {
               const file = await ctx.getFile();
               const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-              const res = await fetch(fileUrl);
+              const res = await fetch(fileUrl, { signal: AbortSignal.timeout(25000) });
+              if (!res.ok) throw new Error(`Falha ao baixar mídia do Telegram (HTTP ${res.status})`);
               const buffer = Buffer.from(await res.arrayBuffer());
               const mimeType = ctx.message?.document?.mime_type || 'image/jpeg';
               const telegramFileId =
@@ -1659,7 +1661,7 @@ export function createArgusBot(): Bot {
                 }
                 const savedRecipe = await recipeService.saveRecipeToDatabase(extractedRecipe);
                 awaitingRecipeChats.delete(chatKey);
-                await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+                dashboardBuilder.scheduleDashboardSnapshotPublish();
 
                 await updateStatus(formatSavedRecipeMessage(savedRecipe));
                 await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
@@ -1835,7 +1837,7 @@ export function createArgusBot(): Bot {
                 if (autoRecipe && autoRecipe.isRecipe && autoRecipe.ingredients.length > 0) {
                   const savedAuto = await recipeService.saveRecipeToDatabase(autoRecipe);
                   awaitingRecipeChats.delete(chatKey);
-                  await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+                  dashboardBuilder.scheduleDashboardSnapshotPublish();
                   await updateStatus(formatSavedRecipeMessage(savedAuto));
                   await stickers.sendEmotionalSticker(ctx, 'FOOD_CHEF');
                   return;
@@ -2090,7 +2092,7 @@ export function createArgusBot(): Bot {
 
               if (anySaved) {
                 await reconciler.reconcileAndSyncSheets().catch(() => {});
-                await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+                dashboardBuilder.scheduleDashboardSnapshotPublish();
               }
               await stickers.sendEmotionalSticker(ctx, lastSticker);
             })(),
@@ -2457,7 +2459,7 @@ export function createArgusBot(): Bot {
 
     const chatKey = String(ctx.chat?.id ?? 'default');
     const replyOpts = ctx.message?.message_id
-      ? { reply_parameters: { message_id: ctx.message.message_id } }
+      ? { reply_parameters: { message_id: ctx.message.message_id, allow_sending_without_reply: true } }
       : {};
 
     await withTypingIndicator(ctx, async () => {
@@ -2497,7 +2499,7 @@ export function createArgusBot(): Bot {
             }
             const ingested = await processor.ingestReceipt(scraped);
             await reconciler.reconcileAndSyncSheets().catch(() => {});
-            await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+            dashboardBuilder.scheduleDashboardSnapshotPublish();
             await ctx.api.editMessageText(
               ctx.chat.id,
               statusMsg.message_id,
@@ -2530,7 +2532,7 @@ export function createArgusBot(): Bot {
           }
           const saved = await recipeService.saveRecipeToDatabase(extracted);
           awaitingRecipeChats.delete(chatKey);
-          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+          dashboardBuilder.scheduleDashboardSnapshotPublish();
 
           await ctx.api
             .editMessageText(
@@ -2570,7 +2572,7 @@ export function createArgusBot(): Bot {
           if (extracted.isRecipe !== false && extracted.ingredients.length > 0) {
             const saved = await recipeService.saveRecipeToDatabase(extracted);
             awaitingRecipeChats.delete(chatKey);
-            await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+            dashboardBuilder.scheduleDashboardSnapshotPublish();
 
             await ctx
               .reply(formatSavedRecipeMessage(saved), {
@@ -2713,7 +2715,7 @@ export function createArgusBot(): Bot {
           if (targetChatId) {
             awaitingRecipeChats.delete(String(targetChatId));
           }
-          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+          dashboardBuilder.scheduleDashboardSnapshotPublish();
           await ctx
             .editMessageText(formatSavedRecipeMessage(saved), { parse_mode: 'Markdown' })
             .catch(async () => {
@@ -2806,7 +2808,7 @@ export function createArgusBot(): Bot {
           return;
         }
         await reconciler.reconcileAndSyncSheets().catch(() => {});
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         await ctx.editMessageText(
           `🗑️ NOTA FISCAL DESFEITA\n• ${rb.storeName} (R$ ${rb.totalAmount.toFixed(2)} | ${rb.itemsRemoved} itens) removida do banco e da planilha.`
         );
@@ -2824,7 +2826,7 @@ export function createArgusBot(): Bot {
           return;
         }
         await reconciler.reconcileAndSyncSheets().catch(() => {});
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
         await ctx.editMessageText(
           `🗑️ COLETA DE PREÇOS DESFEITA\n• ${rb.storeName} (${rb.itemsRemoved} preços) removida do banco e da planilha.`
         );
@@ -2879,7 +2881,7 @@ export function createArgusBot(): Bot {
         if (scanOutcome.status === 'SUCCEEDED') {
           lastPriceScanJobId = scanOutcome.queueJobId;
           await reconciler.reconcileAndSyncSheets().catch(() => {});
-          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+          dashboardBuilder.scheduleDashboardSnapshotPublish();
         }
 
         const kbScan =
@@ -2986,7 +2988,7 @@ export function createArgusBot(): Bot {
         }
 
         await reconciler.reconcileAndSyncSheets().catch(() => {});
-        await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+        dashboardBuilder.scheduleDashboardSnapshotPublish();
 
         const topItems = extracted.items
           .slice(0, 5)
@@ -3156,7 +3158,7 @@ export function createArgusBot(): Bot {
           await reconciler.reconcileAndSyncSheets().catch((err) => {
             logger.warn({ err }, '[ArgusBot] Aviso na conciliação pós-ingestão');
           });
-          await dashboardBuilder.publishDashboardSnapshot().catch(() => {});
+          dashboardBuilder.scheduleDashboardSnapshotPublish();
 
           const shrinkMsg =
             result.shrinkflationAlerts.length > 0
@@ -3187,7 +3189,7 @@ export function createArgusBot(): Bot {
                 ctx.chat.id,
                 successText,
                 session.originalMessageId
-                  ? { reply_parameters: { message_id: session.originalMessageId } }
+                  ? { reply_parameters: { message_id: session.originalMessageId, allow_sending_without_reply: true } }
                   : undefined
               );
             }
@@ -3244,7 +3246,7 @@ export function createArgusBot(): Bot {
             if (chatId && s.originalMessageId) {
               await ctx.api
                 .sendMessage(chatId, failMsg, {
-                  reply_parameters: { message_id: s.originalMessageId },
+                  reply_parameters: { message_id: s.originalMessageId, allow_sending_without_reply: true },
                   reply_markup: kbRetry
                 })
                 .catch(() => {});

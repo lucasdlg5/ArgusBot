@@ -272,4 +272,51 @@ export class ArgusDashboardBuilderService {
 
     return { localPath, supabasePublicUrl, storageErrorReason };
   }
+
+  private static pendingPublishTimer: NodeJS.Timeout | null = null;
+  private static publishInFlight = false;
+  private static publishQueuedWhileInFlight = false;
+
+  /**
+   * Agenda a publicação do snapshot em background com debounce/coalescing:
+   * - Não bloqueia a fila de mídia do Telegram durante rajadas de cupons.
+   * - Agrupa múltiplas ingestões próximas em um único rebuild + upload ao Storage.
+   */
+  scheduleDashboardSnapshotPublish(debounceMs = 2500): void {
+    if (ArgusDashboardBuilderService.publishInFlight) {
+      ArgusDashboardBuilderService.publishQueuedWhileInFlight = true;
+      return;
+    }
+
+    if (ArgusDashboardBuilderService.pendingPublishTimer) {
+      clearTimeout(ArgusDashboardBuilderService.pendingPublishTimer);
+    }
+
+    ArgusDashboardBuilderService.pendingPublishTimer = setTimeout(() => {
+      ArgusDashboardBuilderService.pendingPublishTimer = null;
+      void this.runCoalescedSnapshotPublish();
+    }, debounceMs);
+  }
+
+  private async runCoalescedSnapshotPublish(): Promise<void> {
+    if (ArgusDashboardBuilderService.publishInFlight) {
+      ArgusDashboardBuilderService.publishQueuedWhileInFlight = true;
+      return;
+    }
+    ArgusDashboardBuilderService.publishInFlight = true;
+    try {
+      await this.publishDashboardSnapshot();
+    } catch (err) {
+      logger.warn(
+        { err },
+        '[ArgusDashboardBuilder] Aviso na publicação assíncrona em background do snapshot'
+      );
+    } finally {
+      ArgusDashboardBuilderService.publishInFlight = false;
+      if (ArgusDashboardBuilderService.publishQueuedWhileInFlight) {
+        ArgusDashboardBuilderService.publishQueuedWhileInFlight = false;
+        this.scheduleDashboardSnapshotPublish(1500);
+      }
+    }
+  }
 }

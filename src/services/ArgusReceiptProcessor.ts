@@ -994,23 +994,23 @@ export class ArgusReceiptProcessor {
         logger.debug({ err }, '[ArgusReceiptProcessor] Passada 0 (zxing-wasm full) sem leitura');
       }
 
-      const base = sharp(imageBuffer)
+      // Materializa uma única vez após rotação EXIF + resize para que .extract() nunca receba dimensões inconsistentes
+      const { data: basePngBuffer, info: basePngInfo } = await sharp(imageBuffer)
         .rotate()
-        .resize({ width: 1400, withoutEnlargement: true });
+        .resize({ width: 1400, withoutEnlargement: true })
+        .png()
+        .toBuffer({ resolveWithObject: true });
 
-      let baseWidth = 0;
-      let baseHeight = 0;
+      const baseWidth = basePngInfo.width;
+      const baseHeight = basePngInfo.height;
 
       // Passada 1: imagem inteira (RGBA 4 canais)
       try {
-        const { data, info } = await base
-          .clone()
+        const { data, info } = await sharp(basePngBuffer)
           .toColourspace('srgb')
           .ensureAlpha()
           .raw()
           .toBuffer({ resolveWithObject: true });
-        baseWidth = info.width;
-        baseHeight = info.height;
 
         if (info.channels === 4) {
           const qrFull = jsQR(new Uint8ClampedArray(data), info.width, info.height);
@@ -1026,12 +1026,11 @@ export class ArgusReceiptProcessor {
         logger.debug({ err }, '[ArgusReceiptProcessor] Passada 1 (full) de QR local sem leitura');
       }
 
-      // Passadas 2, 3 e 4: metade inferior do cupom (onde fica o QR Code)
+      // Passadas 1b, 2, 3 e 4: metade inferior do cupom (onde fica o QR Code)
       if (baseHeight >= 400 && baseWidth >= 200) {
-        const cropTop = Math.floor(baseHeight * 0.45);
-        const cropHeight = baseHeight - cropTop;
-        const cropBuffer = await base
-          .clone()
+        const cropTop = Math.max(0, Math.min(baseHeight - 1, Math.floor(baseHeight * 0.45)));
+        const cropHeight = Math.max(1, baseHeight - cropTop);
+        const cropBuffer = await sharp(basePngBuffer)
           .extract({ left: 0, top: cropTop, width: baseWidth, height: cropHeight })
           .resize({ width: 1100, withoutEnlargement: true })
           .png()
