@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "generatedAt": "2026-11-27T03:19:47.982Z",
+  "generatedAt": "2026-11-27T12:50:03.830Z",
   "homeLocation": {
     "lat": -23.305,
     "lng": -45.965,
@@ -5148,7 +5148,7 @@
       "estimated_package_price": 0.59,
       "min_historical_price": 0.59,
       "max_historical_price": 0.59,
-      "days_since_last_seen": 148,
+      "days_since_last_seen": 149,
       "last_seen_at": "2026-07-01T10:52:02.000Z",
       "observations_count": 2
     },
@@ -5896,7 +5896,7 @@
       "estimated_package_price": 3.49,
       "min_historical_price": 3.49,
       "max_historical_price": 3.49,
-      "days_since_last_seen": 148,
+      "days_since_last_seen": 149,
       "last_seen_at": "2026-07-01T10:52:02.000Z",
       "observations_count": 1
     },
@@ -5913,7 +5913,7 @@
       "estimated_package_price": 2.29,
       "min_historical_price": 2.29,
       "max_historical_price": 2.29,
-      "days_since_last_seen": 148,
+      "days_since_last_seen": 149,
       "last_seen_at": "2026-07-01T10:52:02.000Z",
       "observations_count": 1
     },
